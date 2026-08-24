@@ -410,6 +410,7 @@ body {
   }
   .drilldown-action {
     @apply rounded-xl border border-secondary-100 bg-secondary-50/55 px-2.5 py-2;
+    min-width: 0;
   }
   .drilldown-action:hover,
   .drilldown-card:hover {
@@ -427,11 +428,15 @@ body {
   .drilldown-action-value {
     display: block;
     margin-top: 0.15rem;
-    overflow: hidden;
-    font-size: 0.82rem;
+    min-height: 1.35rem;
+    overflow: visible;
+    font-size: clamp(0.72rem, 2.2vw, 0.86rem);
     font-weight: 800;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.35;
+    text-overflow: clip;
+    white-space: normal;
+    word-break: keep-all;
+    font-variant-numeric: tabular-nums;
   }
   .drilldown-card {
     @apply w-full rounded-2xl border p-3;
