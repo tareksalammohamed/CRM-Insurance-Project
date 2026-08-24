@@ -49,10 +49,10 @@ export function PolicyFormDialog({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
-        className="modal-content max-w-2xl animate-fadeIn"
+        className="modal-content modal-form-shell max-w-2xl animate-fadeIn"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between p-6 border-b border-secondary-200">
+        <div className="modal-form-header flex items-center justify-between p-6 border-b border-secondary-200">
           <h3 className="text-lg font-semibold text-secondary-900">
             {editingPolicy ? 'تعديل الوثيقة' : 'إصدار وثيقة جديدة'}
           </h3>
@@ -64,7 +64,7 @@ export function PolicyFormDialog({
           </button>
         </div>
 
-        <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+        <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="modal-form-scroll p-6 space-y-4">
           {!editingPolicy && <ExtractPolicyDataButton formRef={formRef} setValue={setValue} />}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -237,7 +237,7 @@ export function PolicyFormDialog({
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-secondary-200">
+          <div className="modal-actions flex justify-end gap-3 pt-4 border-t border-secondary-200">
             <button
               type="button"
               onClick={onClose}
