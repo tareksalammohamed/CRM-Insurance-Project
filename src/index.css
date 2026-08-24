@@ -362,7 +362,9 @@ body {
   }
 
   .surface-section {
-    @apply rounded-2xl border border-secondary-100/80 bg-white/90 shadow-soft;
+    @apply rounded-2xl border bg-white/90 shadow-soft;
+    border-color: rgb(13 59 51 / 0.08);
+    box-shadow: 0 14px 30px rgb(13 59 51 / 0.06);
   }
 
   .section-heading {
@@ -417,13 +419,15 @@ body {
 
   /* ===== INPUTS ===== */
   .input-field {
-    @apply w-full rounded-xl border border-secondary-200 bg-white px-4 py-2.5
+    @apply w-full rounded-xl bg-white px-4 py-2.5
            text-secondary-900 placeholder-secondary-400
-           shadow-[0_1px_2px_rgb(15_23_42_/_0.025)]
            focus:border-primary-500 focus:outline-none focus:ring-4 focus:ring-primary-500/15
            transition-all duration-200;
     min-height: 46px;
+    border: 1px solid rgb(13 59 51 / 0.12);
+    box-shadow: 0 4px 12px rgb(13 59 51 / 0.035);
   }
+  .input-field:hover { border-color: rgb(8 127 91 / 0.25); }
 
   .input-label {
     @apply block text-sm font-medium text-secondary-700 mb-1.5;
@@ -440,13 +444,15 @@ body {
 
   /* ===== TABLE ===== */
   .table-container {
-    @apply overflow-x-auto rounded-2xl border border-secondary-100 bg-white shadow-soft;
+    @apply overflow-x-auto rounded-2xl bg-white;
+    border: 1px solid rgb(13 59 51 / 0.08);
+    box-shadow: 0 16px 34px rgb(13 59 51 / 0.07);
     -webkit-overflow-scrolling: touch;
     scrollbar-gutter: stable both-edges;
   }
 
   .table-container table { @apply w-full text-sm text-right; }
-  .table-container th    { @apply bg-secondary-50/80 px-3 py-2.5 font-semibold text-secondary-500 text-xs tracking-wide border-b border-secondary-200 whitespace-nowrap; }
+  .table-container th    { @apply px-3 py-2.5 font-bold text-secondary-600 text-xs tracking-wide border-b whitespace-nowrap; background: #edf7f1; border-bottom-color: rgb(13 59 51 / 0.1); }
   .table-container td    { @apply px-3 py-2.5 border-b border-secondary-100 whitespace-nowrap; font-variant-numeric: tabular-nums; }
   .table-container tr:last-child td { @apply border-b-0; }
   .table-container tr:hover td { @apply bg-primary-50/35; }
@@ -675,25 +681,30 @@ body {
   .collection-card {
     position: relative;
     overflow: hidden;
+    border-color: rgb(13 59 51 / 0.09) !important;
+    background: linear-gradient(145deg, #ffffff 0%, #f0f9f3 100%) !important;
+    box-shadow: 0 14px 28px rgb(13 59 51 / 0.07) !important;
   }
   .collection-card::before {
     content: '';
     position: absolute;
     top: 0;
     right: 0;
-    width: 0.25rem;
+    width: 0.35rem;
     height: 100%;
-    background: #14b881;
-    opacity: 0.55;
+    background: linear-gradient(180deg, #c5ed58, #087f5b);
+    opacity: 0.9;
   }
+  .collection-card:hover { transform: translateY(-2px); box-shadow: 0 20px 36px rgb(13 59 51 / 0.12) !important; }
   .collection-card-meta {
     border-top: 1px solid rgb(223 234 229 / 0.72);
     padding-top: 0.85rem;
   }
   .collection-filter-strip { scrollbar-width: none; }
   .collection-filter-strip::-webkit-scrollbar { display: none; }
-  .collection-filter-chip { min-height: 2.65rem; }
-  .collection-filter-chip:hover { transform: translateY(-1px); box-shadow: 0 5px 14px rgb(16 42 36 / 0.08); }
+  .collection-filter-chip { min-height: 2.65rem; border: 1px solid rgb(13 59 51 / 0.08); background: rgb(255 255 255 / 0.8); box-shadow: 0 5px 14px rgb(13 59 51 / 0.035); }
+  .collection-filter-chip:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgb(16 42 36 / 0.1); }
+  .collection-filter-chip[aria-pressed="true"], .collection-filter-chip.active { border-color: rgb(8 127 91 / 0.25); background: #e1f5e8; color: #075b43; }
   .collection-result-summary {
     border-top: 1px solid rgb(223 234 229 / 0.8);
     padding-top: 0.65rem;
@@ -701,7 +712,9 @@ body {
 
   /* ===== DROPDOWN ===== */
   .dropdown-menu {
-    @apply absolute z-50 mt-2 min-w-[200px] rounded-2xl border border-secondary-100 bg-white py-1 shadow-elevated;
+    @apply absolute z-50 mt-2 min-w-[200px] rounded-2xl bg-white py-1;
+    border: 1px solid rgb(13 59 51 / 0.1);
+    box-shadow: 0 20px 42px rgb(13 59 51 / 0.16);
     animation: menuIn 160ms var(--ease-out);
   }
   .dropdown-item {
