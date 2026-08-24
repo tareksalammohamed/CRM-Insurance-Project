@@ -468,7 +468,7 @@ body {
   .team-performance-sheet-body {
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
   }
 
   /* مودال بيانات التقرير يفتح فوق Bottom Navigation على الموبايل؛ نترك
@@ -476,7 +476,9 @@ body {
      وقابلة للمس، مع الإبقاء على الـBottom Navigation خلف الـoverlay. */
   @media (max-width: 639px) {
     .team-performance-modal {
-      max-height: calc(100dvh - 3.5rem);
+      height: 92dvh;
+      max-height: 92dvh;
+      width: 100%;
       border-radius: 1.5rem 1.5rem 0 0;
     }
     .print-setup-modal { z-index: 80; }
