@@ -47,7 +47,7 @@ export function DashboardTargets({ stats, selectedMonth }: DashboardTargetsProps
           <p className="text-2xl font-bold text-warning-700">
             {formatCurrency(stats?.remaining || 0)}
           </p>
-          <p className="text-xs text-warning-600 mt-1">المتبقي</p>
+          <p className="text-xs text-warning-600 mt-1">المتبقي على التارجت</p>
         </div>
         <button type="button" onClick={openPaid} className="drilldown-card bg-info-50 text-center">
           <Clock className="w-8 h-8 text-info-600 mx-auto mb-2" />
