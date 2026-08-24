@@ -75,7 +75,7 @@ export function TeamPerformanceSheet({ stack, children, onSelectChild, onBack, o
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content max-w-md animate-slideUp" onClick={(e) => e.stopPropagation()}>
+      <div className="team-performance-modal modal-content max-w-md flex flex-col animate-slideUp" onClick={(e) => e.stopPropagation()}>
         {/* Header + شريط المسار الهرمي */}
         <div className="sticky top-0 bg-white border-b border-secondary-200 px-4 py-3 z-10">
           <div className="flex items-center justify-between">
@@ -103,7 +103,7 @@ export function TeamPerformanceSheet({ stack, children, onSelectChild, onBack, o
           )}
         </div>
 
-        <div className="p-4 space-y-4">
+        <div className="team-performance-sheet-body flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
           {/* الاسم والدرجة الوظيفية */}
           <div className="text-center pt-1">
             <h4 className="text-lg font-bold text-secondary-900">{current.name}</h4>

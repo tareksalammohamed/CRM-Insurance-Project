@@ -456,10 +456,24 @@ body {
     overscroll-behavior: contain;
   }
 
+  .team-performance-modal {
+    min-height: 0;
+    overflow: hidden;
+  }
+  .team-performance-sheet-body {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+  }
+
   /* مودال بيانات التقرير يفتح فوق Bottom Navigation على الموبايل؛ نترك
      مسافة آمنة أسفل الـsheet ونرفعه قليلًا حتى تبقى أزرار إلغاء/طباعة ظاهرة
      وقابلة للمس، مع الإبقاء على الـBottom Navigation خلف الـoverlay. */
   @media (max-width: 639px) {
+    .team-performance-modal {
+      max-height: calc(100dvh - 3.5rem);
+      border-radius: 1.5rem 1.5rem 0 0;
+    }
     .print-setup-modal { z-index: 80; }
     .print-setup-content {
       margin-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
@@ -469,6 +483,9 @@ body {
   }
 
   @media (min-width: 640px) {
+    .team-performance-modal {
+      max-height: min(90vh, 760px);
+    }
     .modal-content {
       @apply rounded-2xl shadow-elevated max-w-lg;
       max-height: 90vh;
