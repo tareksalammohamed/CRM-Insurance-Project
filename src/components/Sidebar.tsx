@@ -142,8 +142,8 @@ export function Sidebar() {
                     key={item.path}
                     to={item.path}
                     className={clsx(
-                      'flex items-center justify-center h-11 px-0 rounded-xl transition-all duration-200',
-                      active ? 'bg-primary-50 text-primary-700' : 'text-secondary-600 hover:bg-secondary-50'
+                      'sidebar-collapsed-nav-row flex items-center justify-center h-11 px-0 rounded-xl transition-all duration-200',
+                      active ? 'sidebar-collapsed-nav-row-active bg-primary-50 text-primary-700' : 'text-secondary-600 hover:bg-secondary-50'
                     )}
                     title={item.label}
                   >
@@ -340,7 +340,7 @@ function NavGroupSection({
     <div className="pb-2">
       <button
         onClick={onToggle}
-        className="flex items-center justify-between w-full h-8 px-2 rounded-lg text-secondary-400 hover:text-primary-700 transition-colors duration-150"
+        className="sidebar-group-toggle flex items-center justify-between w-full h-8 px-2 rounded-lg text-secondary-400 hover:text-primary-700 transition-colors duration-150"
       >
         <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide">
           <GroupIcon className="w-3.5 h-3.5" />
@@ -381,9 +381,9 @@ function NavLinkRow({
       to={item.path}
       onClick={onNavigate}
       className={clsx(
-        'pressable relative flex items-center h-12 gap-3 pr-2.5 pl-3 rounded-xl text-sm transition-all duration-200 touch-target',
+        'sidebar-nav-row pressable relative flex items-center h-12 gap-3 pr-2.5 pl-3 rounded-xl text-sm transition-all duration-200 touch-target',
         active
-          ? 'bg-gradient-to-l from-primary-50 to-primary-50/40 text-primary-700 font-semibold'
+          ? 'sidebar-nav-row-active bg-gradient-to-l from-primary-50 to-primary-50/40 text-primary-700 font-semibold'
           : 'text-secondary-600 font-medium hover:bg-secondary-50 hover:text-secondary-900'
       )}
     >

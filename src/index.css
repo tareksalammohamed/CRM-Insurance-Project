@@ -153,6 +153,8 @@ body {
     border-left-color: rgb(13 59 51 / 0.12) !important;
     box-shadow: -16px 0 40px rgb(13 59 51 / 0.08) !important;
   }
+  .app-sidebar .badge-primary { background: #e1f5e8; color: #075b43; ring-color: rgb(8 127 91 / 0.2); }
+  .app-sidebar .border-secondary-100 { border-color: rgb(13 59 51 / 0.08) !important; }
   .sidebar-brand {
     background: linear-gradient(135deg, #0d3b33 0%, #0f5b59 100%);
     border-bottom-color: rgb(197 237 88 / 0.25) !important;
@@ -630,6 +632,19 @@ body {
     background: linear-gradient(135deg, #0d3b33 0%, #087f5b 100%);
     box-shadow: 0 10px 20px rgb(8 127 91 / 0.2);
   }
+  .sidebar-nav-row { margin-block: 0.2rem; border: 1px solid transparent; }
+  .sidebar-nav-row:hover { background: rgb(8 127 91 / 0.07) !important; border-color: rgb(8 127 91 / 0.1); }
+  .sidebar-nav-row-active {
+    background: linear-gradient(135deg, #0d3b33 0%, #087f5b 100%) !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
+    box-shadow: 0 8px 18px rgb(8 127 91 / 0.18);
+  }
+  .sidebar-nav-row-active > span { background: rgb(197 237 88 / 0.2) !important; color: #c5ed58 !important; }
+  .sidebar-collapsed-nav-row:hover { background: rgb(8 127 91 / 0.08) !important; }
+  .sidebar-collapsed-nav-row-active { background: #e1f5e8 !important; box-shadow: inset 0 0 0 1px rgb(8 127 91 / 0.14), 0 6px 14px rgb(13 59 51 / 0.07); }
+  .sidebar-group-toggle { margin-bottom: 0.15rem; border-bottom: 1px solid rgb(13 59 51 / 0.06); }
+  .sidebar-group-toggle:hover { background: rgb(197 237 88 / 0.12); }
 
   .icon-button {
     @apply inline-flex items-center justify-center rounded-xl text-secondary-500
