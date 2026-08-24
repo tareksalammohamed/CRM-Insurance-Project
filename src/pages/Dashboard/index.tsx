@@ -55,7 +55,7 @@ export function Dashboard() {
 
       <DashboardStats stats={stats} selectedMonth={selectedMonth} />
 
-      <DashboardTargets stats={stats} />
+      <DashboardTargets stats={stats} selectedMonth={selectedMonth} />
 
       <DashboardPerformance
         teamPerformanceSections={teamPerformanceSections}

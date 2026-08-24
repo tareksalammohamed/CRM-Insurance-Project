@@ -163,10 +163,10 @@ body {
     line-height: 1.9;
   }
 
-  .dashboard-header { display: flex; flex-direction: column; gap: 1rem; }
+  .dashboard-header { display: flex; flex-direction: column; gap: 0.6rem; }
   .dashboard-intro {
     position: relative;
-    padding: 1.25rem 1.5rem 1.35rem;
+    padding: 0.9rem 1.15rem 1rem;
     border-radius: 1.5rem;
     border: 1px solid rgb(20 184 129 / 0.14);
     background: linear-gradient(110deg, #ffffff 0%, #f7fcf9 100%);
@@ -193,6 +193,34 @@ body {
   .dashboard-toolbar {
     border-color: rgb(20 184 129 / 0.12);
     background: rgb(255 255 255 / 0.9);
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+  }
+  @media (max-width: 767px) {
+    .dashboard-kicker { margin-bottom: 0.15rem; font-size: 0.68rem; }
+    .dashboard-intro h2 { font-size: 1.35rem; }
+    .dashboard-intro p { margin-top: 0.2rem; font-size: 0.75rem; }
+    .dashboard-toolbar { min-height: 3.25rem; }
+  }
+  @media (min-width: 768px) {
+    .dashboard-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: stretch;
+      gap: 0.85rem;
+    }
+    .dashboard-intro {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      column-gap: 0.8rem;
+      row-gap: 0.15rem;
+      padding: 0.9rem 1.25rem 1rem;
+    }
+    .dashboard-intro .dashboard-kicker { flex-basis: 100%; margin-bottom: 0; }
+    .dashboard-intro h2 { font-size: 1.55rem; }
+    .dashboard-intro p { margin-top: 0; }
+    .dashboard-toolbar { min-width: 15rem; }
   }
 
   /* ===== BUTTONS ===== */

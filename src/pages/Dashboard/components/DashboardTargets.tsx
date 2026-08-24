@@ -1,12 +1,17 @@
+import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Target, Clock } from 'lucide-react';
 import type { DashboardStats } from '../types';
-import { formatCurrency } from '../utils';
+import { buildCollectionDrillDownUrl, formatCurrency } from '../utils';
 
 interface DashboardTargetsProps {
   stats: DashboardStats | null;
+  selectedMonth: Date;
 }
 
-export function DashboardTargets({ stats }: DashboardTargetsProps) {
+export function DashboardTargets({ stats, selectedMonth }: DashboardTargetsProps) {
+  const navigate = useNavigate();
+  const openPaid = () => navigate(buildCollectionDrillDownUrl({ quickFilter: 'paid', month: selectedMonth }));
+
   return (
     <div className="card">
       <h3 className="font-semibold text-secondary-900 mb-4">التارجت</h3>
@@ -30,13 +35,13 @@ export function DashboardTargets({ stats }: DashboardTargetsProps) {
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <div className="text-center p-4 bg-success-50 rounded-lg">
+        <button type="button" onClick={openPaid} className="drilldown-card bg-success-50 text-center">
           <CheckCircle className="w-8 h-8 text-success-600 mx-auto mb-2" />
           <p className="text-2xl font-bold text-success-700">
             {formatCurrency(stats?.achieved || 0)}
           </p>
           <p className="text-xs text-success-600 mt-1">المحقق</p>
-        </div>
+        </button>
         <div className="text-center p-4 bg-warning-50 rounded-lg">
           <Target className="w-8 h-8 text-warning-600 mx-auto mb-2" />
           <p className="text-2xl font-bold text-warning-700">
@@ -44,13 +49,13 @@ export function DashboardTargets({ stats }: DashboardTargetsProps) {
           </p>
           <p className="text-xs text-warning-600 mt-1">المتبقي</p>
         </div>
-        <div className="text-center p-4 bg-info-50 rounded-lg">
+        <button type="button" onClick={openPaid} className="drilldown-card bg-info-50 text-center">
           <Clock className="w-8 h-8 text-info-600 mx-auto mb-2" />
           <p className="text-2xl font-bold text-info-700">
             {stats?.paidInstallmentsCount || 0}
           </p>
           <p className="text-xs text-info-600 mt-1">أقساط مسددة</p>
-        </div>
+        </button>
       </div>
     </div>
   );
