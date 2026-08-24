@@ -122,7 +122,7 @@ export function Header() {
     <>
       {/* ===========================  HEADER BAR  =========================== */}
       <header className={clsx(
-        'fixed top-0 left-0 right-0 h-14 md:h-16 bg-white/95 backdrop-blur-md border-b border-secondary-100 shadow-[0_1px_0_rgb(15_23_42_/_0.02),0_6px_20px_rgb(15_23_42_/_0.03)] z-30',
+        'app-header fixed top-0 left-0 right-0 h-14 md:h-16 bg-white/95 backdrop-blur-md border-b border-secondary-100 shadow-[0_1px_0_rgb(15_23_42_/_0.02),0_6px_20px_rgb(15_23_42_/_0.03)] z-30',
         'flex items-center justify-between px-3 md:px-4 transition-all duration-300',
         'print:hidden',
         sidebarCollapsed ? 'md:mr-20' : 'md:mr-64'
@@ -133,7 +133,10 @@ export function Header() {
             <Menu className="w-5 h-5 text-secondary-600" />
           </button>
           <BrandMark className="w-5 h-5 md:hidden" />
-          <h1 className="text-sm md:text-lg font-semibold text-secondary-900 truncate">{getPageTitle()}</h1>
+          <div className="min-w-0 flex items-center gap-2">
+            <h1 className="text-sm md:text-lg font-semibold text-secondary-900 truncate">{getPageTitle()}</h1>
+            <span className="hidden md:inline-flex items-center rounded-full bg-primary-50 px-2 py-1 text-[10px] font-bold text-primary-700 ring-1 ring-primary-100">لوحة التشغيل</span>
+          </div>
         </div>
 
         {/* يمين */}

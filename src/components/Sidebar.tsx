@@ -55,7 +55,7 @@ export function Sidebar() {
       ============================================= */}
       <aside
         className={clsx(
-          'fixed top-0 right-0 h-full bg-white/95 backdrop-blur-md border-l border-secondary-100 z-40',
+          'app-sidebar fixed top-0 right-0 h-full bg-white/95 backdrop-blur-md border-l border-secondary-100 z-40',
           'transition-all duration-300 flex flex-col shadow-[0_10px_40px_rgb(15_23_42_/_0.05)]',
           'hidden md:flex',
           sidebarCollapsed ? 'w-20' : 'w-64'
@@ -64,7 +64,7 @@ export function Sidebar() {
         <div
           data-tour-id="sidebar-brand"
           className={clsx(
-          'flex items-center h-16 px-3 border-b border-secondary-100 flex-shrink-0',
+          'sidebar-brand flex items-center h-16 px-3 border-b border-secondary-100 flex-shrink-0',
           sidebarCollapsed ? 'justify-center' : 'justify-between gap-2'
         )}>
           {!sidebarCollapsed ? (
@@ -189,7 +189,7 @@ export function Sidebar() {
       {/* =============================================
           MOBILE BOTTOM NAVIGATION  (أصغر من md) — يعتمد على الدرجة الوظيفية
       ============================================= */}
-      <nav className="md:hidden fixed bottom-0 right-0 left-0 z-40 bg-white/95 backdrop-blur-xl border-t border-secondary-100 shadow-[0_-8px_24px_rgb(15_23_42_/_0.06)] safe-area-bottom">
+      <nav className="mobile-bottom-nav md:hidden fixed bottom-0 right-0 left-0 z-40 bg-white/95 backdrop-blur-xl border-t border-secondary-100 shadow-[0_-8px_24px_rgb(15_23_42_/_0.06)] safe-area-bottom">
         <div className="flex items-stretch justify-around px-0.5 py-1">
           {bottomNavItems.map((item) => {
             const Icon = item.icon;
@@ -199,9 +199,9 @@ export function Sidebar() {
                 key={item.path}
                 to={item.path}
                 className={clsx(
-                  'pressable flex flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 rounded-xl flex-1 min-w-0',
+                  'mobile-nav-item pressable flex flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 rounded-xl flex-1 min-w-0',
                   'transition-colors duration-200 touch-target',
-                  active ? 'text-primary-600' : 'text-secondary-600'
+                  active ? 'is-active text-primary-600' : 'text-secondary-600'
                 )}
               >
                 <div className={clsx('p-1.5 rounded-xl transition-all duration-200', active ? 'bg-primary-100' : '')}>
@@ -218,9 +218,9 @@ export function Sidebar() {
           <button
             onClick={openMobileMenu}
             className={clsx(
-              'pressable flex flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 rounded-xl flex-1 min-w-0',
+              'mobile-nav-item pressable flex flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 rounded-xl flex-1 min-w-0',
               'transition-colors duration-200 touch-target',
-              isMoreActive ? 'text-primary-600' : 'text-secondary-600'
+              isMoreActive ? 'is-active text-primary-600' : 'text-secondary-600'
             )}
           >
             <div className={clsx('p-1.5 rounded-xl transition-all duration-200', isMoreActive ? 'bg-primary-100' : '')}>

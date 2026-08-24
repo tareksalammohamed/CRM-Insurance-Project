@@ -1,8 +1,14 @@
-import { RefreshCw } from 'lucide-react';
+import { CalendarDays, CheckCircle2, Clock3, RefreshCw } from 'lucide-react';
 import clsx from 'clsx';
 import { QUICK_FILTERS, type QuickFilter, type SubType, type OwnerFilter } from '../types';
 import type { UserRole } from '../../../lib/supabase';
 import { AgentCombobox } from '../../Customers/components/AgentCombobox';
+
+const QUICK_FILTER_ICONS = {
+  month: CalendarDays,
+  overdue: Clock3,
+  paid: CheckCircle2,
+} as const;
 
 interface CollectionFiltersProps {
   quickFilter: QuickFilter;
@@ -45,18 +51,19 @@ export function CollectionFilters({
   return (
     <>
       {/* شرائح سريعة لاختيار الفلتر مباشرة بدون فتح اللوحة */}
-      <div className="flex gap-2 overflow-x-auto scrollbar-thin pb-1 -mx-1 px-1">
+      <div className="collection-filter-strip flex gap-2 overflow-x-auto scrollbar-thin pb-1 -mx-1 px-1">
         {QUICK_FILTERS.map((f) => (
           <button
             key={f.id}
             onClick={() => onQuickFilterSelect(f.id)}
             className={clsx(
-              'shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors',
+              'collection-filter-chip shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-semibold border transition-all',
               quickFilter === f.id
                 ? 'bg-primary-600 border-primary-600 text-white'
                 : 'bg-white border-secondary-200 text-secondary-600 hover:border-primary-300'
             )}
           >
+            {(() => { const Icon = QUICK_FILTER_ICONS[f.id]; return <Icon className="w-3.5 h-3.5" />; })()}
             {f.label}
           </button>
         ))}
@@ -105,7 +112,7 @@ export function CollectionFilters({
       )}
 
       {!isInitialLoading && (
-        <p className="text-xs text-secondary-500 flex items-center gap-2">
+        <p className="collection-result-summary text-xs text-secondary-500 flex items-center gap-2">
           <span>عدد النتائج: <span className="font-semibold text-secondary-700">{totalCount}</span></span>
           {loading && (
             <span className="inline-flex items-center gap-1 text-secondary-400">

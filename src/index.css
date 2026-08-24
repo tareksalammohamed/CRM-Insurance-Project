@@ -116,6 +116,43 @@ body {
   .app-main { position: relative; z-index: 1; }
   .app-content { position: relative; }
 
+  .app-header {
+    background-image: linear-gradient(90deg, rgb(255 255 255 / 0.98), rgb(248 253 250 / 0.94));
+  }
+  .app-header::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, rgb(20 184 129 / 0.38) 48%, transparent 100%);
+    pointer-events: none;
+  }
+  .app-sidebar {
+    background-image: linear-gradient(180deg, #ffffff 0%, #f7fcf9 100%);
+  }
+  .sidebar-brand {
+    background: linear-gradient(135deg, rgb(236 253 245 / 0.9), rgb(255 255 255 / 0.92));
+  }
+  .mobile-bottom-nav {
+    padding-top: 0.35rem;
+    background-image: linear-gradient(180deg, rgb(255 255 255 / 0.96), rgb(247 252 249 / 0.98));
+  }
+  .mobile-nav-item { position: relative; }
+  .mobile-nav-item.is-active::after {
+    content: '';
+    position: absolute;
+    right: 50%;
+    bottom: 0.18rem;
+    width: 1.35rem;
+    height: 0.18rem;
+    border-radius: 999px;
+    background: #059669;
+    transform: translateX(50%);
+  }
+  .mobile-nav-item:active { transform: translateY(1px) scale(0.98); }
+
   .login-shell {
     background-image: linear-gradient(120deg, #f4fbf7 0%, #ffffff 58%, #eaf8f2 100%);
   }
@@ -261,6 +298,7 @@ body {
   .card {
     @apply bg-white rounded-2xl shadow-card border border-secondary-100/80;
     padding: 1rem;
+    background-image: linear-gradient(145deg, rgb(255 255 255 / 0.98), rgb(250 253 251 / 0.94));
   }
 
   .card-interactive {
@@ -456,12 +494,60 @@ body {
 
   .page-header {
     @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between;
+    position: relative;
+    padding: 0.3rem 0 0.8rem;
+  }
+  .page-header::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 4.5rem;
+    height: 3px;
+    border-radius: 999px;
+    background: #14b881;
+  }
+  .page-header-single { min-width: 0; }
+  .page-header-eyebrow {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: #059669;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
   }
   .page-header-title {
-    @apply text-xl md:text-2xl font-bold tracking-tight text-secondary-900;
+    @apply text-xl md:text-2xl font-black tracking-tight text-secondary-900;
   }
   .page-header-subtitle {
     @apply text-sm text-secondary-500 mt-1;
+  }
+
+  .collection-card {
+    position: relative;
+    overflow: hidden;
+  }
+  .collection-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0.25rem;
+    height: 100%;
+    background: #14b881;
+    opacity: 0.55;
+  }
+  .collection-card-meta {
+    border-top: 1px solid rgb(223 234 229 / 0.72);
+    padding-top: 0.85rem;
+  }
+  .collection-filter-strip { scrollbar-width: none; }
+  .collection-filter-strip::-webkit-scrollbar { display: none; }
+  .collection-filter-chip { min-height: 2.65rem; }
+  .collection-filter-chip:hover { transform: translateY(-1px); box-shadow: 0 5px 14px rgb(16 42 36 / 0.08); }
+  .collection-result-summary {
+    border-top: 1px solid rgb(223 234 229 / 0.8);
+    padding-top: 0.65rem;
   }
 
   /* ===== DROPDOWN ===== */
