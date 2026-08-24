@@ -102,7 +102,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/',                 label: 'الرئيسية',        icon: LayoutDashboard },
       { path: '/daily-reports',    label: 'تقارير العمل اليومية', icon: ClipboardList, isVisible: canAccessDailyReports },
-      { path: '/customers',        label: 'العملاء',          subLabel: 'طلبات التأمين', icon: Users },
+      { path: '/customers',        label: 'طلبات التأمين',    subLabel: 'بيانات العملاء',    icon: Users },
       { path: '/policies',         label: 'الوثائق',          icon: FileText },
       { path: '/collection',       label: 'التحصيل والسداد',  icon: CreditCard },
       { path: '/commissions',      label: 'العمولات',         icon: Percent },
@@ -176,7 +176,7 @@ export const NAV_LAYOUT: NavLayoutEntry[] = [
 export function getBottomNavItems(role: UserRole): NavItem[] {
   const items: NavItem[] = [
     { path: '/',           label: 'الرئيسية', icon: LayoutDashboard },
-    { path: '/customers',  label: 'العملاء',   icon: Users },
+    { path: '/customers',  label: 'طلبات التأمين', icon: Users },
     { path: '/policies',   label: 'الوثائق',   icon: FileText },
     { path: '/collection', label: 'التحصيل',   icon: CreditCard },
   ];
