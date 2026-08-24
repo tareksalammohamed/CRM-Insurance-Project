@@ -27,7 +27,7 @@ export function ConnectionStatusBadge({ variant = 'dark', className }: Props) {
     return (
       <div
         className={clsx(
-          'flex items-center gap-2.5 rounded-xl bg-white border border-secondary-100 px-3 py-2 shadow-sm',
+          'flex items-center gap-2.5 rounded-2xl bg-white border border-secondary-100 px-3 py-2.5 shadow-soft',
           className
         )}
       >

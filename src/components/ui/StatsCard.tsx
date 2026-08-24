@@ -40,9 +40,11 @@ export function StatsCard({
 }: StatsCardProps) {
   const content = (
     <>
-      <div className="flex items-center justify-between">
-        <p className={labelClassName}>{label}</p>
-        <Icon className={iconClassName} />
+      <div className="flex items-start justify-between gap-3">
+        <p className={clsx(labelClassName, 'leading-5')}>{label}</p>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-50 ring-1 ring-primary-100">
+          <Icon className={iconClassName} />
+        </span>
       </div>
       <p className={valueClassName}>{value}</p>
       {footer}
@@ -55,7 +57,7 @@ export function StatsCard({
         type="button"
         onClick={onClick}
         className={clsx(
-          'kpi-card text-right w-full cursor-pointer hover:-translate-y-0.5 active:translate-y-0',
+          'kpi-card card-interactive text-right w-full cursor-pointer active:translate-y-0',
           borderClassName
         )}
       >

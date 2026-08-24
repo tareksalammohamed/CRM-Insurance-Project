@@ -209,9 +209,11 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="card p-8 animate-fadeIn">
+    <div className="relative min-h-screen overflow-hidden bg-secondary-50 flex items-center justify-center p-4 sm:p-6">
+      <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-primary-100/70 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-32 -right-24 h-80 w-80 rounded-full bg-success-100/70 blur-3xl" />
+      <div className="relative w-full max-w-md">
+        <div className="card border-secondary-100/80 bg-white/95 p-6 shadow-elevated backdrop-blur-sm sm:p-8 animate-fadeIn">
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-primary-100 rounded-2xl flex items-center justify-center mx-auto mb-4 overflow-hidden">
               {branding.company_logo_url
@@ -230,7 +232,7 @@ export function Login() {
                 type="button"
                 onClick={handlePasskeySignIn}
                 disabled={passkeyLoading || loading}
-                className="flex items-center justify-center gap-1.5 py-2 rounded-lg border border-primary-200 bg-primary-50 text-primary-700 text-xs font-medium hover:bg-primary-100 transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-xs font-medium text-primary-700 transition-colors duration-200 hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {passkeyLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -248,7 +250,7 @@ export function Login() {
               onClick={handleGoogleSignIn}
               disabled={googleLoading || loading}
               className={clsx(
-                'flex items-center justify-center gap-1.5 py-2 rounded-lg border border-secondary-200 bg-white text-secondary-700 text-xs font-medium hover:bg-secondary-50 transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed',
+                'flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-secondary-200 bg-white px-3 py-2 text-xs font-medium text-secondary-700 transition-colors duration-200 hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-60',
                 !passkeySupported && 'col-span-2'
               )}
             >
@@ -281,7 +283,7 @@ export function Login() {
           </div>
 
           {error && (
-            <div className="p-3 mb-4 rounded-lg bg-error-50 border border-error-200 text-error-700 text-sm">
+            <div className="mb-4 rounded-xl border border-error-200 bg-error-50 p-3 text-sm text-error-700">
               {error}
             </div>
           )}

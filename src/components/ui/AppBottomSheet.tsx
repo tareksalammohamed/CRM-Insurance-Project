@@ -18,13 +18,13 @@ interface AppBottomSheetProps {
  */
 export function AppBottomSheet({ title, subtitle, onClose, children }: AppBottomSheetProps) {
   return (
-    <AppDialog onClose={onClose} className="max-w-sm animate-fadeIn max-h-[85dvh] overflow-y-auto">
-      <div className="flex items-center justify-between p-5 border-b border-secondary-200 sticky top-0 bg-white z-10">
+    <AppDialog onClose={onClose} className="max-w-sm animate-fadeIn max-h-[88dvh] overflow-y-auto">
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-secondary-100 bg-white/95 p-4 backdrop-blur-md sm:p-5">
         <div className="min-w-0">
           <h3 className="text-base font-semibold text-secondary-900 truncate">{title}</h3>
           {subtitle}
         </div>
-        <button onClick={onClose} className="p-2 rounded-lg hover:bg-secondary-100 shrink-0">
+        <button onClick={onClose} aria-label="إغلاق" className="icon-button shrink-0">
           <X className="w-5 h-5 text-secondary-600" />
         </button>
       </div>

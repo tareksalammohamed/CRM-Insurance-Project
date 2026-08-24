@@ -4,7 +4,6 @@ import { Bell, Search, X, User, Settings, LogOut, Menu, Wallet, MessageSquare, H
 import { useAuth } from '../hooks/useAuth';
 import { ROLE_LABELS } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
-import { useSettings } from '../hooks/useSettings';
 import { supabase, Notification } from '../lib/supabase';
 import { dalRead } from '../lib/dataAccessLayer';
 import clsx from 'clsx';
@@ -21,7 +20,6 @@ export function Header() {
   const navigate           = useNavigate();
   const location           = useLocation();
   const { sidebarCollapsed, toggleMobileMenu, closeMobileMenu } = useAppStore();
-  const { branding } = useSettings();
 
   const [searchOpen,        setSearchOpen]        = useState(false);
   const [searchQuery,       setSearchQuery]       = useState('');
@@ -124,14 +122,14 @@ export function Header() {
     <>
       {/* ===========================  HEADER BAR  =========================== */}
       <header className={clsx(
-        'fixed top-0 left-0 right-0 h-14 md:h-16 bg-white border-b border-secondary-200 z-30',
+        'fixed top-0 left-0 right-0 h-14 md:h-16 bg-white/95 backdrop-blur-md border-b border-secondary-100 shadow-[0_1px_0_rgb(15_23_42_/_0.02),0_6px_20px_rgb(15_23_42_/_0.03)] z-30',
         'flex items-center justify-between px-3 md:px-4 transition-all duration-300',
         'print:hidden',
         sidebarCollapsed ? 'md:mr-20' : 'md:mr-64'
       )}>
         {/* يسار */}
         <div className="flex items-center gap-2 min-w-0">
-          <button onClick={toggleMobileMenu} className="md:hidden p-2 rounded-lg hover:bg-secondary-100 flex-shrink-0">
+          <button onClick={toggleMobileMenu} aria-label="فتح القائمة" className="icon-button md:hidden flex-shrink-0">
             <Menu className="w-5 h-5 text-secondary-600" />
           </button>
           <BrandMark className="w-5 h-5 md:hidden" />
@@ -149,12 +147,12 @@ export function Header() {
             <form onSubmit={handleSearch} className="flex items-center gap-1.5">
               <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="بحث عن عميل..." className="input-field w-32 sm:w-52 md:w-64 text-sm py-1.5" autoFocus />
-              <button type="button" onClick={() => setSearchOpen(false)} className="p-1.5 rounded-lg hover:bg-secondary-100">
+              <button type="button" onClick={() => setSearchOpen(false)} aria-label="إغلاق البحث" className="icon-button !min-h-9 !min-w-9">
                 <X className="w-4 h-4 text-secondary-600" />
               </button>
             </form>
           ) : (
-            <button data-tour-id="header-search" onClick={() => setSearchOpen(true)} className="p-2 rounded-lg hover:bg-secondary-100">
+            <button data-tour-id="header-search" onClick={() => setSearchOpen(true)} aria-label="البحث" className="icon-button">
               <Search className="w-5 h-5 text-secondary-600" />
             </button>
           )}
@@ -167,7 +165,7 @@ export function Header() {
             <button
               onClick={() => navigate('/messages')}
               data-tour-id="header-messages"
-              className="p-2 rounded-lg hover:bg-secondary-100 relative"
+              className="icon-button relative"
               aria-label="الرسائل"
             >
               <MessageSquare className="w-5 h-5 text-secondary-600" />
@@ -181,7 +179,7 @@ export function Header() {
 
           {/* إشعارات */}
           <div className="relative" ref={notificationRef}>
-            <button onClick={() => setNotificationsOpen(!notificationsOpen)} data-tour-id="header-notifications" className="p-2 rounded-lg hover:bg-secondary-100 relative">
+            <button onClick={() => setNotificationsOpen(!notificationsOpen)} data-tour-id="header-notifications" className="icon-button relative">
               <Bell className="w-5 h-5 text-secondary-600" />
               {unreadCount > 0 && (
                 <span className="absolute -top-0.5 -left-0.5 w-4 h-4 bg-error-500 text-white text-[10px] rounded-full flex items-center justify-center font-medium">
@@ -220,7 +218,7 @@ export function Header() {
 
           {/* بروفايل */}
           <div className="relative" ref={profileRef}>
-            <button onClick={() => setProfileOpen(!profileOpen)} data-tour-id="header-profile" className="flex items-center gap-1.5 p-1.5 rounded-lg hover:bg-secondary-100">
+            <button onClick={() => setProfileOpen(!profileOpen)} data-tour-id="header-profile" className="flex min-h-11 items-center gap-1.5 rounded-xl p-1.5 transition-colors hover:bg-secondary-100">
               <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
                 {user.avatar_url
                   ? <img src={user.avatar_url} alt={user.name} className="w-8 h-8 rounded-full object-cover" loading="lazy" decoding="async" />

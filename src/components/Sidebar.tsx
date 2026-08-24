@@ -55,8 +55,8 @@ export function Sidebar() {
       ============================================= */}
       <aside
         className={clsx(
-          'fixed top-0 right-0 h-full bg-white border-l border-secondary-200 z-40',
-          'transition-all duration-300 flex flex-col shadow-sm',
+          'fixed top-0 right-0 h-full bg-white/95 backdrop-blur-md border-l border-secondary-100 z-40',
+          'transition-all duration-300 flex flex-col shadow-[0_10px_40px_rgb(15_23_42_/_0.05)]',
           'hidden md:flex',
           sidebarCollapsed ? 'w-20' : 'w-64'
         )}
@@ -189,7 +189,7 @@ export function Sidebar() {
       {/* =============================================
           MOBILE BOTTOM NAVIGATION  (أصغر من md) — يعتمد على الدرجة الوظيفية
       ============================================= */}
-      <nav className="md:hidden fixed bottom-0 right-0 left-0 z-40 bg-white border-t border-secondary-200 safe-area-bottom">
+      <nav className="md:hidden fixed bottom-0 right-0 left-0 z-40 bg-white/95 backdrop-blur-xl border-t border-secondary-100 shadow-[0_-8px_24px_rgb(15_23_42_/_0.06)] safe-area-bottom">
         <div className="flex items-stretch justify-around px-0.5 py-1">
           {bottomNavItems.map((item) => {
             const Icon = item.icon;
@@ -239,12 +239,12 @@ export function Sidebar() {
       ============================================= */}
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex" onClick={closeMobileMenu}>
-          <div className="absolute inset-0 bg-black/55 backdrop-blur-sm animate-fadeIn" />
+          <div className="absolute inset-0 bg-secondary-900/45 backdrop-blur-[3px] animate-fadeIn" />
           <div
-            className="relative w-[78vw] max-w-80 min-w-[260px] h-full bg-white flex flex-col shadow-2xl animate-slideIn ml-auto mr-0 rounded-l-3xl overflow-hidden"
+            className="relative w-[84vw] max-w-96 min-w-[270px] h-full bg-white flex flex-col shadow-2xl animate-slideIn ml-auto mr-0 rounded-l-[2rem] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative flex items-center justify-between gap-2 px-4 h-20 bg-primary-gradient flex-shrink-0 overflow-hidden">
+            <div className="relative flex items-center justify-between gap-2 px-4 h-20 bg-primary-800 flex-shrink-0 overflow-hidden">
               <div
                 className="absolute inset-0 opacity-40 pointer-events-none"
                 style={{ backgroundImage: 'radial-gradient(circle at 15% -20%, rgb(255 255 255 / 0.25), transparent 55%)' }}

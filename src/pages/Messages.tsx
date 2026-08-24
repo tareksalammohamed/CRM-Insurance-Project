@@ -97,7 +97,7 @@ function MessagesInner() {
   };
 
   return (
-    <div className="h-[calc(100dvh-9.25rem)] md:h-[calc(100dvh-7rem)] flex overflow-hidden rounded-xl border border-secondary-100 bg-white relative">
+    <div className="h-[calc(100dvh-9.25rem)] md:h-[calc(100dvh-7rem)] flex overflow-hidden rounded-2xl border border-secondary-100 bg-white shadow-card relative">
       {/* قائمة المحادثات — لا تظهر إطلاقاً لمن لا يملك صلاحية الرسائل المباشرة
           (مثل Super Admin)، وتُخفى فى الموبايل عند فتح محادثة أو غرفة الفريق */}
       {canMessage && (

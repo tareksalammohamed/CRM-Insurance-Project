@@ -18,8 +18,8 @@ interface PageHeaderProps {
  */
 export function PageHeader({ title, subtitle, titleSuffix, action }: PageHeaderProps) {
   const titleBlock = (
-    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-      <h2 className="text-xl md:text-2xl font-bold text-secondary-900">{title}</h2>
+    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 min-w-0">
+      <h2 className="page-header-title truncate">{title}</h2>
       {titleSuffix && (
         <span className="text-sm md:text-base font-medium text-secondary-500">{titleSuffix}</span>
       )}
@@ -30,16 +30,16 @@ export function PageHeader({ title, subtitle, titleSuffix, action }: PageHeaderP
     return (
       <div>
         {titleBlock}
-        {subtitle && <p className="text-sm text-secondary-500 mt-0.5">{subtitle}</p>}
+        {subtitle && <p className="page-header-subtitle">{subtitle}</p>}
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="page-header">
       <div>
         {titleBlock}
-        {subtitle && <p className="text-sm text-secondary-500 mt-0.5">{subtitle}</p>}
+        {subtitle && <p className="page-header-subtitle">{subtitle}</p>}
       </div>
       {action}
     </div>

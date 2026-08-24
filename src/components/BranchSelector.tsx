@@ -1,6 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
 import { Building2, Check, ChevronDown } from 'lucide-react';
-import clsx from 'clsx';
 import { useBranchContext } from '../lib/branchContext';
 import { ROLE_LABELS } from '../lib/supabase';
 
@@ -28,7 +27,7 @@ export function BranchSelector() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-secondary-100 border border-secondary-200"
+        className="flex min-h-11 items-center gap-1.5 rounded-xl border border-secondary-200 bg-white px-3 py-1.5 shadow-soft transition-colors hover:bg-secondary-50"
         aria-label="اختيار الفرع"
       >
         <Building2 className="w-4 h-4 text-primary-600 flex-shrink-0" />

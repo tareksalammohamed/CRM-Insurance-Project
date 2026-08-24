@@ -7,11 +7,20 @@
 
 :root {
   --font-sans: 'Cairo', 'IBM Plex Sans Arabic', sans-serif;
+  --page-bg: #f6faf8;
+  --surface: #ffffff;
+  --surface-soft: #f0f8f5;
+  --ink: #102a24;
+  --muted-ink: #64756f;
+  --line: #dfeae5;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  color-scheme: light;
 }
 
 html {
   direction: rtl;
   font-family: var(--font-sans);
+  background: var(--page-bg);
   /* منع التكبير التلقائي على iOS عند تحديد input */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
@@ -20,11 +29,12 @@ html {
 
 body {
   font-family: var(--font-sans);
+  color: var(--ink);
   /* خلفية بلمسة خفيفة من لون الهوية بدل الرمادي المسطح — نفس درجة
      secondary-50 القديمة تقريبًا لكن بإحساس أدفأ ومرتبط بالأخضر الأساسي،
      ثابتة (لا تتحرك مع الصفحة) عشان الإحساس بعمق بسيط خلف الكروت */
-  background-color: #f7faf9;
-  background-image: radial-gradient(at top left, rgb(16 185 129 / 0.05), transparent 45%);
+  background-color: var(--page-bg);
+  background-image: radial-gradient(at 8% 0%, rgb(16 185 129 / 0.065), transparent 36%), radial-gradient(at 92% 14%, rgb(15 118 110 / 0.035), transparent 30%);
   background-attachment: fixed;
   min-height: 100vh;
   min-height: 100dvh; /* dynamic viewport height لأجهزة الموبايل */
@@ -32,6 +42,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   /* منع الـ bounce scroll على iOS */
   overscroll-behavior: none;
+  overflow-x: hidden;
   /* أرقام بعرض ثابت (tabular figures) فى كل التطبيق تلقائيًا — مهم جدًا
      لتطبيق مالي/تأميني مليان أرقام (مبالغ، نسب) حتى تبقى الأعمدة والقوائم
      متساوية العرض بصريًا بدون أي تعديل فى أي صفحة */
@@ -109,19 +120,31 @@ body {
   /* تدرّج خفيف بدل اللون المسطح فى الزرار الأساسي — نفس درجات primary
      بالظبط، بس بعمق بصري أوضح (نفس فكرة الأزرار فى تطبيقات البنوك/التأمين
      الاحترافية) */
-  .btn-primary   { @apply bg-primary-gradient text-white shadow-primary-glow-inset hover:bg-primary-gradient-hover hover:shadow-elevated active:bg-primary-800; }
-  .btn-secondary { @apply bg-secondary-100 text-secondary-700 hover:bg-secondary-200 active:bg-secondary-300; }
+  .btn-primary   { @apply bg-primary-700 text-white shadow-primary-glow-inset hover:bg-primary-800 hover:shadow-elevated active:bg-primary-900; }
+  .btn-secondary { @apply bg-secondary-100 text-secondary-700 border border-secondary-200 hover:bg-secondary-200 active:bg-secondary-300; }
   .btn-success   { @apply bg-success-600 text-white hover:bg-success-700 active:bg-success-800; }
   .btn-warning   { @apply bg-warning-500 text-white hover:bg-warning-600 active:bg-warning-700; }
   .btn-error     { @apply bg-error-600 text-white hover:bg-error-700 active:bg-error-800; }
   .btn-ghost     { @apply bg-transparent text-secondary-600 hover:bg-secondary-100 active:bg-secondary-200; }
   .btn-outline   { @apply border-2 border-primary-600 text-primary-600 hover:bg-primary-50 active:bg-primary-100; }
-  .btn-white     { @apply bg-white text-secondary-700 border border-secondary-300 shadow-soft hover:bg-secondary-50 active:bg-secondary-100; }
+  .btn-white     { @apply bg-white text-secondary-700 border border-secondary-200 shadow-soft hover:bg-secondary-50 active:bg-secondary-100; }
 
   /* ===== CARD ===== */
   .card {
-    @apply bg-white rounded-xl shadow-card border border-secondary-100/80 transition-shadow duration-200 hover:shadow-card-hover;
-    padding: 1rem;          /* 16px على الموبايل */
+    @apply bg-white rounded-2xl shadow-card border border-secondary-100/80;
+    padding: 1rem;
+  }
+
+  .card-interactive {
+    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover;
+  }
+
+  .surface-section {
+    @apply rounded-2xl border border-secondary-100/80 bg-white/90 shadow-soft;
+  }
+
+  .section-heading {
+    @apply text-sm font-bold text-secondary-800;
   }
 
   @media (min-width: 768px) {
@@ -152,11 +175,12 @@ body {
 
   /* ===== INPUTS ===== */
   .input-field {
-    @apply w-full rounded-lg border border-secondary-300 bg-white px-4 py-2.5
+    @apply w-full rounded-xl border border-secondary-200 bg-white px-4 py-2.5
            text-secondary-900 placeholder-secondary-400
+           shadow-[0_1px_2px_rgb(15_23_42_/_0.025)]
            focus:border-primary-500 focus:outline-none focus:ring-4 focus:ring-primary-500/15
            transition-all duration-200;
-    min-height: 44px;   /* tap target */
+    min-height: 46px;
   }
 
   .input-label {
@@ -174,16 +198,17 @@ body {
 
   /* ===== TABLE ===== */
   .table-container {
-    @apply overflow-x-auto rounded-lg border border-secondary-200 bg-white shadow-soft;
-    /* Scroll smoothly على الموبايل */
+    @apply overflow-x-auto rounded-2xl border border-secondary-100 bg-white shadow-soft;
     -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable both-edges;
   }
 
   .table-container table { @apply w-full text-sm text-right; }
   .table-container th    { @apply bg-secondary-50/80 px-3 py-2.5 font-semibold text-secondary-500 text-xs tracking-wide border-b border-secondary-200 whitespace-nowrap; }
   .table-container td    { @apply px-3 py-2.5 border-b border-secondary-100 whitespace-nowrap; font-variant-numeric: tabular-nums; }
   .table-container tr:last-child td { @apply border-b-0; }
-  .table-container tr:hover td { @apply bg-primary-50/40; }
+  .table-container tr:hover td { @apply bg-primary-50/35; }
+  .table-container tbody tr { transition: background-color 160ms ease; }
   /* تخطيط "زيبرا" اختياري (كلاس إضافي يُضاف يدويًا على table-container عند
      الحاجة لتحسين تتبّع الصفوف فى جداول طويلة) — لا يُفعَّل تلقائيًا */
   .table-zebra tr:nth-child(even) td { @apply bg-secondary-50/50; }
@@ -199,7 +224,14 @@ body {
      علوي داخلي — يبرز كارت الأرقام عن باقي الكروت العادية فى الصفحة بدون
      أي لون جديد خارج الهوية الحالية */
   .kpi-card {
-    @apply bg-surface-wash rounded-xl shadow-card border border-secondary-100/80 p-4 transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5 hover:border-primary-200/60;
+    @apply relative overflow-hidden bg-white rounded-2xl shadow-card border border-secondary-100/80 p-4 transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5 hover:border-primary-200/60;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3px;
+    background: linear-gradient(90deg, rgb(5 150 105 / 0.85), rgb(16 185 129 / 0.12));
   }
 
   @media (min-width: 768px) {
@@ -208,8 +240,9 @@ body {
 
   /* ===== MODAL ===== */
   .modal-overlay {
-    @apply fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center;
+    @apply fixed inset-0 bg-secondary-900/45 backdrop-blur-[3px] z-50 flex items-end sm:items-center justify-center;
     padding: 0;
+    animation: overlayIn 180ms var(--ease-out);
   }
 
   @media (min-width: 640px) {
@@ -217,9 +250,10 @@ body {
   }
 
   .modal-content {
-    @apply bg-white w-full max-h-[92dvh] overflow-auto;
-    /* على الموبايل: sheet من الأسفل */
-    border-radius: 1.25rem 1.25rem 0 0;
+    @apply bg-white w-full max-h-[92dvh] overflow-auto shadow-elevated;
+    border-radius: 1.5rem 1.5rem 0 0;
+    animation: sheetIn 220ms var(--ease-out);
+    overscroll-behavior: contain;
   }
 
   @media (min-width: 640px) {
@@ -231,16 +265,35 @@ body {
 
   /* ===== SIDEBAR LINKS ===== */
   .sidebar-link {
-    @apply flex items-center gap-3 px-4 py-3 rounded-lg text-secondary-600
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-secondary-600
            hover:bg-secondary-100 hover:text-secondary-900 transition-colors duration-200;
   }
   .sidebar-link.active {
-    @apply bg-primary-gradient text-white font-medium shadow-primary-glow;
+    @apply bg-primary-700 text-white font-medium shadow-primary-glow;
+  }
+
+  .icon-button {
+    @apply inline-flex items-center justify-center rounded-xl text-secondary-500
+           transition-all duration-200 hover:bg-secondary-100 hover:text-secondary-800
+           active:scale-95;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .page-header {
+    @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between;
+  }
+  .page-header-title {
+    @apply text-xl md:text-2xl font-bold tracking-tight text-secondary-900;
+  }
+  .page-header-subtitle {
+    @apply text-sm text-secondary-500 mt-1;
   }
 
   /* ===== DROPDOWN ===== */
   .dropdown-menu {
-    @apply absolute z-50 mt-1 min-w-[200px] rounded-lg border border-secondary-200 bg-white py-1 shadow-elevated;
+    @apply absolute z-50 mt-2 min-w-[200px] rounded-2xl border border-secondary-100 bg-white py-1 shadow-elevated;
+    animation: menuIn 160ms var(--ease-out);
   }
   .dropdown-item {
     @apply flex items-center gap-2 px-4 py-2.5 text-sm text-secondary-700
@@ -298,6 +351,21 @@ body {
 }
 
 /* ===== ANIMATIONS ===== */
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sheetIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-10px); }
   to   { opacity: 1; transform: translateY(0); }
