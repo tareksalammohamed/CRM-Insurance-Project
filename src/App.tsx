@@ -106,7 +106,7 @@ function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen min-h-[100dvh] bg-secondary-50">
+    <div className="app-shell min-h-screen min-h-[100dvh] bg-secondary-50">
       <Sidebar />
       <Header />
 
@@ -117,9 +117,9 @@ function AppLayout() {
         // ===== Mobile: padding top للـ header + bottom للـ bottom nav =====
         'pt-14 md:pt-16',
         'pb-20 md:pb-8',        // pb-20 = مكان الـ bottom nav (64px + 16px)
-        'px-3 md:px-4 lg:px-8'
+        'app-main px-3 md:px-4 lg:px-8'
       )}>
-        <div key={location.pathname} className="max-w-7xl mx-auto mt-3 md:mt-4 animate-fadeIn">
+        <div key={location.pathname} className="app-content max-w-7xl mx-auto mt-3 md:mt-4 animate-fadeIn">
           <ErrorBoundary boundaryName={location.pathname}>
             <Suspense fallback={<LoadingSpinner />}>
               <Routes>

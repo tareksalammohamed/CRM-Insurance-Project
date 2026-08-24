@@ -24,15 +24,16 @@ export function DashboardHeader({
   onRefresh,
 }: DashboardHeaderProps) {
   return (
-    <>
-      <div>
-        <h2 className="text-xl md:text-2xl font-bold text-secondary-900">نظرة عامة</h2>
-        <p className="text-sm text-secondary-500 mt-0.5">
+    <div className="dashboard-header">
+      <div className="dashboard-intro">
+        <span className="dashboard-kicker">مساحة العمل</span>
+        <h2 className="text-2xl md:text-3xl font-black text-secondary-900">نظرة عامة</h2>
+        <p className="text-sm text-secondary-500 mt-1">
           إحصائيات شهر {format(selectedMonth, 'MMMM yyyy', { locale: ar })}
         </p>
       </div>
 
-      <div className="card py-3 px-4 flex items-center justify-between gap-3 flex-wrap">
+      <div className="dashboard-toolbar card py-3 px-4 flex items-center justify-between gap-3 flex-wrap">
         {/* اختيار الشهر: أسهم للتنقل شهر لشهر + رجوع سريع للشهر الحالي لو
             المستخدم مش واقف عليه أصلاً. الشهر التالي مقفول عند الوصول
             للشهر الحقيقي الحالي (مفيش بيانات مستقبلية لعرضها). */}
@@ -91,6 +92,6 @@ export function DashboardHeader({
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }
