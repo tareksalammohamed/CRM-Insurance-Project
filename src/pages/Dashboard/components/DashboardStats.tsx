@@ -39,7 +39,7 @@ function DrillDownCard({
     <div className={`kpi-card ${accent}`}>
       <div className="flex items-start justify-between gap-3">
         <p className="text-xs md:text-sm font-bold text-secondary-900 leading-5">{label}</p>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-50 ring-1 ring-primary-100">
+        <span className="kpi-icon-tile flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl">
           <Icon className={iconClassName} />
         </span>
       </div>
@@ -88,7 +88,7 @@ export function DashboardStats({ stats, selectedMonth }: DashboardStatsProps) {
   };
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+    <div className="dashboard-stats-grid grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
       <StatsCard
         label="العملاء"
         value={stats?.totalCustomers || 0}

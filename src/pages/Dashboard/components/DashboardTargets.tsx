@@ -13,8 +13,16 @@ export function DashboardTargets({ stats, selectedMonth }: DashboardTargetsProps
   const openPaid = () => navigate(buildCollectionDrillDownUrl({ quickFilter: 'paid', month: selectedMonth }));
 
   return (
-    <div className="card">
-      <h3 className="font-semibold text-secondary-900 mb-4">التارجت</h3>
+    <div className="card dashboard-targets-panel">
+      <div className="flex items-start justify-between gap-3 mb-5">
+        <div>
+          <span className="dashboard-kicker">خطة الشهر</span>
+          <h3 className="dashboard-section-title text-lg">التارجت</h3>
+        </div>
+        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-warning-50 text-warning-600 ring-1 ring-warning-100">
+          <Target className="h-5 w-5" />
+        </span>
+      </div>
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm text-secondary-600">نسبة الإنجاز</span>
@@ -22,9 +30,9 @@ export function DashboardTargets({ stats, selectedMonth }: DashboardTargetsProps
             {stats?.achievementRate || 0}%
           </span>
         </div>
-        <div className="w-full bg-secondary-200 rounded-full h-3">
+        <div className="w-full bg-secondary-200/80 rounded-full h-3 overflow-hidden">
           <div
-            className="bg-primary-600 h-3 rounded-full transition-all duration-500"
+            className="bg-gradient-to-l from-primary-700 via-primary-500 to-lime-400 h-3 rounded-full transition-all duration-500"
             style={{ width: `${Math.min(100, stats?.achievementRate || 0)}%` }}
           />
         </div>
@@ -34,7 +42,7 @@ export function DashboardTargets({ stats, selectedMonth }: DashboardTargetsProps
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-3 md:gap-4">
         <button type="button" onClick={openPaid} className="drilldown-card bg-success-50 text-center">
           <CheckCircle className="w-8 h-8 text-success-600 mx-auto mb-2" />
           <p className="text-2xl font-bold text-success-700">
@@ -42,7 +50,7 @@ export function DashboardTargets({ stats, selectedMonth }: DashboardTargetsProps
           </p>
           <p className="text-xs text-success-600 mt-1">المحقق</p>
         </button>
-        <div className="text-center p-4 bg-warning-50 rounded-lg">
+        <div className="drilldown-card bg-warning-50 text-center">
           <Target className="w-8 h-8 text-warning-600 mx-auto mb-2" />
           <p className="text-2xl font-bold text-warning-700">
             {formatCurrency(stats?.remaining || 0)}

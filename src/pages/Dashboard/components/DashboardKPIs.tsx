@@ -30,7 +30,7 @@ export function DashboardKPIs({ stats, cancellationSummary, selectedMonth }: Das
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
+      <div className="dashboard-kpis-grid grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
         <button
           type="button"
           onClick={() => openCollection('month')}
@@ -100,7 +100,7 @@ export function DashboardKPIs({ stats, cancellationSummary, selectedMonth }: Das
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:gap-4">
+      <div className="dashboard-kpis-secondary grid grid-cols-2 gap-3 md:gap-4">
         <button
           type="button"
           onClick={() => navigate('/cancellations')}

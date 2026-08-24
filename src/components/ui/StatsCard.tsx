@@ -42,7 +42,7 @@ export function StatsCard({
     <>
       <div className="flex items-start justify-between gap-3">
         <p className={clsx(labelClassName, 'leading-5')}>{label}</p>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-50 ring-1 ring-primary-100">
+        <span className="kpi-icon-tile flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl">
           <Icon className={iconClassName} />
         </span>
       </div>

@@ -66,8 +66,14 @@ export function DashboardPerformance({
 }: DashboardPerformanceProps) {
   return (
     <>
-      <div className="card">
-        <h3 className="font-semibold text-secondary-900 mb-4">إحصائيات الفريق</h3>
+      <div className="card dashboard-performance-panel">
+        <div className="flex items-start justify-between gap-3 mb-5">
+          <div>
+            <span className="dashboard-kicker">مؤشرات الفريق</span>
+            <h3 className="dashboard-section-title text-lg">إحصائيات الفريق</h3>
+          </div>
+          <span className="hidden sm:inline-flex items-center rounded-full bg-primary-50 px-3 py-1 text-[11px] font-bold text-primary-700 ring-1 ring-primary-100">اضغط على العضو للتفاصيل</span>
+        </div>
         <div className="space-y-5">
           {teamPerformanceSections.length === 0 ? (
             <p className="text-center text-secondary-500 py-4">لا توجد بيانات</p>
@@ -90,11 +96,11 @@ export function DashboardPerformance({
                         type="button"
                         onClick={() => openTeamMemberSheet(member.id)}
                         className={clsx(
-                          'w-full flex items-center gap-3 text-right pressable rounded-lg -mx-1 px-1 py-1 hover:bg-secondary-50 transition-colors',
+                          'performance-row w-full flex items-center gap-3 text-right pressable rounded-2xl mx-0 px-3 py-3 hover:bg-secondary-50 transition-colors',
                           medal?.row
                         )}
                       >
-                        <div className="w-8 text-center shrink-0">
+                        <div className="w-9 text-center shrink-0">
                           {medal ? (
                             <>
                               <span
@@ -122,9 +128,9 @@ export function DashboardPerformance({
                             </span>
                             <span className={clsx('text-xs shrink-0', TIER_TEXT_CLASS[tier])}>{rate}%</span>
                           </div>
-                          <div className="w-full bg-secondary-200 rounded-full h-2">
+                          <div className="w-full bg-secondary-200/80 rounded-full h-2.5 overflow-hidden">
                             <div
-                              className={clsx('h-2 rounded-full transition-all duration-500', TIER_BAR_CLASS[tier])}
+                              className={clsx('h-2.5 rounded-full transition-all duration-500', TIER_BAR_CLASS[tier])}
                               style={{ width: `${Math.min(100, rate)}%` }}
                             />
                           </div>
