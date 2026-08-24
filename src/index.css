@@ -338,6 +338,39 @@ body {
     .kpi-card { @apply p-6; }
   }
 
+  .drilldown-action,
+  .drilldown-card {
+    @apply transition-all duration-200;
+  }
+  .drilldown-action {
+    @apply rounded-xl border border-secondary-100 bg-secondary-50/55 px-2.5 py-2;
+  }
+  .drilldown-action:hover,
+  .drilldown-card:hover {
+    @apply -translate-y-0.5 shadow-soft;
+  }
+  .drilldown-action:active,
+  .drilldown-card:active {
+    @apply translate-y-0;
+  }
+  .drilldown-action-label {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 700;
+  }
+  .drilldown-action-value {
+    display: block;
+    margin-top: 0.15rem;
+    overflow: hidden;
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .drilldown-card {
+    @apply w-full rounded-2xl border p-3;
+  }
+
   /* ===== MODAL ===== */
   .modal-overlay {
     @apply fixed inset-0 bg-secondary-900/45 backdrop-blur-[3px] z-50 flex items-end sm:items-center justify-center;

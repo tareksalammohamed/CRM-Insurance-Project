@@ -1,20 +1,91 @@
 import { useNavigate } from 'react-router-dom';
-import { Users, FileText, TrendingUp, DollarSign } from 'lucide-react';
+import { FileText, DollarSign, TrendingUp, Users } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { DashboardStats as DashboardStatsType } from '../types';
-import { formatCurrency } from '../utils';
+import { buildCollectionDrillDownUrl, formatCurrency } from '../utils';
 import { StatsCard } from '../../../components/ui/StatsCard';
 
 interface DashboardStatsProps {
   stats: DashboardStatsType | null;
+  selectedMonth: Date;
 }
 
-// نص الكروت الأربعة دي (التسمية فوق + سطر "من إجمالي...") كان رصاصي فاتح
-// (secondary-500/400)، فبقى أسود واضح (secondary-900) بنفس الحجم والخط
-// الرفيع بالظبط — عشان يبان لأي حد حتى لو نظره ضعيف شوية. التغيير هنا بس
-// (labelClassName + لون الفوتر) من غير ما يأثر على أي صفحة تانية بتستخدم
-// نفس StatsCard.
-export function DashboardStats({ stats }: DashboardStatsProps) {
+interface DrillDownCardProps {
+  label: string;
+  icon: LucideIcon;
+  paid: number;
+  totalDue: number;
+  subtype: 'new' | 'periodic';
+  accent: string;
+  iconClassName: string;
+  selectedMonth: Date;
+  onNavigate: (quickFilter: 'month' | 'paid', subtype: 'new' | 'periodic') => void;
+}
+
+function DrillDownCard({
+  label,
+  icon: Icon,
+  paid,
+  totalDue,
+  subtype,
+  accent,
+  iconClassName,
+  selectedMonth,
+  onNavigate,
+}: DrillDownCardProps) {
+  const remaining = Math.max(0, totalDue - paid);
+
+  return (
+    <div className={`kpi-card ${accent}`}>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs md:text-sm font-bold text-secondary-900 leading-5">{label}</p>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-50 ring-1 ring-primary-100">
+          <Icon className={iconClassName} />
+        </span>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => onNavigate('paid', subtype)}
+          className="drilldown-action text-right"
+          aria-label={`عرض المسدد من ${label}`}
+        >
+          <span className="drilldown-action-label text-success-700">المسدد</span>
+          <strong className="drilldown-action-value text-success-700">{formatCurrency(paid)}</strong>
+        </button>
+        <button
+          type="button"
+          onClick={() => onNavigate('month', subtype)}
+          className="drilldown-action text-right"
+          aria-label={`عرض المتبقي من ${label}`}
+        >
+          <span className="drilldown-action-label text-warning-700">المتبقي</span>
+          <strong className="drilldown-action-value text-warning-700">{formatCurrency(remaining)}</strong>
+        </button>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onNavigate('month', subtype)}
+        className="mt-2 flex w-full items-center justify-between border-t border-secondary-100 pt-2 text-right"
+        aria-label={`عرض إجمالي المستحق من ${label}`}
+      >
+        <span className="text-[11px] font-semibold text-secondary-500">إجمالي المستحق</span>
+        <span className="text-xs font-bold text-secondary-800">{formatCurrency(totalDue)}</span>
+      </button>
+
+      <span className="sr-only">شهر {selectedMonth.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' })}</span>
+    </div>
+  );
+}
+
+export function DashboardStats({ stats, selectedMonth }: DashboardStatsProps) {
   const navigate = useNavigate();
+
+  const navigateToCollection = (quickFilter: 'month' | 'paid', subtype: 'new' | 'periodic', ownerFilter?: string) => {
+    navigate(buildCollectionDrillDownUrl({ quickFilter, subType: subtype, ownerFilter, month: selectedMonth }));
+  };
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
@@ -39,36 +110,28 @@ export function DashboardStats({ stats }: DashboardStatsProps) {
         onClick={() => navigate('/policies')}
       />
 
-      <StatsCard
+      <DrillDownCard
         label="الإنتاج الجديد"
-        value={<>مسدد {formatCurrency(stats?.newProduction || 0)}</>}
         icon={TrendingUp}
-        borderClassName="border-r-4 border-r-warning-500"
+        paid={stats?.newProduction || 0}
+        totalDue={stats?.newProductionTotal || 0}
+        subtype="new"
+        accent="border-r-4 border-r-warning-500"
         iconClassName="w-4 h-4 text-warning-500 shrink-0"
-        valueClassName="text-lg md:text-2xl font-bold text-secondary-900 mt-1.5 truncate"
-        labelClassName="text-xs md:text-sm text-secondary-900"
-        footer={
-          <p className="text-[11px] md:text-xs text-secondary-900 mt-1 truncate">
-            من إجمالي {formatCurrency(stats?.newProductionTotal || 0)}
-          </p>
-        }
-        onClick={() => navigate('/collection?tab=new_production')}
+        selectedMonth={selectedMonth}
+        onNavigate={navigateToCollection}
       />
 
-      <StatsCard
+      <DrillDownCard
         label="التحصيل الدوري"
-        value={<>مسدد {formatCurrency(stats?.periodicCollection || 0)}</>}
         icon={DollarSign}
-        borderClassName="border-r-4 border-r-primary-500"
+        paid={stats?.periodicCollection || 0}
+        totalDue={stats?.periodicCollectionTotal || 0}
+        subtype="periodic"
+        accent="border-r-4 border-r-primary-500"
         iconClassName="w-4 h-4 text-primary-500 shrink-0"
-        valueClassName="text-lg md:text-2xl font-bold text-secondary-900 mt-1.5 truncate"
-        labelClassName="text-xs md:text-sm text-secondary-900"
-        footer={
-          <p className="text-[11px] md:text-xs text-secondary-900 mt-1 truncate">
-            من إجمالي {formatCurrency(stats?.periodicCollectionTotal || 0)}
-          </p>
-        }
-        onClick={() => navigate('/collection?tab=periodic')}
+        selectedMonth={selectedMonth}
+        onNavigate={navigateToCollection}
       />
     </div>
   );

@@ -4,17 +4,18 @@ import type { QuickFilter, SubType, OwnerFilter } from '../types';
 interface UseCollectionFiltersArgs {
   initialQuickFilter: QuickFilter;
   initialSubType: SubType;
+  initialOwnerFilter: OwnerFilter;
 }
 
-export function useCollectionFilters({ initialQuickFilter, initialSubType }: UseCollectionFiltersArgs) {
+export function useCollectionFilters({ initialQuickFilter, initialSubType, initialOwnerFilter }: UseCollectionFiltersArgs) {
   // فلاتر مُطبَّقة فعلياً على الاستعلام
   const [quickFilter, setQuickFilter] = useState<QuickFilter>(initialQuickFilter);
   const [subType, setSubType]         = useState<SubType>(initialSubType);
-  const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('all');
+  const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>(initialOwnerFilter);
   // مسودة الفلاتر داخل لوحة "الفلاتر" — تتغيّر فقط عبر زر "تطبيق" أو "إعادة تعيين"
   const [quickFilterDraft, setQuickFilterDraft] = useState<QuickFilter>(initialQuickFilter);
   const [subTypeDraft, setSubTypeDraft]         = useState<SubType>(initialSubType);
-  const [ownerFilterDraft, setOwnerFilterDraft] = useState<OwnerFilter>('all');
+  const [ownerFilterDraft, setOwnerFilterDraft] = useState<OwnerFilter>(initialOwnerFilter);
   const [showFilters, setShowFilters]           = useState(false);
 
   const handleOpenFilters = () => {

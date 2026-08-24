@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, ArrowRight, Target, TrendingUp, DollarSign, BarChart3, Users, FileText } from 'lucide-react';
 import clsx from 'clsx';
 import { ROLE_LABELS } from '../../../lib/supabase';
 import type { TeamMemberDetail } from '../types';
 import { fetchAgentExtraStats } from '../services/dashboardService';
+import { buildCollectionDrillDownUrl } from '../utils';
 
 interface TeamPerformanceSheetProps {
   // سلسلة التنقل من الجذر (أول اسم تم الضغط عليه من بطاقة "أداء الفريق")
@@ -14,6 +16,7 @@ interface TeamPerformanceSheetProps {
   onSelectChild: (child: TeamMemberDetail) => void;
   onBack: () => void;
   onClose: () => void;
+  selectedMonth: Date;
 }
 
 const formatCurrency = (amount: number) =>
@@ -34,9 +37,18 @@ function progressColor(rate: number) {
   return 'bg-error-500';
 }
 
-export function TeamPerformanceSheet({ stack, children, onSelectChild, onBack, onClose }: TeamPerformanceSheetProps) {
+export function TeamPerformanceSheet({ stack, children, onSelectChild, onBack, onClose, selectedMonth }: TeamPerformanceSheetProps) {
   const current = stack[stack.length - 1];
   const isAgent = current.role === 'agent' || current.role === 'premium_agent';
+  const navigate = useNavigate();
+  const openCollection = (quickFilter: 'month' | 'paid', subType: 'all' | 'new' | 'periodic') => {
+    navigate(buildCollectionDrillDownUrl({
+      quickFilter,
+      subType,
+      ownerFilter: current.id,
+      month: selectedMonth,
+    }));
+  };
 
   // إحصائيات الوكيل الإضافية (عدد العملاء/الوثائق) — Lazy Loading فعلي: لا
   // تُجلب إلا عند عرض تفاصيل وكيل بعينه، ومُخزَّنة محليًا حتى لا تتكرر
@@ -118,33 +130,65 @@ export function TeamPerformanceSheet({ stack, children, onSelectChild, onBack, o
             </div>
           </div>
 
-          {/* تفصيل مصدري التحقيق */}
+          {/* تفصيل المسدد والمتبقي — كل رقم يفتح الأقساط الحقيقية بنفس الشخص والنوع */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="card p-3 text-center">
+            <button
+              type="button"
+              onClick={() => openCollection('paid', 'new')}
+              className="drilldown-card border-warning-200 bg-warning-50/45 text-center"
+              aria-label="عرض المسدد من الإنتاج الجديد"
+            >
               <TrendingUp className="w-5 h-5 text-warning-600 mx-auto mb-1.5" />
               <p className="text-sm font-bold text-secondary-900">{formatCurrency(current.newProduction)}</p>
-              <p className="text-[11px] text-secondary-500 mt-0.5">المحقق من الإنتاج الجديد</p>
-              <p className="text-[11px] text-error-600 mt-1 pt-1 border-t border-secondary-100">
-                المتبقي من الجديد: {formatCurrency(current.remainingNewProduction)}
-              </p>
-            </div>
-            <div className="card p-3 text-center">
+              <p className="text-[11px] text-warning-700 mt-0.5">المسدد من الإنتاج الجديد</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => openCollection('paid', 'periodic')}
+              className="drilldown-card border-primary-200 bg-primary-50/45 text-center"
+              aria-label="عرض المسدد من التحصيل الدوري"
+            >
               <DollarSign className="w-5 h-5 text-primary-600 mx-auto mb-1.5" />
               <p className="text-sm font-bold text-secondary-900">{formatCurrency(current.collection)}</p>
-              <p className="text-[11px] text-secondary-500 mt-0.5">المحقق من التحصيل</p>
-              <p className="text-[11px] text-error-600 mt-1 pt-1 border-t border-secondary-100">
-                المتبقي من التحصيل: {formatCurrency(current.remainingCollection)}
-              </p>
-            </div>
+              <p className="text-[11px] text-primary-700 mt-0.5">المسدد من التحصيل الدوري</p>
+            </button>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="card p-3 text-center bg-success-50/60">
+            <button
+              type="button"
+              onClick={() => openCollection('month', 'new')}
+              className="drilldown-card border-error-200 bg-error-50/45 text-center"
+              aria-label="عرض المتبقي من الإنتاج الجديد"
+            >
+              <TrendingUp className="w-5 h-5 text-error-600 mx-auto mb-1.5" />
+              <p className="text-sm font-bold text-error-700">{formatCurrency(current.remainingNewProduction)}</p>
+              <p className="text-[11px] text-error-700 mt-0.5">المتبقي من الإنتاج الجديد</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => openCollection('month', 'periodic')}
+              className="drilldown-card border-error-200 bg-error-50/45 text-center"
+              aria-label="عرض المتبقي من التحصيل الدوري"
+            >
+              <DollarSign className="w-5 h-5 text-error-600 mx-auto mb-1.5" />
+              <p className="text-sm font-bold text-error-700">{formatCurrency(current.remainingCollection)}</p>
+              <p className="text-[11px] text-error-700 mt-0.5">المتبقي من التحصيل الدوري</p>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => openCollection('paid', 'all')}
+              className="drilldown-card border-success-200 bg-success-50/60 text-center"
+              aria-label="عرض إجمالي المسدد لهذا العضو"
+            >
               <BarChart3 className="w-5 h-5 text-success-600 mx-auto mb-1.5" />
               <p className="text-sm font-bold text-success-700">{formatCurrency(current.achieved)}</p>
-              <p className="text-[11px] text-success-600 mt-0.5">إجمالي المحقق</p>
-            </div>
-            <div className="card p-3 text-center bg-warning-50/60">
+              <p className="text-[11px] text-success-600 mt-0.5">إجمالي المسدد</p>
+            </button>
+            <div className="card p-3 text-center bg-secondary-50/70">
               <Target className="w-5 h-5 text-warning-600 mx-auto mb-1.5" />
               <p className="text-sm font-bold text-warning-700">{formatCurrency(current.remaining)}</p>
               <p className="text-[11px] text-warning-600 mt-0.5">المتبقي على الهدف</p>

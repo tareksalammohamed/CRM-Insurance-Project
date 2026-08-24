@@ -2,11 +2,12 @@ import { useNavigate } from 'react-router-dom';
 import { AlertCircle, CheckCircle, Percent, TrendingUp, XCircle } from 'lucide-react';
 import type { DashboardStats } from '../types';
 import type { CancellationSummary } from '../../Cancellations/types';
-import { formatCurrency } from '../utils';
+import { buildCollectionDrillDownUrl, formatCurrency } from '../utils';
 
 interface DashboardKPIsProps {
   stats: DashboardStats | null;
   cancellationSummary: CancellationSummary | null;
+  selectedMonth: Date;
 }
 
 // ألوان بطاقة "معدل التحصيل" بتتغيّر حسب النسبة نفسها (مش لون ثابت زي باقي
@@ -19,8 +20,11 @@ function collectionRateColor(rate: number): { border: string; text: string } {
   return { border: 'border-r-error-500', text: 'text-error-600' };
 }
 
-export function DashboardKPIs({ stats, cancellationSummary }: DashboardKPIsProps) {
+export function DashboardKPIs({ stats, cancellationSummary, selectedMonth }: DashboardKPIsProps) {
   const navigate = useNavigate();
+  const openCollection = (quickFilter: 'month' | 'overdue' | 'paid') => {
+    navigate(buildCollectionDrillDownUrl({ quickFilter, month: selectedMonth }));
+  };
   const rate = stats?.collectionRate ?? 0;
   const rateColor = collectionRateColor(rate);
 
@@ -29,7 +33,7 @@ export function DashboardKPIs({ stats, cancellationSummary }: DashboardKPIsProps
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
         <button
           type="button"
-          onClick={() => navigate('/collection?quickFilter=month')}
+          onClick={() => openCollection('month')}
           className={`kpi-card text-right w-full cursor-pointer hover:-translate-y-0.5 active:translate-y-0 border-r-4 ${rateColor.border}`}
         >
           <div className="flex items-center justify-between">
@@ -46,7 +50,7 @@ export function DashboardKPIs({ stats, cancellationSummary }: DashboardKPIsProps
 
         <button
           type="button"
-          onClick={() => navigate('/collection?quickFilter=month')}
+          onClick={() => openCollection('month')}
           className="kpi-card text-right w-full cursor-pointer hover:-translate-y-0.5 active:translate-y-0 border-r-4 border-r-warning-500"
         >
           <div className="flex items-center justify-between">
@@ -63,7 +67,7 @@ export function DashboardKPIs({ stats, cancellationSummary }: DashboardKPIsProps
 
         <button
           type="button"
-          onClick={() => navigate('/collection?quickFilter=overdue')}
+          onClick={() => openCollection('overdue')}
           className="kpi-card text-right w-full cursor-pointer hover:-translate-y-0.5 active:translate-y-0 border-r-4 border-r-error-500"
         >
           <div className="flex items-center justify-between">
@@ -80,7 +84,7 @@ export function DashboardKPIs({ stats, cancellationSummary }: DashboardKPIsProps
 
         <button
           type="button"
-          onClick={() => navigate('/collection?quickFilter=paid')}
+          onClick={() => openCollection('paid')}
           className="kpi-card text-right w-full cursor-pointer hover:-translate-y-0.5 active:translate-y-0 border-r-4 border-r-success-500"
         >
           <div className="flex items-center justify-between">

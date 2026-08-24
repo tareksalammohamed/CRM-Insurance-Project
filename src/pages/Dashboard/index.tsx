@@ -53,7 +53,7 @@ export function Dashboard() {
         <DashboardEmptyState />
       )}
 
-      <DashboardStats stats={stats} />
+      <DashboardStats stats={stats} selectedMonth={selectedMonth} />
 
       <DashboardTargets stats={stats} />
 
@@ -65,9 +65,10 @@ export function Dashboard() {
         handleSelectChild={handleSelectChild}
         handleSheetBack={handleSheetBack}
         handleSheetClose={handleSheetClose}
+        selectedMonth={selectedMonth}
       />
 
-      <DashboardKPIs stats={stats} cancellationSummary={cancellationSummary} isCurrentMonth={isCurrentMonth} />
+      <DashboardKPIs stats={stats} cancellationSummary={cancellationSummary} isCurrentMonth={isCurrentMonth} selectedMonth={selectedMonth} />
 
       <DashboardCharts
         totalPolicies={stats?.totalPolicies || 0}

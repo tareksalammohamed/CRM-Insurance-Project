@@ -11,6 +11,7 @@ interface DashboardPerformanceProps {
   handleSelectChild: (child: TeamMemberDetail) => void;
   handleSheetBack: () => void;
   handleSheetClose: () => void;
+  selectedMonth: Date;
 }
 
 // شرائح الأداء: أحمر لحد ٥٩٪، أصفر من ٦٠٪ لحد ٩٩٪، أخضر من ١٠٠٪ لحد ١٥٠٪،
@@ -61,6 +62,7 @@ export function DashboardPerformance({
   handleSelectChild,
   handleSheetBack,
   handleSheetClose,
+  selectedMonth,
 }: DashboardPerformanceProps) {
   return (
     <>
@@ -154,6 +156,7 @@ export function DashboardPerformance({
           onSelectChild={handleSelectChild}
           onBack={handleSheetBack}
           onClose={handleSheetClose}
+          selectedMonth={selectedMonth}
         />
       )}
     </>

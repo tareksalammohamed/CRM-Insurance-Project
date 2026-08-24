@@ -32,7 +32,7 @@ export function Collection() {
   const { user } = useAuth();
   const { currentBranchId } = useBranchContext();
 
-  const { initialSubType, initialQuickFilter } = useCollectionUrlParams();
+  const { initialSubType, initialQuickFilter, initialOwnerFilter, initialMonth } = useCollectionUrlParams();
 
   // تبدأ الصفحة مباشرة بالسنة الأولى، مع بقاء القسمين مفصولين منطقياً.
   const [yearMode, setYearMode] = useState<YearMode>('year1');
@@ -53,7 +53,7 @@ export function Collection() {
     handleResetFilters: resetFiltersState,
     handleQuickFilterSelect: selectQuickFilterState,
     activeFilterCount,
-  } = useCollectionFilters({ initialQuickFilter, initialSubType });
+  } = useCollectionFilters({ initialQuickFilter, initialSubType, initialOwnerFilter });
 
   const {
     installments,
@@ -67,7 +67,7 @@ export function Collection() {
     localSearch,
     setLocalSearch,
     loadInstallments,
-  } = useCollectionInstallments({ user, yearMode, quickFilter, subType, ownerFilter, branchId: currentBranchId });
+  } = useCollectionInstallments({ user, yearMode, quickFilter, subType, ownerFilter, branchId: currentBranchId, monthStart: initialMonth });
 
   // تطبيق/إعادة تعيين الفلاتر أو اختيار شريحة سريعة لازم يرجّع الصفحة لأول
   // صفحة دايماً — بيتم استدعاء الدالتين معاً هنا فى نفس الحدث حتى يتجمّعا

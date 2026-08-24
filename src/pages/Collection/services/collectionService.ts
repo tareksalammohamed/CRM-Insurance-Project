@@ -1,5 +1,5 @@
 import { supabase, type User, type UserRole } from '../../../lib/supabase';
-import { format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay, parseISO, isValid } from 'date-fns';
 import type { QuickFilter, SubType, InstallmentWithRelations, OwnerFilter } from '../types';
 import {
   fetchInstallmentsByPolicyId, payInstallment, cancelInstallmentPayment,
@@ -18,6 +18,8 @@ export interface FetchInstallmentsParams {
   // الفرع الحالي المختار (BranchProvider العام) — فاضي/null يعني بدون فلترة
   // إضافية (السلوك القديم، معتمد على RLS بس)
   branchId?: string | null;
+  // شهر لوحة التحكم المطلوب عرضه في drill-down؛ غياب القيمة يعني الشهر الحالي.
+  monthStart?: string | null;
 }
 
 // ===================================
@@ -141,21 +143,22 @@ async function resolveOwnerFilterPolicyIds(ownerFilter: OwnerFilter, branchId: s
 
 const EMPTY_INSTALLMENTS_RESULT: FetchInstallmentsResult = { installments: [], totalCount: 0, totalPages: 1 };
 
-export async function fetchInstallments({ quickFilter, subType, ownerFilter, page, searchQuery, branchId = null }: FetchInstallmentsParams): Promise<FetchInstallmentsResult> {
-  const cacheKey = `collection:installments:${quickFilter}:${subType}:${ownerFilter}:${page}:${searchQuery.trim()}:${branchId ?? 'none'}`;
+export async function fetchInstallments({ quickFilter, subType, ownerFilter, page, searchQuery, branchId = null, monthStart = null }: FetchInstallmentsParams): Promise<FetchInstallmentsResult> {
+  const cacheKey = `collection:installments:${quickFilter}:${subType}:${ownerFilter}:${page}:${searchQuery.trim()}:${branchId ?? 'none'}:${monthStart ?? 'current'}`;
 
   const result = await dalRead(
     cacheKey,
     async () => {
-      return fetchInstallmentsOnline({ quickFilter, subType, ownerFilter, page, searchQuery, branchId });
+      return         fetchInstallmentsOnline({ quickFilter, subType, ownerFilter, page, searchQuery, branchId, monthStart });
     },
     { emptyValue: EMPTY_INSTALLMENTS_RESULT },
   );
   return result.data;
 }
 
-async function fetchInstallmentsOnline({ quickFilter, subType, ownerFilter, page, searchQuery, branchId = null }: FetchInstallmentsParams): Promise<FetchInstallmentsResult> {
-  const now        = new Date();
+async function fetchInstallmentsOnline({ quickFilter, subType, ownerFilter, page, searchQuery, branchId = null, monthStart: monthStartParam = null }: FetchInstallmentsParams): Promise<FetchInstallmentsResult> {
+  const requestedMonth = monthStartParam ? parseISO(monthStartParam) : new Date();
+  const now        = isValid(requestedMonth) ? requestedMonth : new Date();
   const monthStart = startOfMonth(now);
   const monthEnd   = endOfMonth(now);
   const monthStartStr = format(monthStart, 'yyyy-MM-dd');

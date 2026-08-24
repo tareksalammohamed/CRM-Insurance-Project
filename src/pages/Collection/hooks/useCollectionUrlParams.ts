@@ -1,9 +1,12 @@
 import { useSearchParams } from 'react-router-dom';
-import type { QuickFilter, SubType } from '../types';
+import { isValid, parseISO } from 'date-fns';
+import type { QuickFilter, SubType, OwnerFilter } from '../types';
 
 interface CollectionUrlParams {
   initialSubType: SubType;
   initialQuickFilter: QuickFilter;
+  initialOwnerFilter: OwnerFilter;
+  initialMonth: string | null;
   hasUrlNavigation: boolean;
 }
 
@@ -16,14 +19,27 @@ export function useCollectionUrlParams(): CollectionUrlParams {
   const [searchParams] = useSearchParams();
 
   const tabFromUrl = searchParams.get('tab');
+  const subTypeFromUrl = searchParams.get('subType');
   const initialSubType: SubType =
-    tabFromUrl === 'new_production' ? 'new' : tabFromUrl === 'periodic' ? 'periodic' : 'all';
+    subTypeFromUrl === 'new' || tabFromUrl === 'new_production'
+      ? 'new'
+      : subTypeFromUrl === 'periodic' || tabFromUrl === 'periodic'
+        ? 'periodic'
+        : 'all';
 
   const quickFilterFromUrl = searchParams.get('quickFilter');
   const initialQuickFilter: QuickFilter =
     quickFilterFromUrl === 'overdue' ? 'overdue' : quickFilterFromUrl === 'paid' ? 'paid' : 'month';
 
-  const hasUrlNavigation = !!tabFromUrl || !!quickFilterFromUrl;
+  const ownerFromUrl = searchParams.get('ownerFilter');
+  const initialOwnerFilter: OwnerFilter = ownerFromUrl?.trim() || 'all';
 
-  return { initialSubType, initialQuickFilter, hasUrlNavigation };
+  const monthFromUrl = searchParams.get('month');
+  const initialMonth = monthFromUrl && isValid(parseISO(monthFromUrl)) ? monthFromUrl : null;
+
+  const hasUrlNavigation = Boolean(
+    tabFromUrl || subTypeFromUrl || quickFilterFromUrl || ownerFromUrl || initialMonth
+  );
+
+  return { initialSubType, initialQuickFilter, initialOwnerFilter, initialMonth, hasUrlNavigation };
 }

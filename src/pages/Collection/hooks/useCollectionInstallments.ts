@@ -11,9 +11,10 @@ interface UseCollectionInstallmentsArgs {
   subType: SubType;
   ownerFilter: OwnerFilter;
   branchId?: string | null;
+  monthStart?: string | null;
 }
 
-export function useCollectionInstallments({ user, yearMode, quickFilter, subType, ownerFilter, branchId = null }: UseCollectionInstallmentsArgs) {
+export function useCollectionInstallments({ user, yearMode, quickFilter, subType, ownerFilter, branchId = null, monthStart = null }: UseCollectionInstallmentsArgs) {
   const [installments, setInstallments] = useState<InstallmentWithRelations[]>([]);
   const [loading, setLoading]           = useState(true);
   // أول تحميل فقط (لسه مفيش أي بيانات) هو اللي يستحق Skeleton كامل —
@@ -39,7 +40,7 @@ export function useCollectionInstallments({ user, yearMode, quickFilter, subType
       }
 
       const { installments: results, totalCount: count, totalPages: pages } =
-        await fetchInstallments({ quickFilter, subType, ownerFilter, page, searchQuery, branchId });
+        await fetchInstallments({ quickFilter, subType, ownerFilter, page, searchQuery, branchId, monthStart });
 
       setInstallments(results);
       setTotalCount(count);
@@ -54,7 +55,7 @@ export function useCollectionInstallments({ user, yearMode, quickFilter, subType
   useEffect(() => {
     if (user && yearMode === 'year1') loadInstallments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, yearMode, quickFilter, subType, ownerFilter, page, searchQuery, branchId]);
+  }, [user, yearMode, quickFilter, subType, ownerFilter, page, searchQuery, branchId, monthStart]);
 
   // تأخير بسيط (debounce) لتقليل عدد طلبات البحث أثناء الكتابة
   useEffect(() => {
