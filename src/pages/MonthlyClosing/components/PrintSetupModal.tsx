@@ -22,8 +22,8 @@ export function PrintSetupModal({
   onConfirm,
 }: PrintSetupModalProps) {
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content max-w-sm animate-fadeIn" onClick={e => e.stopPropagation()}>
+    <div className="modal-overlay print-setup-modal" onClick={onClose}>
+      <div className="modal-content print-setup-content max-w-sm animate-fadeIn" onClick={e => e.stopPropagation()}>
         <div className="p-6">
           <h3 className="text-lg font-semibold text-secondary-900 mb-4 text-center">بيانات التقرير المطبوع</h3>
           <div className="space-y-4">
