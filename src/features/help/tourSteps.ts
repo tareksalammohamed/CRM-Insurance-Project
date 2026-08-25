@@ -40,14 +40,6 @@ export const TOUR_STEPS: TourStep[] = [
     placement: 'bottom',
   },
   {
-    id: 'header-messages',
-    targetId: 'header-messages',
-    title: 'الرسائل',
-    description: 'تواصل مباشرة مع زملائك، أو انضم لغرفة الفريق الجماعية من هنا.',
-    path: '/',
-    placement: 'bottom',
-  },
-  {
     id: 'header-profile',
     targetId: 'header-profile',
     title: 'حسابك الشخصي',

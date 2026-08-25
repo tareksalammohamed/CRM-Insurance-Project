@@ -34,7 +34,7 @@ function MessagesSection({ items }: { items?: HelpMessageItem[] }) {
   }[k || 'info']);
   return (
     <div className="mb-4">
-      <h4 className="text-sm font-semibold text-secondary-900 mb-2">الرسائل والتنبيهات</h4>
+      <h4 className="text-sm font-semibold text-secondary-900 mb-2">التنبيهات</h4>
       <ul className="space-y-2">
         {items.map((item, i) => (
           <li key={i} className={clsx('text-sm rounded-lg p-2.5', colorFor(item.kind))}>

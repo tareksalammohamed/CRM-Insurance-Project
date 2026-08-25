@@ -17,7 +17,7 @@ import { NotifyProvider } from './lib/notify';
 import { initOfflineSync, stopOfflineSync } from './lib/offlineSync';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { RequireRole } from './components/RequireRole';
-import { isNotAgent, canAccessMessagesPage, canAccessDailyReports } from './config/navigation';
+import { isNotAgent, canAccessDailyReports } from './config/navigation';
 import { canManageUsers, canViewOrgStructure, canViewSettings, canViewMonthlyClosing, canManageBranches, canManageAI } from './lib/supabase';
 import { HelpProvider } from './features/help/HelpContext';
 import { HelpPanel } from './features/help/HelpPanel';
@@ -46,7 +46,6 @@ const BranchesAdminPage = lazy(() => import('./features/branches/pages/BranchesA
 const AISettingsPage = lazy(() => import('./features/aiSettings/pages/AISettingsPage').then(m => ({ default: m.AISettingsPage })));
 const PriceCalculator = lazy(() => import('./pages/PriceCalculator').then(m => ({ default: m.PriceCalculator })));
 const DailyReports   = lazy(() => import('./pages/DailyReports').then(m => ({ default: m.DailyReports })));
-const Messages       = lazy(() => import('./pages/Messages').then(m => ({ default: m.Messages })));
 const HelpCenterPage = lazy(() => import('./features/help/HelpCenterPage'));
 
 function LoadingSpinner() {
@@ -124,8 +123,6 @@ function AppLayout() {
             <Suspense fallback={<LoadingSpinner />}>
               <Routes>
                 <Route path="/"                element={<Dashboard />} />
-                <Route path="/messages"        element={<RequireRole check={canAccessMessagesPage}><Messages /></RequireRole>} />
-                <Route path="/team-room"       element={<Navigate to="/messages?c=team-room" replace />} />
                 <Route path="/customers"       element={<Customers />} />
                 <Route path="/policies"        element={<Policies />} />
                 <Route path="/policies/:id"    element={<PolicyDetail />} />

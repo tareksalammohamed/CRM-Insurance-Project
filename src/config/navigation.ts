@@ -17,7 +17,6 @@ import {
   Home,
   Shield,
   ClipboardList,
-  MessageSquare,
   Building2,
   HelpCircle,
   Sparkles,
@@ -31,35 +30,11 @@ export function isNotAgent(role: UserRole): boolean {
   return getRoleLevel(role) <= 5;
 }
 
-// Super Admin لا يظهر داخل نظام الرسائل ولا يمكن مراسلته إطلاقاً (حسب متطلبات
-// النظام)، لذلك تُخفى الصفحة عنه بالكامل من القائمة، مع حماية الـ Route نفسه.
-export function canAccessMessages(role: UserRole): boolean {
-  return role !== 'super_admin';
-}
-
 // صفحة "تقارير العمل اليومية" غير متاحة لدور "وسيط حر" (premium_agent)
 // إطلاقاً — لا تظهر له فى القائمة، ولا يمكنه الوصول إليها حتى لو كتب
 // الرابط مباشرة (محمية أيضاً على مستوى الـ Route فى App.tsx).
 export function canAccessDailyReports(role: UserRole): boolean {
   return role !== 'premium_agent';
-}
-
-// "غرفة الفريق": الغرفة الجماعية الوحيدة بالنظام. متاحة لجميع الأدوار بلا
-// استثناء — بما فيهم Super Admin الذى لا يرسل رسائل فيها (لا يظهر كمشارك)
-// لكنه الوحيد القادر على رؤيتها بالكامل ومراقبة كل الرسائل داخلها.
-// ملحوظة: غرفة الفريق لم تعد صفحة مستقلة، بل أصبحت مدمجة داخل صفحة "الرسائل"
-// (كعنصر مثبّت أعلى قائمة المحادثات)، لذلك تُستخدم هذه الدالة الآن فقط لإظهار
-// أو إخفاء ذلك العنصر المثبّت داخل الصفحة، وليس كعنصر تنقّل منفصل.
-export function canAccessTeamRoom(_role: UserRole): boolean {
-  return true;
-}
-
-// صفحة "الرسائل" أصبحت تحتوي على كل من المحادثات المباشرة وغرفة الفريق معاً.
-// لذلك يجب أن تكون الصفحة مرئية ومتاحة لأي مستخدم يملك صلاحية أي منهما —
-// وعلى رأسهم Super Admin الذى لا يصل لصلاحية canAccessMessages لكنه يحتاج
-// الوصول لغرفة الفريق التى أصبحت الآن داخل نفس الصفحة.
-export function canAccessMessagesPage(role: UserRole): boolean {
-  return canAccessMessages(role) || canAccessTeamRoom(role);
 }
 
 // ==========================================================================
@@ -106,7 +81,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/policies',         label: 'الوثائق',          icon: FileText },
       { path: '/collection',       label: 'التحصيل والسداد',  icon: CreditCard },
       { path: '/commissions',      label: 'العمولات',         icon: Percent },
-      { path: '/messages',         label: 'الرسائل',          icon: MessageSquare, isVisible: canAccessMessagesPage },
     ],
   },
   {

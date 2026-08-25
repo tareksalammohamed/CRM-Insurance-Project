@@ -222,19 +222,3 @@ export const commissionsHelp: HelpContent = {
   ],
   sourceFiles: ['src/pages/Commissions/index.tsx'],
 };
-
-export const messagesHelp: HelpContent = {
-  path: '/messages',
-  title: 'الرسائل',
-  purpose: 'مراسلة مباشرة بين المستخدمين، بالإضافة إلى "غرفة الفريق" الجماعية المثبّتة أعلى قائمة المحادثات.',
-  whenToUse: 'للتواصل الداخلي السريع مع الزملاء أو المدير دون الخروج من النظام.',
-  buttons: [
-    { label: 'رجوع', description: 'فى وضع الموبايل: العودة من شاشة المحادثة إلى قائمة المحادثات.' },
-    { label: 'إرسال رسالة', description: 'إرسال الرسالة المكتوبة فى صندوق الكتابة للمحادثة الحالية.' },
-  ],
-  messages: [
-    { label: 'اختر محادثة لبدء المراسلة', description: 'لم يتم فتح أي محادثة بعد.', kind: 'info' },
-    { label: 'لا توجد محادثات بعد', description: 'لا يوجد أي سجل محادثات لهذا المستخدم بعد.', kind: 'info' },
-  ],
-  sourceFiles: ['src/pages/Messages.tsx'],
-};

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Bell, Search, X, User, Settings, LogOut, Menu, Wallet, MessageSquare, HelpCircle } from 'lucide-react';
+import { Bell, Search, X, User, Settings, LogOut, Menu, Wallet, HelpCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { ROLE_LABELS } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
@@ -10,8 +10,7 @@ import clsx from 'clsx';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { BrandMark } from './BrandMark';
-import { PAGE_TITLES, canAccessMessages } from '../config/navigation';
-import { useUnreadMessagesBadge } from '../features/messages/useMessagesRealtime';
+import { PAGE_TITLES } from '../config/navigation';
 import { BranchSelector } from './BranchSelector';
 import { HelpButton } from '../features/help/HelpButton';
 
@@ -27,7 +26,6 @@ export function Header() {
   const [notifications,     setNotifications]     = useState<Notification[]>([]);
   const [unreadCount,       setUnreadCount]       = useState(0);
   const [profileOpen,       setProfileOpen]       = useState(false);
-  const unreadMessagesCount = useUnreadMessagesBadge();
 
   const notificationRef = useRef<HTMLDivElement>(null);
   const profileRef      = useRef<HTMLDivElement>(null);
@@ -68,7 +66,9 @@ export function Header() {
       `header:notifications:${user.id}`,
       async () => {
         const { data, error } = await supabase.from('notifications').select('*')
-          .eq('user_id', user.id).order('created_at', { ascending: false }).limit(20);
+          .eq('user_id', user.id)
+          .not('type', 'in', '(new_message,message_mention)')
+          .order('created_at', { ascending: false }).limit(20);
         if (error) throw error;
         return (data as Notification[]) || [];
       },
@@ -162,23 +162,6 @@ export function Header() {
 
           {/* مساعدة الصفحة الحالية (؟) — يظهر أعلى كل صفحة بالتطبيق */}
           <HelpButton />
-
-          {/* الرسائل — أيقونة مستقلة بمكانها الخاص، منفصلة تماماً عن الإشعارات */}
-          {canAccessMessages(user.role) && (
-            <button
-              onClick={() => navigate('/messages')}
-              data-tour-id="header-messages"
-              className="icon-button relative"
-              aria-label="الرسائل"
-            >
-              <MessageSquare className="w-5 h-5 text-secondary-600" />
-              {unreadMessagesCount > 0 && (
-                <span className="absolute -top-0.5 -left-0.5 w-4 h-4 bg-error-500 text-white text-[10px] rounded-full flex items-center justify-center font-medium">
-                  {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
-                </span>
-              )}
-            </button>
-          )}
 
           {/* إشعارات */}
           <div className="relative" ref={notificationRef}>

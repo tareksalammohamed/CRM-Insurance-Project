@@ -1,7 +1,7 @@
 import type { HelpContent } from '../types';
 import {
   dashboardHelp, dailyReportsHelp, customersHelp, policiesHelp, policyDetailHelp,
-  collectionHelp, commissionsHelp, messagesHelp,
+  collectionHelp, commissionsHelp,
 } from './operations';
 import {
   usersHelp, orgStructureHelp, orgFormationHelp, reportsHelp, monthlyClosingHelp, cancellationsHelp,
@@ -25,7 +25,6 @@ export const HELP_REGISTRY: HelpContent[] = [
   policyDetailHelp,
   collectionHelp,
   commissionsHelp,
-  messagesHelp,
   usersHelp,
   orgStructureHelp,
   reportsHelp,
