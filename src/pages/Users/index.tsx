@@ -12,7 +12,7 @@ import clsx from 'clsx';
 import { userSchema, passwordSchema, ROLES, type UserFormData, type PasswordFormData } from './types';
 import { getAllowedManagers, getCreatableRoles } from './business/roleHierarchy';
 import {
-  fetchAllUsers, fetchUsersPage, saveUser, changeUserPassword, toggleUserActive, softDeleteUser, TEMP_PASSWORD,
+  fetchAllUsers, fetchUsersPage, saveUser, changeUserPassword, toggleUserActive, softDeleteUser,
 } from './services/usersService';
 import { fetchUserBranchRolesForUser, fetchBranches } from '../../features/branches/services/branchesService';
 import type { UserBranchRoleRow, Branch } from '../../features/branches/types';
@@ -192,7 +192,7 @@ export function Users() {
       if (!created) {
         notify.success('تم تحديث بيانات المستخدم بنجاح');
       } else {
-        notify.success(`تم إنشاء المستخدم بنجاح!\nالبريد: ${data.email}\nكلمة المرور المؤقتة: ${TEMP_PASSWORD}`);
+        notify.success(`تم إنشاء المستخدم بنجاح وإرسال بيانات الدخول إلى البريد: ${data.email}`);
         await loadAllUsers();
       }
 

@@ -169,8 +169,7 @@ export async function saveUser(data: UserFormData, editingUser: User | null): Pr
   }
 
   // ── CREATE new user ───────────────────────────────
-  const tempPassword = '123456';
-
+  // كلمة السر يتم توليدها وإرسالها من الخادم إلى بريد مستخدم النظام.
   const res = await fetch(`${supabaseUrl}/functions/v1/admin-create-user`, {
     method: 'POST',
     headers: {
@@ -180,7 +179,6 @@ export async function saveUser(data: UserFormData, editingUser: User | null): Pr
     body: JSON.stringify({
       name:       data.name,
       email:      data.email,
-      password:   tempPassword,
       phone:      data.phone || null,
       role:       data.role,
       manager_id: data.manager_id || null,
@@ -200,9 +198,6 @@ export async function saveUser(data: UserFormData, editingUser: User | null): Pr
 
   return { created: true };
 }
-
-// تُستخدم من الواجهة لعرض كلمة المرور المؤقتة بعد الإنشاء
-export const TEMP_PASSWORD = '123456';
 
 // ── change password ────────────────────────────────────
 export async function changeUserPassword(editingUser: User, data: PasswordFormData): Promise<void> {

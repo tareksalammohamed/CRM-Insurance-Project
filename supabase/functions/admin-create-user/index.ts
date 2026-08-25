@@ -56,9 +56,91 @@ const ROLE_LEVEL: Record<UserRole, number> = {
 const NO_MANAGER_REQUIRED: UserRole[] = ["super_admin"];
 
 const ALL_ROLES = Object.keys(ROLE_LEVEL) as UserRole[];
-// استثناء مؤكد من صاحب النظام: كل مستخدم جديد يبدأ بنفس كلمة السر،
-// ثم يغيّرها بنفسه. تثبيتها هنا يمنع تجاوز هذا السلوك باستدعاء الدالة مباشرة.
-const INITIAL_PASSWORD = "123456";
+const UPPERCASE = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+const LOWERCASE = "abcdefghijkmnopqrstuvwxyz";
+const DIGITS = "23456789";
+const PASSWORD_LENGTH = 8;
+
+function randomIndex(max: number): number {
+  const limit = 0x100000000 - (0x100000000 % max);
+  const values = new Uint32Array(1);
+  do {
+    crypto.getRandomValues(values);
+  } while (values[0] >= limit);
+  return values[0] % max;
+}
+
+function randomChar(alphabet: string): string {
+  return alphabet[randomIndex(alphabet.length)];
+}
+
+function shuffle(chars: string[]): string {
+  for (let i = chars.length - 1; i > 0; i -= 1) {
+    const j = randomIndex(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join("");
+}
+
+function generateInitialPassword(): string {
+  const alphabet = UPPERCASE + LOWERCASE + DIGITS;
+  const chars = [
+    randomChar(UPPERCASE),
+    randomChar(LOWERCASE),
+    randomChar(DIGITS),
+  ];
+
+  while (chars.length < PASSWORD_LENGTH) {
+    chars.push(randomChar(alphabet));
+  }
+
+  return shuffle(chars);
+}
+
+async function sendWelcomeEmail(params: {
+  to: string;
+  name: string;
+  password: string;
+  userId: string;
+}): Promise<void> {
+  const relayUrl = Deno.env.get("GMAIL_RELAY_URL");
+  const relaySecret = Deno.env.get("GMAIL_RELAY_SECRET");
+  const loginUrl = Deno.env.get("APP_LOGIN_URL");
+
+  if (!relayUrl || !relaySecret || !loginUrl) {
+    throw new Error("إعدادات إرسال البريد غير مكتملة على الخادم");
+  }
+
+  const response = await fetch(relayUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      secret: relaySecret,
+      to: params.to,
+      name: params.name,
+      password: params.password,
+      loginUrl,
+      userId: params.userId,
+    }),
+  });
+
+  const resultText = await response.text();
+  if (!response.ok) {
+    console.error("Gmail relay failed", response.status, resultText.slice(0, 500));
+    throw new Error("تعذر إرسال بريد بيانات الدخول");
+  }
+
+  let result: { ok?: boolean };
+  try {
+    result = JSON.parse(resultText);
+  } catch {
+    throw new Error("استجابة غير صالحة من خدمة البريد");
+  }
+
+  if (!result.ok) {
+    throw new Error("تعذر إرسال بريد بيانات الدخول");
+  }
+}
 
 // الأدوار التي يحق لدرجة وظيفية معيّنة إنشاؤها
 function getCreatableRoles(callerRole: UserRole): UserRole[] {
@@ -242,9 +324,11 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    const initialPassword = generateInitialPassword();
+
     const { data: createdUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
-      password: INITIAL_PASSWORD,
+      password: initialPassword,
       email_confirm: true,
       user_metadata: {
         name,
@@ -267,16 +351,37 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const createdUserId = createdUser.user?.id;
+    if (!createdUserId) {
+      throw new Error("تعذر الحصول على معرف المستخدم الجديد");
+    }
+
+    try {
+      await sendWelcomeEmail({
+        to: email,
+        name,
+        password: initialPassword,
+        userId: createdUserId,
+      });
+    } catch (emailError) {
+      // لا نترك حسابًا جديدًا بلا بيانات دخول وصلت إلى صاحبه.
+      const { error: rollbackError } = await adminClient.auth.admin.deleteUser(createdUserId);
+      if (rollbackError) {
+        console.error("Failed to rollback user after welcome email failure", rollbackError.message);
+      }
+      throw emailError;
+    }
+
     await adminClient.from("activity_logs").insert({
       user_id: callerAuth.user.id,
       action_type: "user_create",
       entity_type: "user",
-      entity_id: createdUser.user?.id,
-      new_values: { email, name, role },
+      entity_id: createdUserId,
+      new_values: { email, name, role, welcome_email_sent: true },
     });
 
     return new Response(
-      JSON.stringify({ success: true, user_id: createdUser.user?.id }),
+      JSON.stringify({ success: true, user_id: createdUserId }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
