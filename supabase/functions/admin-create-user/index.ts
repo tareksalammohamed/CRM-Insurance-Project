@@ -111,18 +111,43 @@ async function sendWelcomeEmail(params: {
     throw new Error("إعدادات إرسال البريد غير مكتملة على الخادم");
   }
 
-  const response = await fetch(relayUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      secret: relaySecret,
-      to: params.to,
-      name: params.name,
-      password: params.password,
-      loginUrl,
-      userId: params.userId,
-    }),
+  const requestBody = JSON.stringify({
+    secret: relaySecret,
+    to: params.to,
+    name: params.name,
+    password: params.password,
+    loginUrl,
+    userId: params.userId,
   });
+  const requestHeaders = { "Content-Type": "application/json" };
+
+  // Apps Script executes doPost on the first request, then returns a 302 to
+  // a result URL that only accepts GET. Follow that result URL with GET;
+  // re-posting to it causes a 405 Method Not Allowed response.
+  let response = await fetch(relayUrl, {
+    method: "POST",
+    headers: requestHeaders,
+    body: requestBody,
+    redirect: "manual",
+  });
+
+  for (let redirectCount = 0; redirectCount < 3 && [301, 302, 303, 307, 308].includes(response.status); redirectCount += 1) {
+    const location = response.headers.get("location");
+    if (!location) break;
+
+    const nextUrl = new URL(location, relayUrl);
+    if (
+      nextUrl.protocol !== "https:" ||
+      !["script.google.com", "script.googleusercontent.com"].includes(nextUrl.hostname)
+    ) {
+      throw new Error("إعادة توجيه غير آمنة من خدمة البريد");
+    }
+
+    response = await fetch(nextUrl.toString(), {
+      method: "GET",
+      redirect: "manual",
+    });
+  }
 
   const resultText = await response.text();
   if (!response.ok) {
