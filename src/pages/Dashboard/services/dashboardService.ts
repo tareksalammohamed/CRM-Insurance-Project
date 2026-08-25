@@ -74,18 +74,20 @@ export async function fetchDashboardRawData(userIds: string[], monthStartStr: st
 
 export async function fetchTeamUsers(userIds: string[]) {
   const result = await dalRead(
-    `dashboard:teamUsers:${userIds.slice().sort().join(',')}`,
+    `dashboard:teamUsers:v2:${userIds.slice().sort().join(',')}`,
     async () => {
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, role, target, manager_id, is_active')
-        .in('id', userIds);
+        .select('id, name, role, target, manager_id, is_active, deleted_at')
+        .in('id', userIds)
+        .eq('is_active', true)
+        .is('deleted_at', null);
       if (error) throw error;
       return data || [];
     },
     { emptyValue: [] as any[] },
   );
-  return result.data;
+  return result.data.filter((u: any) => u.is_active === true && !u.deleted_at);
 }
 
 export async function fetchMonthPayments(monthStartStr: string) {

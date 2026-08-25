@@ -116,7 +116,7 @@ export function computeDashboardStats({
 }
 
 export function computeTeamPerformance(
-  teamUsers: { id: string; name: string; role: string; target: number | null; manager_id: string | null; is_active: boolean }[],
+  teamUsers: { id: string; name: string; role: string; target: number | null; manager_id: string | null; is_active: boolean; deleted_at?: string | null }[],
   payments: any[],
   viewerRole: UserRole | undefined,
   branchRoles?: Map<string, BranchRoleInfo>,
@@ -169,7 +169,7 @@ export function computeTeamPerformance(
   const allowedRoles = viewerRole ? VISIBLE_ROLES_BY_VIEWER[viewerRole] ?? null : null;
 
   const performance: TeamPerformance[] = teamUsers
-    .filter((u) => u.is_active)
+    .filter((u) => u.is_active && !u.deleted_at)
     .filter((u) => (allowedRoles ? allowedRoles.includes(roleOfIn(branchRoles, u.id, u.role) as UserRole) : true))
     .map((u) => ({
       id: u.id,
@@ -193,7 +193,7 @@ export function computeTeamPerformance(
 // يمكن حساب أي مستوى يتم الوصول إليه أثناء التنقل الهرمي داخل الـ Sheet دون
 // أي استعلامات إضافية (نفس البيانات المحمّلة أصلاً لبطاقة "أداء الفريق").
 export function computeTeamAchievementDetails(
-  teamUsers: { id: string; name: string; role: string; target: number | null; manager_id: string | null; is_active: boolean }[],
+  teamUsers: { id: string; name: string; role: string; target: number | null; manager_id: string | null; is_active: boolean; deleted_at?: string | null }[],
   payments: any[],
   // أقساط "المستحق هذا الشهر" (pending/overdue) — اختيارية حتى لا تنكسر أي
   // استدعاءات قديمة للدالة؛ تُستخدم فقط لحساب remainingNewProduction/
@@ -253,7 +253,9 @@ export function computeTeamAchievementDetails(
   };
 
   const result = new Map<string, TeamMemberDetail>();
-  teamUsers.forEach((u) => {
+  teamUsers
+    .filter((u) => u.is_active && !u.deleted_at)
+    .forEach((u) => {
     const { newProduction, collection, remainingNewProduction, remainingCollection } = getRolledUp(u.id);
     const achieved = newProduction + collection;
     const target = u.target || 0;
@@ -271,7 +273,7 @@ export function computeTeamAchievementDetails(
       remainingNewProduction,
       remainingCollection,
     });
-  });
+    });
 
   return result;
 }

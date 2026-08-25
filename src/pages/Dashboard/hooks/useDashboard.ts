@@ -117,18 +117,16 @@ export function useDashboard() {
         target: user?.target || 0,
       }));
 
-      if (teamUsers.length > 0) {
-        setTeamUsersRaw(teamUsers);
-        setTeamPaymentsRaw(payments);
-        setTeamBranchRoles(branchRoles);
-        // نفس منطق "dueInstallments" فى computeDashboardStats: أقساط لم
-        // تُسدد بعد ويقع تاريخ استحقاقها ضمن الشهر الحالي.
-        setTeamDueInstallmentsRaw(installments.filter((i: any) => {
-          const dueDate = new Date(i.due_date);
-          return isWithinInterval(dueDate, { start: monthStart, end: monthEnd });
-        }));
-        setTeamPerformance(computeTeamPerformance(teamUsers, payments, user?.role as UserRole | undefined, branchRoles));
-      }
+      setTeamUsersRaw(teamUsers);
+      setTeamPaymentsRaw(payments);
+      setTeamBranchRoles(branchRoles);
+      // نفس منطق "dueInstallments" فى computeDashboardStats: أقساط لم
+      // تُسدد بعد ويقع تاريخ استحقاقها ضمن الشهر الحالي.
+      setTeamDueInstallmentsRaw(installments.filter((i: any) => {
+        const dueDate = new Date(i.due_date);
+        return isWithinInterval(dueDate, { start: monthStart, end: monthEnd });
+      }));
+      setTeamPerformance(computeTeamPerformance(teamUsers, payments, user?.role as UserRole | undefined, branchRoles));
 
       setChartData(computeChartData(payments, userIds));
       setLastUpdated(new Date());
