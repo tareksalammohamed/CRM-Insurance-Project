@@ -26,71 +26,73 @@ export function DashboardHeader({
   return (
     <div className="dashboard-header">
       <div className="dashboard-intro">
-        <span className="dashboard-kicker">مساحة العمل</span>
-        <h2 className="text-2xl md:text-3xl font-black text-secondary-900">نظرة عامة</h2>
-        <p className="text-sm text-secondary-500 mt-1">
-          إحصائيات شهر {format(selectedMonth, 'MMMM yyyy', { locale: ar })}
-        </p>
-      </div>
-
-      <div className="dashboard-toolbar card py-3 px-4 flex items-center justify-between gap-3 flex-wrap">
-        {/* اختيار الشهر: أسهم للتنقل شهر لشهر + رجوع سريع للشهر الحالي لو
-            المستخدم مش واقف عليه أصلاً. الشهر التالي مقفول عند الوصول
-            للشهر الحقيقي الحالي (مفيش بيانات مستقبلية لعرضها). */}
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={onPreviousMonth}
-            aria-label="الشهر السابق"
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-secondary-500 hover:bg-secondary-100 transition-colors"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-
-          <div className="min-w-[110px] text-center">
-            <span className="text-sm font-semibold text-secondary-800">
-              {format(selectedMonth, 'MMMM yyyy', { locale: ar })}
-            </span>
-            {!isCurrentMonth && (
-              <button
-                type="button"
-                onClick={onCurrentMonth}
-                className="block mx-auto text-[11px] text-primary-600 hover:underline mt-0.5"
-              >
-                الرجوع للشهر الحالي
-              </button>
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={onNextMonth}
-            disabled={isCurrentMonth}
-            aria-label="الشهر التالي"
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-secondary-500 hover:bg-secondary-100 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
+        <div className="dashboard-intro-copy">
+          <span className="dashboard-kicker">مساحة العمل</span>
+          <h2 className="text-2xl md:text-3xl font-black text-secondary-900">نظرة عامة</h2>
+          <p className="text-sm text-secondary-500 mt-1">
+            إحصائيات شهر {format(selectedMonth, 'MMMM yyyy', { locale: ar })}
+          </p>
         </div>
 
-        {onRefresh && (
-          <div className="flex flex-col items-end gap-1">
+        <div className="dashboard-toolbar dashboard-toolbar-inline">
+          {/* اختيار الشهر: أسهم للتنقل شهر لشهر + رجوع سريع للشهر الحالي لو
+              المستخدم مش واقف عليه أصلاً. الشهر التالي مقفول عند الوصول
+              للشهر الحقيقي الحالي (مفيش بيانات مستقبلية لعرضها). */}
+          <div className="dashboard-month-controls flex items-center gap-1">
             <button
               type="button"
-              onClick={onRefresh}
-              disabled={refreshing}
-              className="flex items-center gap-1.5 text-xs md:text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg px-3 py-1.5 transition-colors"
+              onClick={onPreviousMonth}
+              aria-label="الشهر السابق"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-secondary-500 hover:bg-secondary-100 transition-colors"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-              {refreshing ? 'جاري التحديث...' : 'تحديث'}
+              <ChevronRight className="w-4 h-4" />
             </button>
-            {lastUpdated && (
-              <span className="text-[11px] text-secondary-400">
-                آخر تحديث: {format(lastUpdated, 'hh:mm a', { locale: ar })}
+
+            <div className="min-w-[110px] text-center">
+              <span className="text-sm font-semibold text-secondary-800">
+                {format(selectedMonth, 'MMMM yyyy', { locale: ar })}
               </span>
-            )}
+              {!isCurrentMonth && (
+                <button
+                  type="button"
+                  onClick={onCurrentMonth}
+                  className="block mx-auto text-[11px] text-primary-600 hover:underline mt-0.5"
+                >
+                  الرجوع للشهر الحالي
+                </button>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={onNextMonth}
+              disabled={isCurrentMonth}
+              aria-label="الشهر التالي"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-secondary-500 hover:bg-secondary-100 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
           </div>
-        )}
+
+          {onRefresh && (
+            <div className="dashboard-refresh-control flex flex-col items-end gap-1">
+              <button
+                type="button"
+                onClick={onRefresh}
+                disabled={refreshing}
+                className="flex items-center gap-1.5 text-xs md:text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg px-3 py-1.5 transition-colors"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'جاري التحديث...' : 'تحديث'}
+              </button>
+              {lastUpdated && (
+                <span className="text-[11px] text-secondary-400">
+                  آخر تحديث: {format(lastUpdated, 'hh:mm a', { locale: ar })}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
