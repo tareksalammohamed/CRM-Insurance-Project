@@ -11,6 +11,16 @@ export interface ImportAgent {
   name: string;
 }
 
+const MAX_IMPORT_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_IMPORT_SHEETS = 2;
+const MAX_IMPORT_ROWS = 10000;
+const IMPORT_FILE_EXTENSION_RE = /\.(xlsx|xls|csv)$/i;
+
+function safeSpreadsheetText(value: unknown): string {
+  const text = String(value ?? '');
+  return /^[=+\-@]/.test(text) ? `'${text}` : text;
+}
+
 // ===================================================================
 // 1) تحميل نموذج Excel
 // ===================================================================
@@ -430,12 +440,23 @@ export interface ParseResult {
 }
 
 export async function parseWorkbookFile(file: File, agents: ImportAgent[] = []): Promise<ParseResult> {
+  if (!IMPORT_FILE_EXTENSION_RE.test(file.name)) {
+    return { rows: [], headerError: 'نوع الملف غير مسموح. استخدم Excel أو CSV فقط.' };
+  }
+  if (file.size > MAX_IMPORT_FILE_BYTES) {
+    return { rows: [], headerError: 'حجم الملف كبير جداً. الحد الأقصى المسموح به 10 ميجابايت.' };
+  }
+
   // دعم CSV بالإضافة لـ Excel — نفس مسار القراءة والتحقق تماماً بعد هذه
   // النقطة، فورقة XLSX الناتجة من CSV تُعامَل بنفس الطريقة تماماً
   const isCsv = /\.csv$/i.test(file.name);
   const workbook = isCsv
     ? XLSX.read(await file.text(), { type: 'string', cellDates: true })
     : XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+
+  if (workbook.SheetNames.length > MAX_IMPORT_SHEETS) {
+    return { rows: [], headerError: `عدد أوراق الملف يتجاوز الحد المسموح (${MAX_IMPORT_SHEETS}).` };
+  }
 
   const sheetName = workbook.SheetNames[0];
   if (!sheetName) {
@@ -446,6 +467,9 @@ export async function parseWorkbookFile(file: File, agents: ImportAgent[] = []):
 
   if (aoa.length === 0) {
     return { rows: [], headerError: 'الملف فارغ' };
+  }
+  if (aoa.length - 1 > MAX_IMPORT_ROWS) {
+    return { rows: [], headerError: `عدد الصفوف يتجاوز الحد المسموح (${MAX_IMPORT_ROWS}).` };
   }
 
   const headerRow = aoa[0].map(normalizeHeaderCell);
@@ -572,9 +596,9 @@ export function exportErrorReport(summary: ImportSummary) {
   const headers = ['رقم الصف', 'اسم العميل', 'رقم الوثيقة', 'سبب الفشل'];
   const dataRows = failedRows.map((r) => [
     r.rowNumber,
-    r.customerName || '',
-    r.policyNumber || '',
-    r.errorMessage || ''
+    safeSpreadsheetText(r.customerName),
+    safeSpreadsheetText(r.policyNumber),
+    safeSpreadsheetText(r.errorMessage)
   ]);
 
   const sheet = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);

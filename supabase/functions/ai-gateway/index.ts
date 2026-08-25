@@ -239,6 +239,73 @@ type OcrCallFn = (apiKey: string, imageDataUrl: string) => Promise<string>;
 // "تسقط" تلقائياً على مسار Vision (تحليل الصورة مباشرة بالذكاء الاصطناعي)
 // دون أن ينتبه أحد لسبب الفشل الحقيقي، أو تعطيل حالة مزود OCR بالخطأ.
 const MAX_FILE_SIZE_BYTES = 1024 * 1024;
+const MAX_REQUEST_BYTES = 4 * 1024 * 1024;
+const MAX_MESSAGES = 40;
+const MAX_PARTS_PER_MESSAGE = 12;
+const MAX_TEXT_PART_BYTES = 24 * 1024;
+const MAX_TOTAL_TEXT_BYTES = 160 * 1024;
+const MAX_IMAGE_PARTS = 8;
+const MAX_OUTPUT_TOKENS = 4000;
+const AI_RATE_WINDOW_MS = 60_000;
+const AI_RATE_LIMIT = 20;
+const aiRateBuckets = new Map<string, { startedAt: number; count: number }>();
+
+function isRateLimited(userId: string): boolean {
+  const now = Date.now();
+  const bucket = aiRateBuckets.get(userId);
+  if (!bucket || now - bucket.startedAt >= AI_RATE_WINDOW_MS) {
+    aiRateBuckets.set(userId, { startedAt: now, count: 1 });
+    return false;
+  }
+  bucket.count += 1;
+  return bucket.count > AI_RATE_LIMIT;
+}
+
+function validateRequestMessages(messages: unknown): string | null {
+  if (!Array.isArray(messages) || messages.length === 0) return "messages مطلوبة";
+  if (messages.length > MAX_MESSAGES) return `عدد الرسائل يتجاوز الحد المسموح (${MAX_MESSAGES})`;
+
+  let totalTextBytes = 0;
+  let imageCount = 0;
+  for (const message of messages as ChatMessage[]) {
+    if (!message || !['system', 'user', 'assistant'].includes(message.role)) {
+      return "دور الرسالة غير صحيح";
+    }
+
+    if (typeof message.content === 'string') {
+      const bytes = new TextEncoder().encode(message.content).byteLength;
+      if (bytes > MAX_TEXT_PART_BYTES) return "نص الرسالة كبير جداً";
+      totalTextBytes += bytes;
+      continue;
+    }
+
+    if (!Array.isArray(message.content) || message.content.length > MAX_PARTS_PER_MESSAGE) {
+      return "محتوى الرسالة غير صحيح أو كبير جداً";
+    }
+
+    for (const part of message.content) {
+      if (part.type === 'text') {
+        const text = part.text || '';
+        const bytes = new TextEncoder().encode(text).byteLength;
+        if (bytes > MAX_TEXT_PART_BYTES) return "جزء النص كبير جداً";
+        totalTextBytes += bytes;
+      } else if (part.type === 'image_url' && part.image_url?.url) {
+        imageCount += 1;
+        // منع تمرير روابط خارجية إلى مزودي AI؛ الصور المستخدمة في التطبيق
+        // يجب أن تكون data URLs حتى لا تتحول البوابة إلى SSRF proxy.
+        if (!/^data:(?:image\/(?:png|jpe?g|webp|gif|bmp|tiff)|application\/pdf);base64,[A-Za-z0-9+/=\s]+$/i.test(part.image_url.url)) {
+          return "مصدر الصورة غير مسموح؛ يجب إرسال صورة مضمّنة داخل الطلب";
+        }
+      } else {
+        return "نوع جزء الرسالة غير مسموح";
+      }
+    }
+  }
+
+  if (imageCount > MAX_IMAGE_PARTS) return `عدد الصور يتجاوز الحد المسموح (${MAX_IMAGE_PARTS})`;
+  if (totalTextBytes > MAX_TOTAL_TEXT_BYTES) return "إجمالي النص المرسل كبير جداً";
+  return null;
+}
 
 // حساب الحجم الفعلي بالبايت لبيانات Base64 (وليس طول النص Base64 نفسه، الذى
 // أكبر بحوالي الثلث من حجم البيانات الحقيقية).
@@ -424,14 +491,42 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ success: false, error: "غير مصرح: جلسة غير صالحة" }, 401);
     }
 
-    const body = await req.json();
-    const messages = body?.messages as ChatMessage[];
-    const maxTokens = Number(body?.max_tokens) || 512;
-    const temperature = body?.temperature !== undefined ? Number(body.temperature) : 0.7;
-
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return jsonResponse({ success: false, error: "messages مطلوبة" }, 400);
+    const { data: callerProfile, error: callerProfileError } = await adminClient
+      .from("users")
+      .select("is_active, deleted_at")
+      .eq("id", callerAuth.user.id)
+      .maybeSingle();
+    if (callerProfileError || !callerProfile || !callerProfile.is_active || callerProfile.deleted_at) {
+      return jsonResponse({ success: false, error: "غير مصرح: الحساب غير نشط" }, 403);
     }
+    if (isRateLimited(callerAuth.user.id)) {
+      return jsonResponse({ success: false, error: "تم تجاوز الحد المؤقت لطلبات الذكاء الاصطناعي، حاول بعد دقيقة" }, 429);
+    }
+
+    const contentLength = Number(req.headers.get("content-length") || 0);
+    if (contentLength > MAX_REQUEST_BYTES) {
+      return jsonResponse({ success: false, error: "حجم الطلب كبير جداً" }, 413);
+    }
+
+    const rawBody = await req.text();
+    if (new TextEncoder().encode(rawBody).byteLength > MAX_REQUEST_BYTES) {
+      return jsonResponse({ success: false, error: "حجم الطلب كبير جداً" }, 413);
+    }
+    const body = JSON.parse(rawBody);
+    const messages = body?.messages as ChatMessage[];
+    const validationError = validateRequestMessages(messages);
+    if (validationError) {
+      return jsonResponse({ success: false, error: validationError }, 400);
+    }
+
+    const requestedTokens = Number(body?.max_tokens);
+    const maxTokens = Number.isFinite(requestedTokens) && requestedTokens > 0
+      ? Math.min(Math.floor(requestedTokens), MAX_OUTPUT_TOKENS)
+      : 512;
+    const requestedTemperature = body?.temperature !== undefined ? Number(body.temperature) : 0.7;
+    const temperature = Number.isFinite(requestedTemperature)
+      ? Math.min(Math.max(requestedTemperature, 0), 1)
+      : 0.7;
 
     const oversizedError = findOversizedFile(messages);
     if (oversizedError) {

@@ -3,6 +3,7 @@ import { Session, User as AuthUser } from '@supabase/supabase-js';
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 import { supabase, User, WEBAUTHN_FUNCTIONS_URL } from '../lib/supabase';
 import { clearAllDataCache } from '../lib/dataCache';
+import { clearAllQueueItems } from '../lib/offlineQueue';
 import { dalRead } from '../lib/dataAccessLayer';
 
 interface AuthContextType {
@@ -44,7 +45,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .from('users')
           .select('*')
           .eq('id', userId)
-          .is('deleted_at', null) // مستخدم محذوف (Soft Delete) لا يستطيع الدخول للنظام
+          .is('deleted_at', null)
+          .eq('is_active', true) // الحساب المعطّل أو المحذوف لا يستطيع الدخول للنظام
           .maybeSingle();
 
         if (error) throw error;
@@ -292,6 +294,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // نفرّغ كاش القراءات المحلي حتى لا يرى مستخدم تالي على نفس الجهاز
     // بيانات محفوظة من حساب سابق أثناء عرض حالة Offline
     void clearAllDataCache();
+    void clearAllQueueItems();
   };
 
   return (

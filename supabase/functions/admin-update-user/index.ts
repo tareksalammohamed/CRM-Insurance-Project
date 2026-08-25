@@ -59,11 +59,11 @@ Deno.serve(async (req: Request) => {
     // التحقق من صلاحية المستدعي
     const { data: callerProfile, error: profileError } = await adminClient
       .from("users")
-      .select("role")
+      .select("role, is_active, deleted_at")
       .eq("id", callerAuth.user.id)
       .maybeSingle();
 
-    if (profileError || !callerProfile) {
+    if (profileError || !callerProfile || !callerProfile.is_active || callerProfile.deleted_at) {
       return new Response(
         JSON.stringify({ error: "تعذر التحقق من صلاحيات المستخدم" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }

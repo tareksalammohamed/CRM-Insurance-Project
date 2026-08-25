@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import { MARITAL_STATUS_LABELS, PAYMENT_METHOD_LABELS, POLICY_STATUS_LABELS } from '../../../lib/supabase';
 import type { CustomerWithRelations } from '../types';
 import { formatCurrency, sortPoliciesByStartDate } from '../utils';
+import { escapeHtml } from '../../../lib/htmlEscape';
 
 // بناء نص HTML بيانات/طباعة العميل — نفس المنطق بالضبط المنقول من
 // handlePrintCustomer فى index.tsx الأصلي، بدون أي تغيير فى المحتوى أو
@@ -11,13 +12,13 @@ export function buildCustomerPrintHtml(customer: CustomerWithRelations): string 
   const sortedPolicies = sortPoliciesByStartDate(customer.policies || []);
 
   const policiesRows = sortedPolicies
-    .map((p) => `<tr><td>${p.policy_number}</td><td>${POLICY_STATUS_LABELS[p.status]}</td><td>${formatCurrency(p.premium_amount)}</td><td>${format(new Date(p.start_date), 'dd/MM/yyyy')}</td></tr>`)
+    .map((p) => `<tr><td>${escapeHtml(p.policy_number)}</td><td>${escapeHtml(POLICY_STATUS_LABELS[p.status])}</td><td>${escapeHtml(formatCurrency(p.premium_amount))}</td><td>${escapeHtml(format(new Date(p.start_date), 'dd/MM/yyyy'))}</td></tr>`)
     .join('');
 
   return `
       <html dir="rtl" lang="ar">
         <head>
-          <title>بيانات العميل - ${customer.name}</title>
+          <title>بيانات العميل - ${escapeHtml(customer.name)}</title>
           <style>
             body { font-family: 'Cairo', 'Segoe UI', sans-serif; padding: 32px; color: #0f172a; }
             h1 { font-size: 20px; margin-bottom: 4px; }
@@ -30,20 +31,20 @@ export function buildCustomerPrintHtml(customer: CustomerWithRelations): string 
           </style>
         </head>
         <body>
-          <h1>بيانات العميل: ${customer.name}</h1>
+          <h1>بيانات العميل: ${escapeHtml(customer.name)}</h1>
           <p class="muted">تاريخ الطباعة: ${format(new Date(), 'dd/MM/yyyy')}</p>
           <table>
-            <tr><td>الاسم</td><td>${customer.name}</td></tr>
-            <tr><td>الرقم القومي</td><td>${customer.national_id || '-'}</td></tr>
-            <tr><td>رقم الهاتف</td><td>${customer.phone || '-'}</td></tr>
-            <tr><td>العنوان</td><td>${customer.address || '-'}</td></tr>
-            <tr><td>تاريخ الميلاد</td><td>${customer.birth_date ? format(new Date(customer.birth_date), 'dd/MM/yyyy') : '-'}</td></tr>
-            <tr><td>المهنة</td><td>${customer.occupation || '-'}</td></tr>
-            <tr><td>الحالة الاجتماعية</td><td>${customer.marital_status ? MARITAL_STATUS_LABELS[customer.marital_status] : '-'}</td></tr>
-            <tr><td>الوكيل المسؤول</td><td>${customer.owner?.name || '-'}</td></tr>
-            <tr><td>مبلغ التأمين (طلب التأمين)</td><td>${customer.insurance_amount != null ? formatCurrency(customer.insurance_amount) : '-'}</td></tr>
-            <tr><td>طريقة السداد (طلب التأمين)</td><td>${customer.payment_method ? PAYMENT_METHOD_LABELS[customer.payment_method] : '-'}</td></tr>
-            <tr><td>العربون</td><td>${customer.deposit_amount != null ? formatCurrency(customer.deposit_amount) : '-'}</td></tr>
+            <tr><td>الاسم</td><td>${escapeHtml(customer.name)}</td></tr>
+            <tr><td>الرقم القومي</td><td>${escapeHtml(customer.national_id || '-')}</td></tr>
+            <tr><td>رقم الهاتف</td><td>${escapeHtml(customer.phone || '-')}</td></tr>
+            <tr><td>العنوان</td><td>${escapeHtml(customer.address || '-')}</td></tr>
+            <tr><td>تاريخ الميلاد</td><td>${escapeHtml(customer.birth_date ? format(new Date(customer.birth_date), 'dd/MM/yyyy') : '-')}</td></tr>
+            <tr><td>المهنة</td><td>${escapeHtml(customer.occupation || '-')}</td></tr>
+            <tr><td>الحالة الاجتماعية</td><td>${escapeHtml(customer.marital_status ? MARITAL_STATUS_LABELS[customer.marital_status] : '-')}</td></tr>
+            <tr><td>الوكيل المسؤول</td><td>${escapeHtml(customer.owner?.name || '-')}</td></tr>
+            <tr><td>مبلغ التأمين (طلب التأمين)</td><td>${escapeHtml(customer.insurance_amount != null ? formatCurrency(customer.insurance_amount) : '-')}</td></tr>
+            <tr><td>طريقة السداد (طلب التأمين)</td><td>${escapeHtml(customer.payment_method ? PAYMENT_METHOD_LABELS[customer.payment_method] : '-')}</td></tr>
+            <tr><td>العربون</td><td>${escapeHtml(customer.deposit_amount != null ? formatCurrency(customer.deposit_amount) : '-')}</td></tr>
           </table>
           ${sortedPolicies.length > 0 ? `
           <h2>الوثائق (${sortedPolicies.length})</h2>

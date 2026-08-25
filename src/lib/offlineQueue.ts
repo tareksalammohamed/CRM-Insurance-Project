@@ -1,4 +1,4 @@
-import { idbGetAll, idbPut, idbDelete, QUEUE_STORE } from './offlineDb';
+import { idbGetAll, idbPut, idbDelete, idbClearStore, QUEUE_STORE } from './offlineDb';
 import { emitOfflineEvent } from './offlineEvents';
 import { isOnline as isOnlineFromNetworkManager } from './networkManager';
 
@@ -52,6 +52,14 @@ export async function getQueueItems(): Promise<OfflineQueueItem[]> {
 
 export async function getQueueCount(): Promise<number> {
   return (await getQueueItems()).length;
+}
+
+/**
+ * يمسح كل العمليات المعلقة عند تسجيل الخروج الصريح. عناصر الطابور قد تحتوي
+ * على بيانات عملاء أو وثائق، لذلك لا يجب أن تبقى على جهاز مشترك بعد انتهاء الجلسة.
+ */
+export async function clearAllQueueItems(): Promise<void> {
+  await idbClearStore(QUEUE_STORE);
 }
 
 export async function removeQueueItem(operationId: string): Promise<void> {

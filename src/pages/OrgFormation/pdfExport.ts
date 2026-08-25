@@ -1,5 +1,7 @@
 // مكتبات ثقيلة نادرة الاستخدام — تُحمَّل ديناميكيًا فقط وقت الحاجة الفعلية
 // (معاينة/تنزيل/طباعة التشكيل) بدل تحميلها ضمن الحزمة الرئيسية للتطبيق.
+import { escapeHtml } from '../../lib/htmlEscape';
+
 
 const A4_LANDSCAPE_PT = { width: 841.89, height: 595.28 };
 
@@ -92,7 +94,7 @@ export function printNode(node: HTMLElement, documentTitle: string): boolean {
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8" />
-<title>${documentTitle}</title>
+<title>${escapeHtml(documentTitle)}</title>
 ${styleTags}
 <style>
   @page { margin: 8mm; }

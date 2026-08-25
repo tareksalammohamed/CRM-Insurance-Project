@@ -229,11 +229,11 @@ Deno.serve(async (req: Request) => {
 
     const { data: callerProfile } = await adminClient
       .from("users")
-      .select("role")
+      .select("role, is_active, deleted_at")
       .eq("id", callerAuth.user.id)
       .maybeSingle();
 
-    if (!callerProfile || callerProfile.role !== "super_admin") {
+    if (!callerProfile || !callerProfile.is_active || callerProfile.deleted_at || callerProfile.role !== "super_admin") {
       return jsonResponse({ error: "غير مصرح: هذا الإجراء متاح لمدير النظام (Super Admin) فقط" }, 403);
     }
 

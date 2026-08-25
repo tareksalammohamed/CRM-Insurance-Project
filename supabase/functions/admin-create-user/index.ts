@@ -56,6 +56,9 @@ const ROLE_LEVEL: Record<UserRole, number> = {
 const NO_MANAGER_REQUIRED: UserRole[] = ["super_admin"];
 
 const ALL_ROLES = Object.keys(ROLE_LEVEL) as UserRole[];
+// استثناء مؤكد من صاحب النظام: كل مستخدم جديد يبدأ بنفس كلمة السر،
+// ثم يغيّرها بنفسه. تثبيتها هنا يمنع تجاوز هذا السلوك باستدعاء الدالة مباشرة.
+const INITIAL_PASSWORD = "123456";
 
 // الأدوار التي يحق لدرجة وظيفية معيّنة إنشاؤها
 function getCreatableRoles(callerRole: UserRole): UserRole[] {
@@ -99,11 +102,11 @@ Deno.serve(async (req: Request) => {
 
     const { data: callerProfile, error: callerProfileError } = await adminClient
       .from("users")
-      .select("id, role")
+      .select("id, role, is_active, deleted_at")
       .eq("id", callerAuth.user.id)
       .maybeSingle();
 
-    if (callerProfileError || !callerProfile) {
+    if (callerProfileError || !callerProfile || !callerProfile.is_active || callerProfile.deleted_at) {
       return new Response(
         JSON.stringify({ error: "تعذر التحقق من صلاحيات المستخدم" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -121,11 +124,11 @@ Deno.serve(async (req: Request) => {
     }
 
     const body = await req.json();
-    const { email, password, name, role, phone, manager_id, target, branch_id } = body;
+    const { email, name, role, phone, manager_id, target, branch_id } = body;
 
-    if (!email || !password || !name || !role) {
+    if (!email || !name || !role) {
       return new Response(
-        JSON.stringify({ error: "البيانات المطلوبة: email, password, name, role" }),
+        JSON.stringify({ error: "البيانات المطلوبة: email, name, role" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -241,7 +244,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: createdUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
-      password,
+      password: INITIAL_PASSWORD,
       email_confirm: true,
       user_metadata: {
         name,
