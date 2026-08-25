@@ -11,15 +11,11 @@ createRoot(document.getElementById('root')!).render(
 
 // تسجيل Service Worker قياسي للعمل كـ PWA (Offline Cache + تحديث تلقائي)
 if ('serviceWorker' in navigator) {
-  let isReloadingForWorker = false;
+  const UPDATE_EVENT = 'crm:pwa-update-available';
 
-  // بعد تفعيل نسخة جديدة، أعد تحميل الصفحة مرة واحدة حتى لا تستمر جلسة
-  // الـPWA الحالية في تشغيل JavaScript القديم من الذاكرة.
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (isReloadingForWorker) return;
-    isReloadingForWorker = true;
-    window.location.reload();
-  });
+  const announceUpdate = (registration: ServiceWorkerRegistration) => {
+    window.dispatchEvent(new CustomEvent(UPDATE_EVENT, { detail: { registration } }));
+  };
 
   window.addEventListener('load', () => {
     navigator.serviceWorker
@@ -29,12 +25,18 @@ if ('serviceWorker' in navigator) {
         // بتبويب PWA مفتوح لفترة طويلة ولا تفحص التحديث سريعًا.
         void registration.update();
 
-        // التحقق من وجود تحديث جديد وتفعيله تلقائيًا فور توفره
+        // إذا كانت النسخة الجديدة وصلت أثناء غياب الصفحة، أعلن عنها عند الفتح.
+        if (registration.waiting && navigator.serviceWorker.controller) {
+          announceUpdate(registration);
+        }
+
+        // لا نفعّل النسخة الجديدة تلقائيًا؛ الإشعار داخل التطبيق هو الذي
+        // يرسل SKIP_WAITING بعد ضغط المستخدم على «تحديث الآن».
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
           newWorker?.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              newWorker.postMessage('SKIP_WAITING');
+              announceUpdate(registration);
             }
           });
         });

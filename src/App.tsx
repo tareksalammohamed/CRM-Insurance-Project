@@ -23,6 +23,7 @@ import { HelpProvider } from './features/help/HelpContext';
 import { HelpPanel } from './features/help/HelpPanel';
 import { Tour } from './features/help/Tour';
 import { useFirstRunTour } from './features/help/useFirstRunTour';
+import { UpdateAvailablePrompt } from './components/UpdateAvailablePrompt';
 
 
 
@@ -161,6 +162,7 @@ function AppLayout() {
 function App() {
   return (
     <NotifyProvider>
+      <UpdateAvailablePrompt />
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <ErrorBoundary boundaryName="root">
