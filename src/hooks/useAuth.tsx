@@ -104,35 +104,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      (async () => {
-        try {
-          setSession(session);
-          setAuthUser(session?.user ?? null);
+      // Supabase holds an internal auth lock while notifying listeners. Do not
+      // call supabase.from()/other auth APIs synchronously from this callback:
+      // doing so can deadlock SIGNED_IN and leave the login form spinning
+      // forever, especially on a first login for a newly-created user.
+      setTimeout(() => {
+        void (async () => {
+          try {
+            setSession(session);
+            setAuthUser(session?.user ?? null);
 
-          if (session?.user) {
-            // Supabase بتطلق TOKEN_REFRESHED تلقائياً بشكل دوري (كل ما التوكن
-            // يوشك ينتهي) لنفس المستخدم المسجل دخوله فعلاً بدون أي تغيير حقيقي
-            // فى بياناته. إعادة جلب البروفايل وعمل setUser بكائن جديد فى كل مرة
-            // كانت بتغيّر reference "user" فتشغّل من جديد كل useEffect فى كل
-            // الصفحات المعتمدة عليه فى الـ deps (تحميل/رعشة متكررة بدون سبب).
-            // هنا نحدّث الجلسة (مهم لطلبات الشبكة القادمة) ونتجاهل فقط إعادة
-            // تعيين "user" لو نفس المستخدم ونفس الحدث الدوري ده تحديداً.
-            if (event === 'TOKEN_REFRESHED' && session.user.id === currentUserIdRef.current) {
-              return;
+            if (session?.user) {
+              // Supabase بتطلق TOKEN_REFRESHED تلقائياً بشكل دوري (كل ما التوكن
+              // يوشك ينتهي) لنفس المستخدم المسجل دخوله فعلاً بدون أي تغيير حقيقي
+              // فى بياناته. إعادة جلب البروفايل وعمل setUser بكائن جديد فى كل مرة
+              // كانت بتغيّر reference "user" فتشغّل من جديد كل useEffect فى كل
+              // الصفحات المعتمدة عليه فى الـ deps (تحميل/رعشة متكررة بدون سبب).
+              // هنا نحدّث الجلسة (مهم لطلبات الشبكة القادمة) ونتجاهل فقط إعادة
+              // تعيين "user" لو نفس المستخدم ونفس الحدث الدوري ده تحديداً.
+              if (event === 'TOKEN_REFRESHED' && session.user.id === currentUserIdRef.current) {
+                return;
+              }
+              const profile = await fetchUserProfile(session.user.id);
+              setUser(profile);
+              currentUserIdRef.current = session.user.id;
+            } else {
+              setUser(null);
+              currentUserIdRef.current = null;
             }
-            const profile = await fetchUserProfile(session.user.id);
-            setUser(profile);
-            currentUserIdRef.current = session.user.id;
-          } else {
-            setUser(null);
-            currentUserIdRef.current = null;
+          } catch (err) {
+            console.error('Error handling auth state change:', err);
+          } finally {
+            setLoading(false);
           }
-        } catch (err) {
-          console.error('Error handling auth state change:', err);
-        } finally {
-          setLoading(false);
-        }
-      })();
+        })();
+      }, 0);
     });
 
     return () => subscription.unsubscribe();

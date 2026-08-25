@@ -126,12 +126,9 @@ function isValidEmail(value) {
 }
 
 function isValidHttpUrl(value) {
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:';
-  } catch (_) {
-    return false;
-  }
+  // Apps Script does not reliably expose the browser URL constructor.
+  // Keep this validation deliberately strict for the production CRM host.
+  return /^https:\/\/crm-insurance-project\.vercel\.app(?:\/[^\s]*)?$/.test(value);
 }
 
 function escapeHtml(value) {

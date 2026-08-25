@@ -175,11 +175,14 @@ function getCreatableRoles(callerRole: UserRole): UserRole[] {
 }
 
 Deno.serve(async (req: Request) => {
+  let stage = "request";
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    stage = "load_config";
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const authHeader = req.headers.get("Authorization");
@@ -196,6 +199,7 @@ Deno.serve(async (req: Request) => {
       global: { headers: { Authorization: authHeader } },
     });
 
+    stage = "authenticate_caller";
     const { data: callerAuth, error: callerAuthError } = await callerClient.auth.getUser();
     if (callerAuthError || !callerAuth?.user) {
       return new Response(
@@ -207,6 +211,7 @@ Deno.serve(async (req: Request) => {
     // عميل بصلاحيات service_role لتنفيذ العمليات الإدارية
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
+    stage = "load_caller_profile";
     const { data: callerProfile, error: callerProfileError } = await adminClient
       .from("users")
       .select("id, role, is_active, deleted_at")
@@ -230,6 +235,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    stage = "parse_request";
     const body = await req.json();
     const { email, name, role, phone, manager_id, target, branch_id } = body;
 
@@ -269,6 +275,7 @@ Deno.serve(async (req: Request) => {
 
     if (callerRole !== "super_admin" && manager_id) {
       // نطاق المستدعي الإداري (نفسه + كل من تحته فى الهيكل)
+      stage = "resolve_scope";
       const { data: subtree, error: subtreeError } = await adminClient.rpc("get_user_subtree", {
         user_id: callerAuth.user.id,
       });
@@ -292,6 +299,7 @@ Deno.serve(async (req: Request) => {
     //    (مش لازم الدرجة اللي فوق مباشرة بالظبط — أي درجة أعلى تصح،
     //    مثلاً Agent ينفع تحت Group Leader أو Supervisor أو أعلى)
     if (managerRequired && manager_id) {
+      stage = "validate_manager";
       const { data: managerProfile, error: managerError } = await adminClient
         .from("users")
         .select("role")
@@ -319,6 +327,7 @@ Deno.serve(async (req: Request) => {
     //    لو المدير له أكتر من فرع، لازم الفرونت يبعت branch_id صراحة، ولازم
     //    يكون فعلاً واحد من فروع هذا المدير بالتحديد.
     if (managerRequired && manager_id) {
+      stage = "validate_manager_branches";
       const { data: managerBranches, error: managerBranchesError } = await adminClient
         .from("user_branch_roles")
         .select("branch_id")
@@ -349,8 +358,10 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    stage = "generate_password";
     const initialPassword = generateInitialPassword();
 
+    stage = "create_auth_user";
     const { data: createdUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
       password: initialPassword,
@@ -382,6 +393,7 @@ Deno.serve(async (req: Request) => {
     }
 
     try {
+      stage = "send_welcome_email";
       await sendWelcomeEmail({
         to: email,
         name,
@@ -397,6 +409,7 @@ Deno.serve(async (req: Request) => {
       throw emailError;
     }
 
+    stage = "write_activity_log";
     await adminClient.from("activity_logs").insert({
       user_id: callerAuth.user.id,
       action_type: "user_create",
@@ -410,8 +423,13 @@ Deno.serve(async (req: Request) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error("admin-create-user failed", JSON.stringify({
+      stage,
+      error: errorMessage.slice(0, 300),
+    }));
     return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "خطأ غير متوقع" }),
+      JSON.stringify({ error: errorMessage || "خطأ غير متوقع" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
