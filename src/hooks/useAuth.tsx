@@ -41,16 +41,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const result = await dalRead<User | null>(
       `auth:profile:${userId}`,
       async () => {
-        const { data, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', userId)
-          .is('deleted_at', null)
-          .eq('is_active', true) // الحساب المعطّل أو المحذوف لا يستطيع الدخول للنظام
-          .maybeSingle();
+        const { data, error } = await supabase.rpc('get_my_profile');
 
         if (error) throw error;
-        return data as User | null;
+        return ((data as User[] | null) ?? [])[0] ?? null;
       },
       { emptyValue: null as User | null },
     );
