@@ -2,7 +2,7 @@
 // Provides offline caching for the app shell/static assets and keeps
 // itself auto-updated. Self-contained, no third-party dependency.
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `crm-insurance-cache-${CACHE_VERSION}`;
 
 // Minimal app-shell precache. Vite-hashed build assets are cached on the
