@@ -74,10 +74,17 @@ export function useOrgStructure() {
       // بدل قيمته العامة — فالهرم (childrenMap تحت) والإحصائيات والبحث كلها
       // بتشتغل على سياق الفرع تلقائيًا من غير أي تعديل تاني فى الملف ده.
       const branchRoles = await fetchBranchRoleMap(currentBranchId, ids);
-      const rosterData: RosterUser[] = result.data.map((u) => {
-        const br = branchRoles.get(u.id);
-        return br ? { ...u, role: br.role, manager_id: br.manager_id } : u;
-      });
+      const rosterData: RosterUser[] = result.data
+        .map((u) => {
+          const br = branchRoles.get(u.id);
+          return br ? { ...u, role: br.role, manager_id: br.manager_id } : u;
+        })
+        // الوكيل غير النشط لا يظهر في التشكيل التشغيلي أو البحث أو الإحصائيات.
+        // نُبقي المدير غير النشط في المصدر حتى لا نكسر مسار المرؤوسين النشطين.
+        .filter((u) => {
+          const isAgent = u.role === 'agent' || u.role === 'premium_agent';
+          return !isAgent || u.is_active;
+        });
 
       const map = new Map<string, RosterUser>();
       rosterData.forEach((u) => map.set(u.id, u));

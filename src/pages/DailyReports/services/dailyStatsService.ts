@@ -61,6 +61,7 @@ interface LightUserRow {
   role: UserRole;
   manager_id: string | null;
   is_active: boolean;
+  deleted_at: string | null;
 }
 
 /** قائمة أفراد فريق رئيس المجموعة (الإيجنتات المباشرين تحته فقط) — أساس
@@ -85,7 +86,7 @@ export async function fetchTeamAgentsForEntry(
 
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('id, name, role, manager_id, is_active')
+        .select('id, name, role, manager_id, is_active, deleted_at')
         .in('id', teamIds);
       if (usersError) throw usersError;
 
@@ -96,7 +97,7 @@ export async function fetchTeamAgentsForEntry(
           const br = branchRoles.get(u.id);
           return br ? { ...u, role: br.role } : u;
         })
-        .filter((u) => u.is_active && u.role === 'agent')
+        .filter((u) => u.is_active && !u.deleted_at && u.role === 'agent')
         .map((u) => ({ id: u.id, name: u.name }))
         .sort((a, b) => a.name.localeCompare(b.name, 'ar'));
     },
@@ -229,7 +230,7 @@ export async function fetchStatsTree(
 
       const { data: allUsersData, error: usersError } = await supabase
         .from('users')
-        .select('id, name, role, manager_id, is_active')
+        .select('id, name, role, manager_id, is_active, deleted_at')
         .in('id', teamIds);
       if (usersError) throw usersError;
 
@@ -253,7 +254,8 @@ export async function fetchStatsTree(
       const usersMap = new Map<string, LightUserRow>();
       const activeIds = new Set<string>();
       allUsersMap.forEach((u) => {
-        if (u.is_active && u.role !== 'premium_agent') {
+        const isAgent = u.role === 'agent' || u.role === 'premium_agent';
+        if ((!isAgent || (u.is_active && !u.deleted_at)) && u.role !== 'premium_agent') {
           usersMap.set(u.id, u);
           activeIds.add(u.id);
         }

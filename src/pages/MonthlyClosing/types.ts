@@ -105,4 +105,8 @@ export interface BasicUser {
   name: string;
   role: UserRole;
   manager_id: string | null;
+  /** حالة الحساب تُستخدم لاستبعاد الوكيل غير النشط من شاشة الإقفال فقط.
+   * التقرير المطبوع يتعمد الاحتفاظ به لإظهار التحصيلات التاريخية. */
+  is_active?: boolean;
+  deleted_at?: string | null;
 }

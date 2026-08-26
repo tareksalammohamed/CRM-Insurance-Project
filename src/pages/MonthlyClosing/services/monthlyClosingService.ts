@@ -68,7 +68,7 @@ export async function fetchUsersByIds(ids: string[]): Promise<BasicUser[]> {
     async () => {
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, role, manager_id')
+        .select('id, name, role, manager_id, is_active, deleted_at')
         .in('id', ids);
       if (error) throw error;
       return (data || []) as BasicUser[];

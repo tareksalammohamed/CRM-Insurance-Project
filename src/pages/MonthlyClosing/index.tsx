@@ -98,6 +98,18 @@ export function MonthlyClosing() {
       const usersData = await fetchUsersByIds(ids);
       const branchRoles = await fetchBranchRoleMap(currentBranchId, ids);
 
+      // الشاشة التشغيلية تستبعد الوكيل المحذوف أو غير النشط، لكن لا نغيّر
+      // usersData الأصلية لأنها المصدر المقصود للإقفال المطبوع التاريخي.
+      const screenUsersData = usersData
+        .map((u) => {
+          const branchRole = branchRoles.get(u.id);
+          return branchRole ? { ...u, role: branchRole.role, manager_id: branchRole.manager_id } : u;
+        })
+        .filter((u) => {
+          const isAgent = u.role === 'agent' || u.role === 'premium_agent';
+          return !isAgent || (u.is_active !== false && !u.deleted_at);
+        });
+
       // فروع مودال الطباعة: مقصورة على الفروع التابعة للنطاق الحالي (ids)
       // بس، مش كل فروع التطبيق.
       fetchBranchesForUserIds(ids).then(setPrintBranches).catch((err) => console.error('Error loading print branches:', err));
@@ -106,8 +118,15 @@ export function MonthlyClosing() {
       const paymentsRaw = await fetchMonthPayments(monthStr);
       const payments = filterPaymentsByOwnerIds(paymentsRaw, ids);
 
-      // 4-5. التجميع وبناء الهرم وبيانات التقرير المطبوع
-      const summary = buildMonthlyClosingSummary(
+      // 4-5. ملخص الشاشة وبيانات التقرير المطبوع يُبنيان منفصلين عمدًا.
+      const screenSummary = buildMonthlyClosingSummary(
+        { id: user!.id, name: user!.name, role: user!.role },
+        screenUsersData,
+        payments,
+        currentBranchId,
+        branchRoles,
+      );
+      const printSummary = buildMonthlyClosingSummary(
         { id: user!.id, name: user!.name, role: user!.role },
         usersData,
         payments,
@@ -115,12 +134,12 @@ export function MonthlyClosing() {
         branchRoles,
       );
 
-      setGrandProduction(summary.grandProduction);
-      setGrandCollection(summary.grandCollection);
-      setSupervisors(summary.supervisors);
-      setDirectAgents(summary.directAgents);
-      setPrintSupervisors(summary.printSupervisors);
-      setPrintDetailRows(summary.printDetailRows);
+      setGrandProduction(screenSummary.grandProduction);
+      setGrandCollection(screenSummary.grandCollection);
+      setSupervisors(screenSummary.supervisors);
+      setDirectAgents(screenSummary.directAgents);
+      setPrintSupervisors(printSummary.printSupervisors);
+      setPrintDetailRows(printSummary.printDetailRows);
 
     } catch (err) {
       console.error('Error loading monthly closing data:', err);
