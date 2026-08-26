@@ -1,7 +1,7 @@
 import { supabase } from '../../../lib/supabase';
 import { format } from 'date-fns';
 import { dalRead } from '../../../lib/dataAccessLayer';
-import { fetchUserSubtreeIdsBranchAware } from '../../../lib/branchHierarchy';
+import { fetchUserSubtreeIdsBranchAware, fetchBranchRoleMap } from '../../../lib/branchHierarchy';
 import { fetchDailyStatsForUsers } from './activityTargetsService';
 import { aggregateEntries } from '../../DailyReports/services/dailyStatsService';
 import { computeActivityScore, computeFinalScore, type ActivityTargets, type ActivityScoreResult } from '../business/performanceScoreCalculator';
@@ -202,6 +202,29 @@ export async function fetchUsersInSubtree(userIds: string[]) {
         .order('name');
       if (error) throw error;
       return data || [];
+    },
+    { emptyValue: [] as any[] },
+  );
+  return result.data;
+}
+
+export async function fetchSupervisoryPerformanceUsers(userIds: string[], branchId: string | null = null) {
+  const result = await dalRead(
+    `reports:supervisoryPerformanceUsers:v1:${userIds.slice().sort().join(',')}:${branchId || 'all'}`,
+    async () => {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, name, role, manager_id, target, is_active, deleted_at')
+        .in('id', userIds);
+      if (error) throw error;
+
+      const branchRoles = await fetchBranchRoleMap(branchId, userIds);
+      return (data || []).map((user: any) => {
+        const branchRole = branchRoles.get(user.id);
+        return branchRole
+          ? { ...user, role: branchRole.role, manager_id: branchRole.manager_id }
+          : user;
+      });
     },
     { emptyValue: [] as any[] },
   );

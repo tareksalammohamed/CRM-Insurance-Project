@@ -28,6 +28,7 @@ import {
   type CustomerRequestFilter,
   fetchAllInstallmentsWithPolicy, fetchAgentsForReport, fetchSimplePaymentsInRange,
   fetchUsersByRole, fetchLeadersPerformance, fetchInstallmentsDueInRange, fetchUsersInSubtree,
+  fetchSupervisoryPerformanceUsers,
 } from './services/reportsService';
 import {
   fetchActivityTargets, fetchDailyStatsForUsers,
@@ -43,6 +44,8 @@ import { ActivityTargetsPanel } from './components/ActivityTargetsPanel';
 import { ReportButtonGroup } from './components/ReportButtonGroup';
 import { PerformanceScoreRow } from './components/PerformanceScoreRow';
 import { CollectionDetailsByAgent } from './components/CollectionDetailsByAgent';
+import { SupervisoryPerformancePanel } from './components/SupervisoryPerformancePanel';
+import { computeSupervisoryPerformanceReport } from './business/supervisoryPerformanceCalculator';
 
 export function Reports() {
   const { user } = useAuth();
@@ -178,6 +181,9 @@ export function Reports() {
         case 'supervisors':
           await loadSupervisorsReport(userIds, start, end);
           break;
+        case 'supervisory_performance':
+          await loadSupervisoryPerformanceReport(userIds, start, end);
+          break;
       }
     } catch (error) {
       console.error('Error loading report:', error);
@@ -280,6 +286,17 @@ export function Reports() {
     setChartData(chart);
   };
 
+  const loadSupervisoryPerformanceReport = async (userIds: string[], start: Date, end: Date) => {
+    const [users, payments, dailyStats] = await Promise.all([
+      fetchSupervisoryPerformanceUsers(userIds, currentBranchId),
+      fetchSimplePaymentsInRange(start, end),
+      fetchDailyStatsForUsers(userIds, start, end),
+    ]);
+    const result = computeSupervisoryPerformanceReport(users, payments, dailyStats, activityTargets ?? undefined);
+    setData(result.data);
+    setChartData(result.chartData);
+  };
+
   const loadSupervisorsReport = async (userIds: string[], start: Date, end: Date) => {
     const supervisors = await fetchUsersByRole(userIds, ['supervisor', 'general_supervisor']);
     const performance = await fetchLeadersPerformance(supervisors, start, end, currentBranchId, activityTargets ?? undefined);
@@ -302,6 +319,7 @@ export function Reports() {
     { id: 'agents', label: 'أداء الوكلاء', icon: UserCheck },
     { id: 'group_leaders', label: 'أداء رؤساء المجموعات', icon: Users2 },
     { id: 'supervisors', label: 'أداء المراقبين', icon: ShieldCheck },
+    { id: 'supervisory_performance', label: 'أداء المراقبة', icon: Layers },
   ];
 
   const cancellationsReportButtons: { id: ReportType; label: string; icon: typeof Users }[] = [
@@ -316,7 +334,9 @@ export function Reports() {
   const { start: periodStart, end: periodEnd } = getDateRange();
   const currentReportLabel = reportType === 'customers'
     ? 'طلبات التأمين وبيانات العملاء'
-    : reportButtons.find((r) => r.id === reportType)?.label;
+    : reportType === 'supervisory_performance'
+      ? 'أداء المراقبة'
+      : reportButtons.find((r) => r.id === reportType)?.label;
   const detailsColumns = data?.details && data.details.length > 0 ? Object.keys(data.details[0]) : [];
 
   return (
@@ -360,14 +380,14 @@ export function Reports() {
         )}
       </div>
 
-      <div className="card print:hidden space-y-4">
+      <div className="card print:hidden border-primary-100/50 bg-gradient-to-br from-white to-primary-50/30 space-y-4">
         <ReportButtonGroup
           title="التقارير"
           buttons={mainReportButtons}
           reportType={reportType}
           onSelect={setReportType}
         />
-        <div className="border-t border-secondary-100 pt-4">
+        <div className="border-t border-primary-100/60 pt-4">
           <ReportButtonGroup
             title="تقارير الأداء"
             buttons={performanceReportButtons}
@@ -375,7 +395,7 @@ export function Reports() {
             onSelect={setReportType}
           />
         </div>
-        <div className="border-t border-secondary-100 pt-4">
+        <div className="border-t border-primary-100/60 pt-4">
           <ReportButtonGroup
             title="نسبة الإلغاءات"
             buttons={cancellationsReportButtons}
@@ -385,7 +405,7 @@ export function Reports() {
         </div>
       </div>
 
-      {(reportType === 'agents' || reportType === 'group_leaders' || reportType === 'supervisors') && (
+      {(reportType === 'agents' || reportType === 'group_leaders' || reportType === 'supervisors' || reportType === 'supervisory_performance') && (
         <ActivityTargetsPanel targets={activityTargets} onSaved={setActivityTargets} />
       )}
 
@@ -394,9 +414,12 @@ export function Reports() {
           فترة الحساب ثابتة دائماً: من أول يناير حتى نهاية الشهر الحالي من سنة {new Date().getFullYear()}
         </p>
       ) : (
-        <div className="card print:hidden">
-          <label className="input-label">الفترة</label>
-          <div className="flex flex-wrap gap-2 mt-1">
+        <div className="card print:hidden border-secondary-100 bg-secondary-50/20">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white shadow-sm text-secondary-600 border border-secondary-100"><Layers className="h-3.5 w-3.5" /></span>
+            <label className="text-sm font-bold text-secondary-900">نطاق التقرير والفترة</label>
+          </div>
+          <div className="flex flex-wrap gap-2">
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value as DateRange)}
@@ -591,6 +614,24 @@ export function Reports() {
               <h3 className="font-semibold text-secondary-900 mb-4">ملخص التقرير</h3>
               {data && (
                 <div className="space-y-4">
+                  {data.supervisoryPerformance && (
+                    <div className="space-y-2">
+                      <div className="rounded-xl bg-primary-50 p-3">
+                        <p className="text-xs font-semibold text-secondary-600">متوسط التقييم النهائي</p>
+                        <p className="mt-1 text-2xl font-black text-primary-700">
+                          {data.supervisoryPerformance.roots.length > 0
+                            ? `${Math.round(data.supervisoryPerformance.roots.reduce((sum: number, root: any) => sum + root.finalScore, 0) / data.supervisoryPerformance.roots.length)}%`
+                            : '—'}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="rounded-lg bg-success-50 p-2 text-center"><p className="text-[11px] text-secondary-500">مراقب</p><strong className="text-success-700">{data.supervisoryPerformance.totalSupervisors}</strong></div>
+                        <div className="rounded-lg bg-primary-50 p-2 text-center"><p className="text-[11px] text-secondary-500">رئيس مجموعة</p><strong className="text-primary-700">{data.supervisoryPerformance.totalGroupLeaders}</strong></div>
+                        <div className="rounded-lg bg-info-50 p-2 text-center"><p className="text-[11px] text-secondary-500">وكيل</p><strong className="text-info-700">{data.supervisoryPerformance.totalAgents}</strong></div>
+                      </div>
+                    </div>
+                  )}
+
                   {data.cancellationRate !== undefined && (
                     <div className="grid grid-cols-1 gap-3 print:grid-cols-1">
                       <button
@@ -707,6 +748,10 @@ export function Reports() {
               )}
             </div>
           </div>
+
+          {reportType === 'supervisory_performance' && data?.supervisoryPerformance && (
+            <SupervisoryPerformancePanel report={data.supervisoryPerformance} />
+          )}
 
           {(reportType === 'collection' || reportType === 'production_collection') ? (
             <CollectionDetailsByAgent
