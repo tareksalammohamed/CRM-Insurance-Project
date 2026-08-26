@@ -246,7 +246,7 @@ export function usePolicyActions({
       } else if (error.code === '23505') {
         notify.error('حدث تعارض في البيانات أثناء الحفظ، برجاء المحاولة مرة أخرى');
       } else {
-        notify.error('حدث خطأ أثناء الحفظ');
+        notify.error(msg || 'حدث خطأ أثناء الحفظ');
       }
     } finally {
       setSaving(false);
