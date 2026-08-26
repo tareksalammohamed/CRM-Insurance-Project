@@ -151,14 +151,15 @@ export async function fetchInstallmentsDueInRange(userIds: string[], start: Date
 
 export async function fetchAgentsForReport(userIds: string[]) {
   const result = await dalRead(
-    `reports:agentsForReport:${userIds.slice().sort().join(',')}`,
+    `reports:agentsForReport:v2:${userIds.slice().sort().join(',')}`,
     async () => {
       const { data, error } = await supabase
         .from('users')
         .select('id, name, target')
         .in('id', userIds)
         .in('role', ['agent', 'premium_agent'])
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .is('deleted_at', null);
       if (error) throw error;
       return data || [];
     },
@@ -190,13 +191,14 @@ export async function fetchSimplePaymentsInRange(start: Date, end: Date) {
 // اختيار، بدل ما تكون مقصورة على أدوار بعينها زي fetchUsersByRole)
 export async function fetchUsersInSubtree(userIds: string[]) {
   const result = await dalRead(
-    `reports:usersInSubtree:${userIds.slice().sort().join(',')}`,
+    `reports:usersInSubtree:v2:${userIds.slice().sort().join(',')}`,
     async () => {
       const { data, error } = await supabase
         .from('users')
         .select('id, name, role')
         .in('id', userIds)
         .eq('is_active', true)
+        .is('deleted_at', null)
         .order('name');
       if (error) throw error;
       return data || [];
@@ -208,14 +210,15 @@ export async function fetchUsersInSubtree(userIds: string[]) {
 
 export async function fetchUsersByRole(userIds: string[], roles: string[]) {
   const result = await dalRead(
-    `reports:usersByRole:${userIds.slice().sort().join(',')}:${roles.slice().sort().join(',')}`,
+    `reports:usersByRole:v2:${userIds.slice().sort().join(',')}:${roles.slice().sort().join(',')}`,
     async () => {
       const { data, error } = await supabase
         .from('users')
         .select('id, name, target')
         .in('id', userIds)
         .in('role', roles)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .is('deleted_at', null);
       if (error) throw error;
       return data || [];
     },
@@ -251,6 +254,10 @@ export async function fetchLeadersPerformance(
 
   for (const leader of leaders) {
     const teamIds = await fetchUserSubtreeIds(leader.id, branchId);
+    // عدد الإيجنت الظاهر بجانب رئيس المجموعة يجب أن يعكس الإيجنت
+    // التشغيليين فقط، لا المستخدمين المحذوفين أو غير النشطين الموجودين
+    // داخل الشجرة التاريخية.
+    const activeAgents = await fetchUsersByRole(teamIds, ['agent', 'premium_agent']);
 
     const achieved = payments
       .filter((p: any) => teamIds.includes(p.installment?.policy?.owner_id))
@@ -268,7 +275,7 @@ export async function fetchLeadersPerformance(
     performance.push({
       id: leader.id,
       name: leader.name,
-      count: teamIds.length - 1,
+      count: activeAgents.length,
       achieved,
       target,
       finalScore: scoreResult.finalScore,
