@@ -352,7 +352,9 @@ async function callOcrSpace(apiKey: string, imageDataUrl: string): Promise<strin
   const params = new URLSearchParams();
   params.set("apikey", apiKey);
   params.set("base64Image", imageDataUrl);
-  params.set("language", "ara");
+  // OCR.Space يعيد E201 أحياناً مع ara على Engine 2؛ auto مدعوم
+  // رسميًا ويكتشف العربية والإنجليزية المختلطة في وثائق التأمين.
+  params.set("language", "auto");
   params.set("isOverlayRequired", "false");
   params.set("scale", "true");
   params.set("OCREngine", "2");

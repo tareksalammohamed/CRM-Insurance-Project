@@ -58,17 +58,68 @@ interface RawExtractionResponse {
   fields?: Record<string, { value?: unknown; confidence?: unknown }>;
 }
 
-function parseExtractionResponse(raw: string): RawExtractionResponse {
-  const cleaned = raw.trim().replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
-  try {
-    const data = JSON.parse(cleaned) as RawExtractionResponse;
-    if (!data || typeof data !== 'object' || typeof data.fields !== 'object' || data.fields === null) {
-      throw new Error('shape');
+function extractFirstJsonObject(raw: string): string {
+  const start = raw.indexOf('{');
+  if (start < 0) throw new Error('json-start');
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < raw.length; i += 1) {
+    const char = raw[i];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === '\\') {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
     }
-    return data;
-  } catch {
-    throw new Error('تعذر فهم استجابة الذكاء الاصطناعي، حاول مرة أخرى');
+
+    if (char === '"') {
+      inString = true;
+    } else if (char === '{') {
+      depth += 1;
+    } else if (char === '}') {
+      depth -= 1;
+      if (depth === 0) return raw.slice(start, i + 1);
+    }
   }
+
+  throw new Error('json-end');
+}
+
+function parseExtractionResponse(raw: string): RawExtractionResponse {
+  const cleaned = raw
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+
+  const candidates = [cleaned];
+  try {
+    const extracted = extractFirstJsonObject(cleaned);
+    if (extracted !== cleaned) candidates.push(extracted);
+  } catch {
+    // سيظهر الخطأ الموحد أسفل الدالة إذا لم نجد JSON صالحاً.
+  }
+
+  for (const candidate of candidates) {
+    try {
+      const data = JSON.parse(candidate) as RawExtractionResponse;
+      if (data && typeof data === 'object' && typeof data.fields === 'object' && data.fields !== null) {
+        return data;
+      }
+    } catch {
+      // نجرب المرشح التالي، لأن بعض النماذج تضيف نصاً خارج JSON.
+    }
+  }
+
+  throw new Error('تعذر فهم استجابة الذكاء الاصطناعي، حاول مرة أخرى');
 }
 
 /** يتجاهل أي حقل غير معروف أو قيمة غير متوافقة مع نوع الحقل الفعلي، حتى لو أخطأ النموذج فى الرد */
