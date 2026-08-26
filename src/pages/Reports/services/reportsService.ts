@@ -26,13 +26,46 @@ export async function fetchCustomersInRange(userIds: string[], start: Date, end:
     async () => {
       const { data, error } = await supabase
         .from('customers')
-        .select('id, name, created_at')
+        .select('id, name, created_at, insurance_amount, owner:owner_id(id, name), policies(id, policy_number, premium_amount, sum_assured, status, created_at)')
         .in('owner_id', userIds)
         .gte('created_at', start.toISOString())
         .lte('created_at', end.toISOString())
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
+    },
+    { emptyValue: [] as any[] },
+  );
+  return result.data;
+}
+
+export type CustomerRequestFilter = 'all' | 'issuance' | 'with_policy';
+
+// تقرير طلبات التأمين يعتمد على نفس تعريف صفحة العملاء: طلب "في الإصدار"
+// هو العميل الذي لا يملك أي وثيقة، و"له وثائق" هو العميل الذي يملك وثيقة واحدة
+// على الأقل. نُبقي الفلترة بعد جلب العلاقات حتى يظل التعريف مطابقاً للصفحة الأصلية.
+export async function fetchCustomerRequestsReport(
+  userIds: string[],
+  start: Date,
+  end: Date,
+  filter: CustomerRequestFilter = 'all',
+) {
+  const result = await dalRead(
+    `reports:customerRequests:${userIds.slice().sort().join(',')}:${start.toISOString()}:${end.toISOString()}:${filter}`,
+    async () => {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('id, name, created_at, insurance_amount, owner:owner_id(id, name), policies(id, policy_number, premium_amount, sum_assured, status, created_at)')
+        .in('owner_id', userIds)
+        .gte('created_at', start.toISOString())
+        .lte('created_at', end.toISOString())
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+
+      return (data || []).filter((customer: any) => {
+        const hasPolicies = Array.isArray(customer.policies) && customer.policies.length > 0;
+        return filter === 'all' || (filter === 'issuance' ? !hasPolicies : hasPolicies);
+      });
     },
     { emptyValue: [] as any[] },
   );

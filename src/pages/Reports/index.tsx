@@ -24,7 +24,8 @@ import { PageHeader } from '../../components/layout/PageHeader';
 import { ROLE_LABELS } from '../../lib/supabase';
 import type { ReportType, DateRange } from './types';
 import {
-  fetchUserSubtreeIds, fetchCustomersInRange, fetchPoliciesForOwners, fetchPaymentsInRange,
+  fetchUserSubtreeIds, fetchCustomerRequestsReport, fetchPoliciesForOwners, fetchPaymentsInRange,
+  type CustomerRequestFilter,
   fetchAllInstallmentsWithPolicy, fetchAgentsForReport, fetchSimplePaymentsInRange,
   fetchUsersByRole, fetchLeadersPerformance, fetchInstallmentsDueInRange, fetchUsersInSubtree,
 } from './services/reportsService';
@@ -47,7 +48,8 @@ export function Reports() {
   const { user } = useAuth();
   const { currentBranchId } = useBranchContext();
   const navigate = useNavigate();
-  const [reportType, setReportType] = useState<ReportType>('collection');
+  const [reportType, setReportType] = useState<ReportType>('customers');
+  const [customerRequestFilter, setCustomerRequestFilter] = useState<CustomerRequestFilter>('all');
   const [dateRange, setDateRange] = useState<DateRange>('month');
   const currentYear = new Date().getFullYear();
   // فلتر الشهر: بصيغة yyyy-MM، يُستخدم فقط عندما تكون dateRange = 'month'
@@ -82,7 +84,7 @@ export function Reports() {
     if (user) {
       loadReport();
     }
-  }, [user, reportType, dateRange, selectedMonth, selectedQuarter, quarterYear, selectedYear, selectedUserId, currentBranchId, activityTargets]);
+  }, [user, reportType, dateRange, selectedMonth, selectedQuarter, quarterYear, selectedYear, selectedUserId, currentBranchId, activityTargets, customerRequestFilter]);
 
   useReconnectRefetch(() => { if (user) loadReport(); });
 
@@ -150,7 +152,7 @@ export function Reports() {
 
       switch (reportType) {
         case 'customers':
-          await loadCustomersReport(userIds, start, end);
+          await loadCustomersReport(userIds, start, end, customerRequestFilter);
           break;
         case 'policies':
           await loadPoliciesReport(userIds);
@@ -184,8 +186,13 @@ export function Reports() {
     }
   };
 
-  const loadCustomersReport = async (userIds: string[], start: Date, end: Date) => {
-    const customers = await fetchCustomersInRange(userIds, start, end);
+  const loadCustomersReport = async (
+    userIds: string[],
+    start: Date,
+    end: Date,
+    filter: CustomerRequestFilter,
+  ) => {
+    const customers = await fetchCustomerRequestsReport(userIds, start, end, filter);
     const { data: reportData, chartData: chart } = computeCustomersReport(customers);
     setData(reportData);
     setChartData(chart);
@@ -283,7 +290,7 @@ export function Reports() {
   };
 
   const mainReportButtons: { id: ReportType; label: string; icon: typeof Users }[] = [
-    { id: 'customers', label: 'تقرير العملاء', icon: Users },
+    { id: 'customers', label: 'طلبات التأمين', icon: Users },
     { id: 'policies', label: 'تقرير الوثائق', icon: FileText },
     { id: 'production', label: 'الإنتاج الجديد', icon: TrendingUp },
     { id: 'collection', label: 'التحصيل الدوري', icon: Wallet },
@@ -307,7 +314,9 @@ export function Reports() {
   const yearOptions = Array.from({ length: 7 }, (_, i) => currentYear + 1 - i);
 
   const { start: periodStart, end: periodEnd } = getDateRange();
-  const currentReportLabel = reportButtons.find((r) => r.id === reportType)?.label;
+  const currentReportLabel = reportType === 'customers'
+    ? 'طلبات التأمين وبيانات العملاء'
+    : reportButtons.find((r) => r.id === reportType)?.label;
   const detailsColumns = data?.details && data.details.length > 0 ? Object.keys(data.details[0]) : [];
 
   return (
@@ -326,8 +335,10 @@ export function Reports() {
 
       <div className="print:hidden">
         <PageHeader
-          title="مؤشرات الأداء والإحصائيات"
-          subtitle="تقارير أداء الوكلاء ورؤساء المجموعات والمراقبين"
+          title={reportType === 'customers' ? 'طلبات التأمين وبيانات العملاء' : 'مؤشرات الأداء والإحصائيات'}
+          subtitle={reportType === 'customers'
+            ? 'متابعة طلبات التأمين، حالة الإصدار، وقيمة التأمين حسب الوكيل'
+            : 'تقارير أداء الوكلاء ورؤساء المجموعات والمراقبين'}
           action={
             <div className="flex items-center gap-2">
               <button
@@ -444,6 +455,42 @@ export function Reports() {
         </div>
       )}
 
+      {reportType === 'customers' && (
+        <div className="card print:hidden border-primary-100 bg-gradient-to-br from-white to-primary-50/40 space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold text-secondary-900">حالة طلبات التأمين</p>
+              <p className="text-xs text-secondary-500 mt-1">اختر الطلبات التي تريد مراجعتها في التقرير والجدول أدناه</p>
+            </div>
+            <span className="badge badge-primary">{data?.total ?? 0} نتيجة</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {([
+              { value: 'all' as const, label: 'كل الطلبات', icon: Layers },
+              { value: 'issuance' as const, label: 'طلبات في الإصدار', icon: RefreshCw },
+              { value: 'with_policy' as const, label: 'لها وثائق', icon: FileText },
+            ]).map(({ value, label, icon: Icon }) => {
+              const isActive = customerRequestFilter === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setCustomerRequestFilter(value)}
+                  className={`min-h-12 rounded-xl border px-3 py-2.5 flex items-center justify-center gap-2 text-sm font-semibold transition-all duration-200 active:scale-[0.98] ${
+                    isActive
+                      ? 'bg-primary-600 text-white border-primary-600 shadow-primary-glow-inset'
+                      : 'bg-white text-secondary-700 border-secondary-200 hover:border-primary-300 hover:bg-primary-50/50'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {(reportType === 'collection' || reportType === 'production_collection') && (
         <div className="card print:hidden">
           <div className="flex flex-wrap gap-4">
@@ -484,10 +531,29 @@ export function Reports() {
         </div>
       ) : (
         <>
+          {reportType === 'customers' && data && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 print:hidden">
+              {[
+                { label: 'إجمالي الطلبات', value: data.total, accentClass: 'bg-primary-50 text-primary-700', icon: Users },
+                { label: 'طلبات في الإصدار', value: data.issuanceCount, accentClass: 'bg-warning-50 text-warning-700', icon: RefreshCw },
+                { label: 'طلبات لها وثائق', value: data.withPolicyCount, accentClass: 'bg-success-50 text-success-700', icon: FileText },
+                { label: 'إجمالي مبالغ التأمين', value: formatCurrency(data.totalInsuranceAmount || 0), accentClass: 'bg-info-50 text-info-700', icon: Wallet },
+              ].map(({ label, value, accentClass, icon: Icon }) => (
+                <div key={label} className="relative overflow-hidden rounded-2xl border border-secondary-100 bg-white p-4 shadow-soft transition-transform duration-200 hover:-translate-y-0.5">
+                  <div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl ${accentClass}`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <p className="text-xs font-medium text-secondary-500 leading-5">{label}</p>
+                  <p className="text-figure mt-1 text-xl font-extrabold text-secondary-900">{value}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print:grid-cols-1">
             <div className="lg:col-span-2 card print:shadow-none print:border print:break-inside-avoid">
               <h3 className="font-semibold text-secondary-900 mb-4 print:hidden">
-                {currentReportLabel}
+                {reportType === 'customers' ? 'الطلبات المسجلة حسب الفترة' : currentReportLabel}
               </h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
@@ -647,6 +713,52 @@ export function Reports() {
               installments={data?.installmentsRaw || []}
               statusFilter={statusFilter}
             />
+          ) : reportType === 'customers' ? (
+            <div className="card print:shadow-none print:border print:break-inside-avoid space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-bold text-secondary-900">سجل طلبات التأمين</h3>
+                  <p className="text-xs text-secondary-500 mt-1">الاسم، تاريخ التسجيل، مبلغ التأمين، والوكيل المسؤول</p>
+                </div>
+                <span className="badge badge-secondary">{data?.total ?? 0} طلب</span>
+              </div>
+              {data?.details?.length > 0 ? (
+                <div className="table-container table-zebra print:hover:bg-transparent">
+                  <table className="min-w-[760px]">
+                    <thead>
+                      <tr>
+                        <th>اسم العميل</th>
+                        <th>تاريخ التسجيل</th>
+                        <th>مبلغ التأمين</th>
+                        <th>اسم الوكيل</th>
+                        <th>الحالة</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.details.map((row: Record<string, any>, idx: number) => (
+                        <tr key={`${row['اسم العميل']}-${idx}`}>
+                          <td className="font-semibold text-secondary-900">{row['اسم العميل']}</td>
+                          <td className="text-secondary-600">{row['تاريخ التسجيل']}</td>
+                          <td className="font-bold text-primary-700">{row['مبلغ التأمين']}</td>
+                          <td className="text-secondary-700">{row['اسم الوكيل']}</td>
+                          <td>
+                            <span className={row['الحالة'] === 'في الإصدار' ? 'badge badge-warning' : 'badge badge-success'}>
+                              {row['الحالة']}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="empty-state py-8">
+                  <div className="empty-state-icon"><FileText className="w-5 h-5" /></div>
+                  <p className="empty-state-title">لا توجد طلبات مطابقة</p>
+                  <p className="empty-state-desc">جرّب تغيير حالة الطلب أو الفترة المحددة</p>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="card print:shadow-none print:border print:break-inside-avoid">
               <h3 className="font-semibold text-secondary-900 mb-4">تفاصيل السجلات</h3>

@@ -38,13 +38,35 @@ export function computeCustomersReport(customers: any[]) {
     value: count
   }));
 
-  const details = customers.map((c: any) => ({
-    'اسم العميل': c.name,
-    'تاريخ التسجيل': format(new Date(c.created_at), 'd MMMM yyyy', { locale: ar })
-  }));
+  const withPolicyCount = customers.filter(
+    (c: any) => Array.isArray(c.policies) && c.policies.length > 0,
+  ).length;
+  const issuanceCount = customers.length - withPolicyCount;
+  const totalInsuranceAmount = customers.reduce(
+    (sum: number, c: any) => sum + Number(c.insurance_amount || 0),
+    0,
+  );
+
+  const details = customers.map((c: any) => {
+    const hasPolicy = Array.isArray(c.policies) && c.policies.length > 0;
+    return {
+      'اسم العميل': c.name,
+      'تاريخ التسجيل': format(new Date(c.created_at), 'd MMMM yyyy', { locale: ar }),
+      'مبلغ التأمين': c.insurance_amount ? formatCurrency(Number(c.insurance_amount)) : '-',
+      'اسم الوكيل': c.owner?.name || '-',
+      'الحالة': hasPolicy ? 'لها وثائق' : 'في الإصدار',
+    };
+  });
 
   return {
-    data: { customers: customers.length, total: customers.length, details },
+    data: {
+      customers: customers.length,
+      total: customers.length,
+      issuanceCount,
+      withPolicyCount,
+      totalInsuranceAmount,
+      details,
+    },
     chartData: chart,
   };
 }
