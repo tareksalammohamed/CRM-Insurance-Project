@@ -137,7 +137,7 @@ export function Collection() {
       ) : (
         <>
           {/* ===== البحث والفلاتر ===== */}
-          <div className="card space-y-3">
+          <div className="surface-toolbar">
             <CollectionSearch
               localSearch={localSearch}
               onLocalSearchChange={setLocalSearch}

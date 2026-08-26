@@ -91,7 +91,7 @@ export function Customers() {
       <CustomerStatsCards stats={stats} statsLoading={statsLoading} />
 
       {/* ===== البحث والفلاتر ===== */}
-      <div className="card space-y-3">
+      <div className="surface-toolbar">
         <CustomerSearch
           localSearch={localSearch}
           onLocalSearchChange={setLocalSearch}

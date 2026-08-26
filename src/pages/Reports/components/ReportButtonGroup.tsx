@@ -27,10 +27,10 @@ export function ReportButtonGroup({
               key={btn.id}
               onClick={() => onSelect(btn.id)}
               className={clsx(
-                'flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium border transition-colors',
+                'btn min-h-11 gap-2 px-3.5 text-sm border transition-all duration-200',
                 active
-                  ? 'bg-primary-600 border-primary-600 text-white shadow-sm'
-                  : 'bg-white border-secondary-200 text-secondary-600 hover:bg-secondary-50 hover:border-secondary-300'
+                  ? 'bg-primary-700 border-primary-700 text-white shadow-primary-glow-inset'
+                  : 'bg-white border-secondary-200 text-secondary-600 hover:bg-primary-50 hover:border-primary-200 hover:text-primary-700'
               )}
             >
               <Icon className="w-4 h-4" />

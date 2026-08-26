@@ -204,7 +204,7 @@ export function Header() {
 
           {/* بروفايل */}
           <div className="relative" ref={profileRef}>
-            <button onClick={() => setProfileOpen(!profileOpen)} data-tour-id="header-profile" className="flex min-h-11 items-center gap-1.5 rounded-xl p-1.5 transition-colors hover:bg-secondary-100">
+            <button onClick={() => setProfileOpen(!profileOpen)} aria-label="فتح قائمة الحساب" data-tour-id="header-profile" className="flex min-h-11 items-center gap-1.5 rounded-xl p-1.5 transition-colors hover:bg-secondary-100">
               <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
                 {user.avatar_url
                   ? <img src={user.avatar_url} alt={user.name} className="w-8 h-8 rounded-full object-cover" loading="lazy" decoding="async" />

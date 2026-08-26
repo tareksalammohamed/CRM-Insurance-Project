@@ -46,7 +46,7 @@ export function StatsCard({
           <Icon className={iconClassName} />
         </span>
       </div>
-      <p className={valueClassName}>{value}</p>
+      <p className={clsx('text-figure', valueClassName)}>{value}</p>
       {footer}
     </>
   );
@@ -57,7 +57,7 @@ export function StatsCard({
         type="button"
         onClick={onClick}
         className={clsx(
-          'kpi-card card-interactive text-right w-full cursor-pointer active:translate-y-0',
+          'kpi-card card-interactive text-right w-full cursor-pointer active:translate-y-0 touch-target',
           borderClassName
         )}
       >

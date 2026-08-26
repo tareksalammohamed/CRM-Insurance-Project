@@ -43,7 +43,7 @@ export function DailyReports() {
       <div className="space-y-4">
         <PageHeader title="تقاريري اليومية" subtitle="مواعيدك المسجّلة وتثبيت موقعك عليها، وإحصائياتك المسجّلة من رئيس مجموعتك" />
 
-        <div className="flex gap-2 border-b border-secondary-100">
+        <div className="surface-tabs">
           <button
             onClick={() => setAgentTab('appointments')}
             className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
@@ -84,7 +84,7 @@ export function DailyReports() {
           <PageHeader title="تقارير العمل اليومية" subtitle="إدخال إحصائيات فريقك بعد استلام التقرير الورقي، ومتابعة إحصائياتهم المجمّعة" />
         </div>
 
-        <div className="flex gap-2 border-b border-secondary-100 print:hidden">
+        <div className="surface-tabs print:hidden">
           <button
             onClick={() => setGroupLeaderTab('entry')}
             className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${

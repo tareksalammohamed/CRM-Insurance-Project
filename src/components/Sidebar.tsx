@@ -203,6 +203,7 @@ export function Sidebar() {
                   'transition-colors duration-200 touch-target',
                   active ? 'is-active text-primary-600' : 'text-secondary-600'
                 )}
+                aria-current={active ? 'page' : undefined}
               >
                 <div className={clsx('p-1.5 rounded-xl transition-all duration-200', active ? 'bg-primary-100' : '')}>
                   <Icon className={clsx('w-5 h-5', active && 'text-primary-600')} />
@@ -341,6 +342,7 @@ function NavGroupSection({
       <button
         onClick={onToggle}
         className="sidebar-group-toggle flex items-center justify-between w-full h-8 px-2 rounded-lg text-secondary-400 hover:text-primary-700 transition-colors duration-150"
+        aria-expanded={expanded}
       >
         <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide">
           <GroupIcon className="w-3.5 h-3.5" />
@@ -380,13 +382,14 @@ function NavLinkRow({
     <Link
       to={item.path}
       onClick={onNavigate}
-      className={clsx(
-        'sidebar-nav-row pressable relative flex items-center h-12 gap-3 pr-2.5 pl-3 rounded-xl text-sm transition-all duration-200 touch-target',
-        active
-          ? 'sidebar-nav-row-active bg-gradient-to-l from-primary-50 to-primary-50/40 text-primary-700 font-semibold'
-          : 'text-secondary-600 font-medium hover:bg-secondary-50 hover:text-secondary-900'
-      )}
-    >
+        className={clsx(
+          'sidebar-nav-row pressable relative flex items-center h-12 gap-3 pr-2.5 pl-3 rounded-xl text-sm transition-all duration-200 touch-target',
+          active
+            ? 'sidebar-nav-row-active bg-gradient-to-l from-primary-50 to-primary-50/40 text-primary-700 font-semibold'
+            : 'text-secondary-600 font-medium hover:bg-secondary-50 hover:text-secondary-900'
+        )}
+        aria-current={active ? 'page' : undefined}
+      >
       {active && (
         <span className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-primary-600" />
       )}

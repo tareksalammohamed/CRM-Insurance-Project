@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
 import { AuthProvider, useAuth } from './hooks/useAuth';
@@ -117,9 +117,9 @@ function AppLayout() {
         // ===== Mobile: padding top للـ header + bottom للـ bottom nav =====
         'pt-14 md:pt-16',
         'pb-20 md:pb-8',        // pb-20 = مكان الـ bottom nav (64px + 16px)
-        'app-main px-3 md:px-4 lg:px-8'
+        'app-main px-3 md:px-5 lg:px-8'
       )}>
-        <div key={location.pathname} className="app-content max-w-7xl mx-auto mt-3 md:mt-4 animate-fadeIn">
+        <div key={location.pathname} className="app-content max-w-7xl mx-auto mt-4 md:mt-6 animate-fadeIn">
           <ErrorBoundary boundaryName={location.pathname}>
             <Suspense fallback={<LoadingSpinner />}>
               <Routes>

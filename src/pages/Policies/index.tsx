@@ -79,7 +79,7 @@ export function Policies() {
       <PoliciesStats stats={stats} statsLoading={statsLoading} />
 
       {/* ===== البحث والفلاتر ===== */}
-      <div className="card space-y-3">
+      <div className="surface-toolbar">
         <PoliciesSearch
           localSearch={localSearch}
           onLocalSearchChange={setLocalSearch}
