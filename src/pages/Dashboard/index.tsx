@@ -71,10 +71,10 @@ export function Dashboard() {
       <section className="dashboard-section-block" aria-labelledby="dashboard-performance-title">
         <div className="dashboard-section-heading">
           <div>
-            <span className="dashboard-section-kicker">المتابعة الإدارية</span>
-            <h3 id="dashboard-performance-title">أداء الفريق</h3>
+            <span className="dashboard-section-kicker">ملخص الفريق</span>
+            <h3 id="dashboard-performance-title">إحصائيات الفريق</h3>
           </div>
-          <span className="dashboard-section-note">متابعة هرمية</span>
+          <span className="dashboard-section-note">أرقام الشهر المختار</span>
         </div>
         <DashboardPerformance
           teamPerformanceSections={teamPerformanceSections}
