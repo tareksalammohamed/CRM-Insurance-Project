@@ -70,14 +70,7 @@ export function Dashboard() {
         <DashboardTargets stats={stats} selectedMonth={selectedMonth} />
       </section>
 
-      <section className="dashboard-section-block" aria-labelledby="dashboard-performance-title">
-        <div className="dashboard-section-heading">
-          <div>
-            <span className="dashboard-section-kicker">ملخص الفريق</span>
-            <h3 id="dashboard-performance-title">إحصائيات الفريق</h3>
-          </div>
-          <span className="dashboard-section-note">أرقام الشهر المختار</span>
-        </div>
+      <section className="dashboard-section-block" aria-label="إحصائيات الفريق">
         <DashboardPerformance
           teamPerformanceSections={teamPerformanceSections}
           sheetStack={sheetStack}
