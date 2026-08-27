@@ -425,6 +425,37 @@ body {
   .surface-tabs > button.border-transparent:hover { background: rgb(232 244 238 / 0.8); }
   .metric-label { @apply text-xs font-semibold text-secondary-500; }
   .metric-value { @apply text-2xl font-black tracking-tight text-secondary-900; font-variant-numeric: tabular-nums; }
+  .dashboard-section-block {
+    position: relative;
+  }
+  .dashboard-section-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 0 0 0.85rem;
+    padding-inline: 0.15rem;
+  }
+  .dashboard-section-heading h3 {
+    margin-top: 0.18rem;
+    color: #0d2925;
+    font-size: 1.05rem;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+  }
+  .dashboard-section-kicker {
+    display: block;
+    color: #07805b;
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+  }
+  .dashboard-section-note {
+    color: #7a9187;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
   .dashboard-section-title {
     display: flex;
     align-items: center;
@@ -618,6 +649,13 @@ body {
     box-shadow: 0 8px 18px rgb(13 59 51 / 0.05);
   }
   .dashboard-targets-panel { border-top: 4px solid #c5ed58; }
+  .dashboard-section-block > .dashboard-targets-panel { margin-top: 0.05rem; }
+  .dashboard-charts-block > * { min-width: 0; }
+  @media (max-width: 767px) {
+    .dashboard-section-heading { align-items: flex-start; margin-bottom: 0.65rem; }
+    .dashboard-section-heading h3 { font-size: 0.98rem; }
+    .dashboard-section-note { padding-top: 0.35rem; font-size: 0.65rem; }
+  }
   .dashboard-targets-panel .drilldown-card { min-height: 7.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   .dashboard-targets-panel .drilldown-card svg { filter: drop-shadow(0 3px 3px rgb(13 59 51 / 0.1)); }
 

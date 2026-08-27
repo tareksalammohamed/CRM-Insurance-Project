@@ -53,28 +53,59 @@ export function Dashboard() {
         <DashboardEmptyState />
       )}
 
-      <DashboardStats stats={stats} selectedMonth={selectedMonth} />
+      <section className="dashboard-section-block" aria-labelledby="dashboard-overview-title">
+        <div className="dashboard-section-heading">
+          <div>
+            <span className="dashboard-section-kicker">ملخص المحفظة</span>
+            <h3 id="dashboard-overview-title">العملاء والوثائق والإنتاج</h3>
+          </div>
+          <span className="dashboard-section-note">أرقام الشهر المختار</span>
+        </div>
+        <DashboardStats stats={stats} selectedMonth={selectedMonth} />
+      </section>
 
-      <DashboardTargets stats={stats} selectedMonth={selectedMonth} />
+      <section className="dashboard-section-block" aria-label="أهداف الشهر">
+        <DashboardTargets stats={stats} selectedMonth={selectedMonth} />
+      </section>
 
-      <DashboardPerformance
-        teamPerformanceSections={teamPerformanceSections}
-        sheetStack={sheetStack}
-        getChildrenDetails={getChildrenDetails}
-        openTeamMemberSheet={openTeamMemberSheet}
-        handleSelectChild={handleSelectChild}
-        handleSheetBack={handleSheetBack}
-        handleSheetClose={handleSheetClose}
-        selectedMonth={selectedMonth}
-      />
+      <section className="dashboard-section-block" aria-labelledby="dashboard-performance-title">
+        <div className="dashboard-section-heading">
+          <div>
+            <span className="dashboard-section-kicker">المتابعة الإدارية</span>
+            <h3 id="dashboard-performance-title">أداء الفريق</h3>
+          </div>
+          <span className="dashboard-section-note">متابعة هرمية</span>
+        </div>
+        <DashboardPerformance
+          teamPerformanceSections={teamPerformanceSections}
+          sheetStack={sheetStack}
+          getChildrenDetails={getChildrenDetails}
+          openTeamMemberSheet={openTeamMemberSheet}
+          handleSelectChild={handleSelectChild}
+          handleSheetBack={handleSheetBack}
+          handleSheetClose={handleSheetClose}
+          selectedMonth={selectedMonth}
+        />
+      </section>
 
-      <DashboardKPIs stats={stats} cancellationSummary={cancellationSummary} isCurrentMonth={isCurrentMonth} selectedMonth={selectedMonth} />
+      <section className="dashboard-section-block" aria-labelledby="dashboard-collection-title">
+        <div className="dashboard-section-heading">
+          <div>
+            <span className="dashboard-section-kicker">السيولة والمتابعة</span>
+            <h3 id="dashboard-collection-title">التحصيل والإلغاءات</h3>
+          </div>
+          <span className="dashboard-section-note">اختصارات للمراجعة</span>
+        </div>
+        <DashboardKPIs stats={stats} cancellationSummary={cancellationSummary} selectedMonth={selectedMonth} />
+      </section>
 
-      <DashboardCharts
-        totalPolicies={stats?.totalPolicies || 0}
-        policyStatusData={policyStatusData}
-        chartData={chartData}
-      />
+      <section className="dashboard-section-block dashboard-charts-block" aria-label="الرسوم البيانية">
+        <DashboardCharts
+          totalPolicies={stats?.totalPolicies || 0}
+          policyStatusData={policyStatusData}
+          chartData={chartData}
+        />
+      </section>
     </div>
   );
 }
