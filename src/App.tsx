@@ -24,6 +24,7 @@ import { HelpPanel } from './features/help/HelpPanel';
 import { Tour } from './features/help/Tour';
 import { useFirstRunTour } from './features/help/useFirstRunTour';
 import { UpdateAvailablePrompt } from './components/UpdateAvailablePrompt';
+import { PushNotificationPrompt } from './components/PushNotificationPrompt';
 
 
 
@@ -109,6 +110,7 @@ function AppLayout() {
     <div className="app-shell min-h-screen min-h-[100dvh] bg-secondary-50">
       <Sidebar />
       <Header />
+      <PushNotificationPrompt />
 
       <main className={clsx(
         'transition-all duration-300',

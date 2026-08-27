@@ -2,7 +2,7 @@
 // Provides offline caching for the app shell/static assets and keeps
 // itself auto-updated. Self-contained, no third-party dependency.
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `crm-insurance-cache-${CACHE_VERSION}`;
 
 // Minimal app-shell precache. Vite-hashed build assets are cached on the
@@ -31,6 +31,47 @@ self.addEventListener('activate', (event) => {
         )
       )
       .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = { body: event.data?.text() || '' };
+  }
+
+  const title = payload.title || 'إشعار جديد';
+  const options = {
+    body: payload.body || payload.message || '',
+    icon: payload.icon || '/icons/icon-192.png',
+    badge: payload.badge || '/icons/icon-192.png',
+    tag: payload.tag || (payload.notification_id ? `crm-notification-${payload.notification_id}` : 'crm-notification'),
+    renotify: true,
+    dir: 'rtl',
+    lang: 'ar',
+    data: {
+      url: payload.url || '/',
+      notification_id: payload.notification_id || null,
+    },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = new URL(event.notification.data?.url || '/', self.location.origin).href;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      const matchingClient = clientList.find((client) => client.url.startsWith(self.location.origin));
+      if (matchingClient) {
+        return matchingClient.focus().then(() => matchingClient.navigate(targetUrl));
+      }
+      return self.clients.openWindow(targetUrl);
+    })
   );
 });
 
