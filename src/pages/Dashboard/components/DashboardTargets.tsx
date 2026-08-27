@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, Target, Clock } from 'lucide-react';
+import { BadgeCheck, Goal, Flag, Receipt } from 'lucide-react';
 import type { DashboardStats } from '../types';
 import { buildCollectionDrillDownUrl, formatCurrency } from '../utils';
 
@@ -16,11 +16,11 @@ export function DashboardTargets({ stats, selectedMonth }: DashboardTargetsProps
     <div className="card dashboard-targets-panel">
       <div className="flex items-start justify-between gap-3 mb-5">
         <div>
-          <span className="dashboard-kicker">خطة الشهر</span>
+          <span className="dashboard-kicker">مستهدفات الشهر</span>
           <h3 className="dashboard-section-title text-lg">التارجت</h3>
         </div>
-        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-warning-50 text-warning-600 ring-1 ring-warning-100">
-          <Target className="h-5 w-5" />
+        <span className="target-summary-icon flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-50 text-primary-700 ring-1 ring-primary-100">
+          <Goal className="h-5 w-5" />
         </span>
       </div>
       <div className="mb-6">
@@ -43,22 +43,22 @@ export function DashboardTargets({ stats, selectedMonth }: DashboardTargetsProps
       </div>
 
       <div className="grid grid-cols-3 gap-3 md:gap-4">
-        <button type="button" onClick={openPaid} className="drilldown-card bg-success-50 text-center">
-          <CheckCircle className="w-8 h-8 text-success-600 mx-auto mb-2" />
+        <button type="button" onClick={openPaid} className="drilldown-card target-metric-card bg-success-50 text-center">
+          <BadgeCheck className="w-8 h-8 text-success-600 mx-auto mb-2" />
           <p className="text-2xl font-bold text-success-700">
             {formatCurrency(stats?.achieved || 0)}
           </p>
           <p className="text-xs text-success-600 mt-1">المحقق</p>
         </button>
-        <div className="drilldown-card bg-warning-50 text-center">
-          <Target className="w-8 h-8 text-warning-600 mx-auto mb-2" />
+        <div className="drilldown-card target-metric-card bg-warning-50 text-center">
+          <Flag className="w-8 h-8 text-warning-600 mx-auto mb-2" />
           <p className="text-2xl font-bold text-warning-700">
             {formatCurrency(stats?.remaining || 0)}
           </p>
-          <p className="text-xs text-warning-600 mt-1">المتبقي على التارجت</p>
+          <p className="text-xs text-warning-600 mt-1">المتبقي للهدف</p>
         </div>
-        <button type="button" onClick={openPaid} className="drilldown-card bg-info-50 text-center">
-          <Clock className="w-8 h-8 text-info-600 mx-auto mb-2" />
+        <button type="button" onClick={openPaid} className="drilldown-card target-metric-card bg-info-50 text-center">
+          <Receipt className="w-8 h-8 text-info-600 mx-auto mb-2" />
           <p className="text-2xl font-bold text-info-700">
             {stats?.paidInstallmentsCount || 0}
           </p>

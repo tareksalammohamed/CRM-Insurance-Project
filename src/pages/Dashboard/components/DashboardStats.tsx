@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { FileText, DollarSign, TrendingUp, Users } from 'lucide-react';
+import { FileCheck, TrendingUp, UsersRound, WalletCards } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { DashboardStats as DashboardStatsType } from '../types';
 import { buildCollectionDrillDownUrl, formatCurrency } from '../utils';
@@ -92,7 +92,7 @@ export function DashboardStats({ stats, selectedMonth }: DashboardStatsProps) {
       <StatsCard
         label="العملاء"
         value={stats?.totalCustomers || 0}
-        icon={Users}
+        icon={UsersRound}
         borderClassName="border-r-4 border-r-info-500"
         iconClassName="w-4 h-4 text-info-500 shrink-0"
         labelClassName="text-xs md:text-sm text-secondary-900"
@@ -102,7 +102,7 @@ export function DashboardStats({ stats, selectedMonth }: DashboardStatsProps) {
       <StatsCard
         label="الوثائق"
         value={stats?.totalPolicies || 0}
-        icon={FileText}
+        icon={FileCheck}
         borderClassName="border-r-4 border-r-success-500"
         iconClassName="w-4 h-4 text-success-500 shrink-0"
         valueClassName="text-xl md:text-2xl font-bold text-success-600 mt-1.5"
@@ -124,7 +124,7 @@ export function DashboardStats({ stats, selectedMonth }: DashboardStatsProps) {
 
       <DrillDownCard
         label="التحصيل الدوري"
-        icon={DollarSign}
+        icon={WalletCards}
         paid={stats?.periodicCollection || 0}
         totalDue={stats?.periodicCollectionTotal || 0}
         subtype="periodic"

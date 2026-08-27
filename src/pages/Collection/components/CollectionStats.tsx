@@ -1,4 +1,4 @@
-import { Wallet, CheckCircle, Hash, Receipt } from 'lucide-react';
+import { HandCoins, BadgeCheck, Banknote, ReceiptText } from 'lucide-react';
 import type { CollectionQuickStats } from '../services/collectionService';
 import { formatCurrency } from '../utils/formatCurrency';
 import { StatsCard } from '../../../components/ui/StatsCard';
@@ -20,7 +20,7 @@ export function CollectionStats({ quickStats, quickStatsLoading }: CollectionSta
           <StatsCard
             label="المستحق"
             value={formatCurrency(quickStats?.dueMonthAmount || 0)}
-            icon={Wallet}
+            icon={HandCoins}
             borderClassName="border-r-4 border-r-warning-500"
             iconClassName="w-4 h-4 text-warning-500 shrink-0"
             valueClassName="text-lg md:text-2xl font-bold text-secondary-900 mt-1.5 truncate"
@@ -33,7 +33,7 @@ export function CollectionStats({ quickStats, quickStatsLoading }: CollectionSta
           <StatsCard
             label="محصَّل اليوم"
             value={formatCurrency(quickStats?.collectedTodayAmount || 0)}
-            icon={CheckCircle}
+            icon={BadgeCheck}
             borderClassName="border-r-4 border-r-success-500"
             iconClassName="w-4 h-4 text-success-500 shrink-0"
             valueClassName="text-lg md:text-2xl font-bold text-success-600 mt-1.5 truncate"
@@ -41,7 +41,7 @@ export function CollectionStats({ quickStats, quickStatsLoading }: CollectionSta
           <StatsCard
             label="إجمالي المسدد خلال الشهر الحالي"
             value={formatCurrency(quickStats?.collectedMonthAmount || 0)}
-            icon={Hash}
+            icon={Banknote}
             borderClassName="border-r-4 border-r-primary-500"
             iconClassName="w-4 h-4 text-primary-500 shrink-0"
             valueClassName="text-lg md:text-2xl font-bold text-secondary-900 mt-1.5 truncate"
@@ -49,7 +49,7 @@ export function CollectionStats({ quickStats, quickStatsLoading }: CollectionSta
           <StatsCard
             label="أقساط محصلة اليوم"
             value={quickStats?.collectedTodayCount ?? 0}
-            icon={Receipt}
+            icon={ReceiptText}
             borderClassName="border-r-4 border-r-info-500"
             iconClassName="w-4 h-4 text-info-500 shrink-0"
             valueClassName="text-lg md:text-2xl font-bold text-secondary-900 mt-1.5"

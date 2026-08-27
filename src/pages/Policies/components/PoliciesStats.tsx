@@ -1,4 +1,4 @@
-import { FileText, CheckCircle2, XCircle, TrendingUp } from 'lucide-react';
+import { FileCheck, CheckCircle2, XCircle, TrendingUp } from 'lucide-react';
 import type { PolicyStats } from '../services/policiesService';
 import { StatsCard } from '../../../components/ui/StatsCard';
 import { StatsCardSkeleton } from '../../../components/feedback/StatsCardSkeleton';
@@ -18,7 +18,7 @@ export function PoliciesStats({ stats, statsLoading }: PoliciesStatsProps) {
           <StatsCard
             label="إجمالي الوثائق"
             value={stats?.total ?? 0}
-            icon={FileText}
+            icon={FileCheck}
             borderClassName="border-r-4 border-r-primary-500"
             iconClassName="w-4 h-4 text-primary-500"
           />

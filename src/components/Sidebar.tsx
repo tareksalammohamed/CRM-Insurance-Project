@@ -147,7 +147,7 @@ export function Sidebar() {
                     )}
                     title={item.label}
                   >
-                    <Icon className={clsx('w-[18px] h-[18px] flex-shrink-0', active ? 'text-primary-600' : 'text-secondary-400')} />
+                    <Icon strokeWidth={active ? 2.25 : 1.9} className={clsx('w-[18px] h-[18px] flex-shrink-0', active ? 'text-primary-600' : 'text-secondary-400')} />
                   </Link>
                 );
               })}
@@ -206,7 +206,7 @@ export function Sidebar() {
                 aria-current={active ? 'page' : undefined}
               >
                 <div className={clsx('p-1.5 rounded-xl transition-all duration-200', active ? 'bg-primary-100' : '')}>
-                  <Icon className={clsx('w-5 h-5', active && 'text-primary-600')} />
+                  <Icon strokeWidth={active ? 2.25 : 1.9} className={clsx('w-5 h-5', active && 'text-primary-600')} />
                 </div>
                 <span className={clsx('text-[10px] font-semibold leading-none truncate max-w-full', active ? 'text-primary-600' : 'text-secondary-600')}>
                   {item.label}
@@ -345,7 +345,7 @@ function NavGroupSection({
         aria-expanded={expanded}
       >
         <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide">
-          <GroupIcon className="w-3.5 h-3.5" />
+          <GroupIcon strokeWidth={2} className="w-3.5 h-3.5" />
           {group.label}
         </span>
         <ChevronDown className={clsx('w-3.5 h-3.5 transition-transform duration-200', expanded ? 'rotate-0' : '-rotate-90')} />
@@ -399,7 +399,7 @@ function NavLinkRow({
           active ? 'bg-primary-600 text-white shadow-sm' : 'bg-secondary-100/80 text-secondary-400'
         )}
       >
-        <Icon className="w-4 h-4" />
+        <Icon strokeWidth={active ? 2.25 : 1.9} className="w-4 h-4" />
       </span>
       <span className="flex items-baseline gap-1.5 min-w-0 truncate">
         <span className="truncate">{item.label}</span>

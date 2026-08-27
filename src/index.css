@@ -705,7 +705,17 @@ body {
     .dashboard-section-note { padding-top: 0.35rem; font-size: 0.65rem; }
   }
   .dashboard-targets-panel .drilldown-card { min-height: 7.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .dashboard-targets-panel .drilldown-card svg { filter: drop-shadow(0 3px 3px rgb(13 59 51 / 0.1)); }
+  .dashboard-targets-panel .target-summary-icon { box-shadow: 0 8px 18px rgb(13 59 51 / 0.08); transition: transform 180ms ease, box-shadow 180ms ease; }
+  .dashboard-targets-panel .target-summary-icon svg { stroke-width: 1.9; }
+  .dashboard-targets-panel .target-metric-card { gap: 0.08rem; border-top-width: 3px; }
+  .dashboard-targets-panel .target-metric-card:nth-child(1) { border-top-color: rgb(34 197 94 / 0.65); }
+  .dashboard-targets-panel .target-metric-card:nth-child(2) { border-top-color: rgb(245 158 11 / 0.65); }
+  .dashboard-targets-panel .target-metric-card:nth-child(3) { border-top-color: rgb(20 184 166 / 0.65); }
+  .dashboard-targets-panel .target-metric-card svg { width: 1.9rem; height: 1.9rem; stroke-width: 1.9; margin-bottom: 0.3rem; filter: drop-shadow(0 3px 3px rgb(13 59 51 / 0.1)); }
+  .dashboard-targets-panel .target-metric-card p { line-height: 1.25; }
+  @media (hover: hover) {
+    .dashboard-targets-panel .target-summary-icon:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgb(13 59 51 / 0.12); }
+  }
 
   /* ===== MODAL ===== */
   .modal-overlay {

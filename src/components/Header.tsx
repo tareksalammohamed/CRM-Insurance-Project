@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Bell, Search, X, User, Settings, LogOut, Menu, Wallet, HelpCircle } from 'lucide-react';
+import { BellRing, Search, X, CircleUserRound, Settings2, LogOut, Menu, WalletCards, HelpCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { ROLE_LABELS } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
@@ -166,7 +166,7 @@ export function Header() {
           {/* إشعارات */}
           <div className="relative" ref={notificationRef}>
             <button onClick={() => setNotificationsOpen(!notificationsOpen)} data-tour-id="header-notifications" className="icon-button relative">
-              <Bell className="w-5 h-5 text-secondary-600" />
+              <BellRing className="w-5 h-5 text-secondary-600" />
               {unreadCount > 0 && (
                 <span className="absolute -top-0.5 -left-0.5 w-4 h-4 bg-error-500 text-white text-[10px] rounded-full flex items-center justify-center font-medium">
                   {unreadCount > 9 ? '9+' : unreadCount}
@@ -187,7 +187,7 @@ export function Header() {
                         className={clsx('w-full text-right px-4 py-3 hover:bg-secondary-50 border-b border-secondary-50 last:border-0', !n.is_read && 'bg-primary-50/30')}>
                         <div className="flex items-start gap-3">
                           <div className={clsx('w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0', getNotifColor(n.type))}>
-                            <Bell className="w-4 h-4" />
+                            <BellRing className="w-4 h-4" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-secondary-900">{n.title}</p>
@@ -217,13 +217,13 @@ export function Header() {
             </button>
             {profileOpen && (
               <div className="dropdown-menu left-0 right-auto min-w-[180px]">
-                <button onClick={() => { setProfileOpen(false); navigate('/profile'); }} className="dropdown-item w-full"><User className="w-4 h-4" /><span>الملف الشخصي</span></button>
+                <button onClick={() => { setProfileOpen(false); navigate('/profile'); }} className="dropdown-item w-full"><CircleUserRound className="w-4 h-4" /><span>الملف الشخصي</span></button>
                 <button onClick={() => { setProfileOpen(false); navigate('/help'); }} className="dropdown-item w-full"><HelpCircle className="w-4 h-4" /><span>دليل المستخدم</span></button>
                 {user.role === 'super_admin' && (
-                  <button onClick={() => { setProfileOpen(false); navigate('/subscriptions-admin'); }} className="dropdown-item w-full"><Wallet className="w-4 h-4" /><span>الاشتراكات</span></button>
+                  <button onClick={() => { setProfileOpen(false); navigate('/subscriptions-admin'); }} className="dropdown-item w-full"><WalletCards className="w-4 h-4" /><span>الاشتراكات</span></button>
                 )}
                 {user.role === 'super_admin' && (
-                  <button onClick={() => { setProfileOpen(false); navigate('/settings'); }} className="dropdown-item w-full"><Settings className="w-4 h-4" /><span>إعدادات النظام</span></button>
+                  <button onClick={() => { setProfileOpen(false); navigate('/settings'); }} className="dropdown-item w-full"><Settings2 className="w-4 h-4" /><span>إعدادات النظام</span></button>
                 )}
                 <hr className="my-1 border-secondary-200" />
                 <button onClick={() => { setProfileOpen(false); signOut(); }} className="dropdown-item w-full text-error-600"><LogOut className="w-4 h-4" /><span>تسجيل الخروج</span></button>
