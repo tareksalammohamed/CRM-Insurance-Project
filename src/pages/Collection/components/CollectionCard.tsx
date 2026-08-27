@@ -18,8 +18,8 @@ function CollectionCardImpl({ installment, onPay, onCancel, onMore }: Collection
   const { dueDate, isPaid, isOverdue, dayLabel, badgeClass, statusLabel } = getInstallmentDisplayInfo(installment);
 
   return (
-    <div className="collection-card card">
-      <div className="flex items-start justify-between gap-3">
+    <div className="crm-data-card collection-card card">
+      <div className="crm-data-card-header flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 text-secondary-900 font-semibold truncate">
             <User className="w-4 h-4 text-secondary-400 shrink-0" />
@@ -36,7 +36,7 @@ function CollectionCardImpl({ installment, onPay, onCancel, onMore }: Collection
         <span className={clsx('badge shrink-0', badgeClass)}>{statusLabel}</span>
       </div>
 
-      <div className="collection-card-meta grid grid-cols-2 gap-x-3 gap-y-2.5 mt-4 text-sm">
+      <div className="crm-data-card-metrics collection-card-meta grid grid-cols-2 gap-x-3 gap-y-2.5 mt-4 text-sm">
         <div>
           <p className="text-secondary-400 text-xs">اسم الوكيل</p>
           <p className="text-secondary-800 font-medium truncate">{installment.policy.owner?.name || '-'}</p>

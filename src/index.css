@@ -392,6 +392,39 @@ body {
   .card-interactive {
     @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover;
   }
+  .crm-data-card {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .crm-data-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 0.28rem;
+    background: linear-gradient(90deg, #0f5b59, #0aa678 58%, #c5ed58);
+    opacity: 0.92;
+  }
+  .crm-data-card-header {
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid rgb(13 59 51 / 0.08);
+  }
+  .crm-data-card-metrics > div {
+    min-width: 0;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid rgb(13 59 51 / 0.055);
+    border-radius: 0.8rem;
+    background: rgb(244 251 246 / 0.72);
+  }
+  .crm-data-card-metrics > div p:last-child { margin-top: 0.2rem; }
+  .crm-data-card .badge { font-weight: 800; }
+  @media (max-width: 767px) {
+    .crm-data-card { padding: 0.9rem; padding-top: 1rem; }
+    .crm-data-card-header { padding-bottom: 0.7rem; }
+    .crm-data-card-metrics > div { padding: 0.5rem 0.55rem; }
+  }
 
   .surface-section {
     @apply rounded-2xl border bg-white/90 shadow-soft;

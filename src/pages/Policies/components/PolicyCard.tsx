@@ -17,9 +17,9 @@ function PolicyCardImpl({ policy, onOpenDetails, onOpenMoreMenu }: PolicyCardPro
   return (
     <div
       onClick={() => onOpenDetails(policy)}
-      className="card pressable cursor-pointer hover:shadow-md hover:border-primary-200 transition-all duration-200"
+      className="crm-data-card policy-data-card card pressable cursor-pointer hover:shadow-md hover:border-primary-200 transition-all duration-200"
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="crm-data-card-header flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 text-secondary-900 font-semibold truncate">
             <UserIcon className="w-4 h-4 text-secondary-400 shrink-0" />
@@ -33,7 +33,7 @@ function PolicyCardImpl({ policy, onOpenDetails, onOpenMoreMenu }: PolicyCardPro
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 mt-4 text-sm">
+      <div className="crm-data-card-metrics grid grid-cols-2 gap-x-3 gap-y-2.5 mt-4 text-sm">
         <div>
           <p className="text-secondary-400 text-xs">نوع الوثيقة</p>
           <p className="text-secondary-800 font-medium truncate">{POLICY_TYPE_LABELS[policy.policy_type]}</p>
