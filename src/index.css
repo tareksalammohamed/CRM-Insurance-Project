@@ -308,14 +308,14 @@ body {
     .dashboard-kicker { margin-bottom: 0.2rem; font-size: 0.68rem; }
     .dashboard-intro {
       width: 100%;
-      min-height: 6.75rem;
-      padding: 0.85rem 0.9rem 0.95rem;
+      min-height: 0;
+      padding: 0.62rem 0.7rem 0.7rem;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 0.45rem;
-      border-radius: 1.25rem;
+      gap: 0.3rem;
+      border-radius: 1.05rem;
     }
-    .dashboard-intro h2 { font-size: 1.4rem; }
-    .dashboard-intro p { margin-top: 0.2rem; font-size: 0.72rem; }
+    .dashboard-intro h2 { font-size: 1.16rem; line-height: 1.15; }
+    .dashboard-intro p { margin-top: 0.12rem; font-size: 0.63rem; line-height: 1.45; }
     .dashboard-toolbar-inline {
       flex-direction: row;
       align-items: center;
@@ -326,7 +326,22 @@ body {
     .dashboard-refresh-control { align-items: center; }
     .dashboard-refresh-control > span { display: none; }
     .dashboard-refresh-control button { padding: 0.35rem 0.5rem; }
-    .dashboard-toolbar { min-height: 0; padding-top: 0.2rem; padding-bottom: 0.2rem; }
+    .dashboard-toolbar { min-height: 0; padding: 0.12rem 0.2rem; }
+    .dashboard-month-controls { gap: 0; }
+    .dashboard-month-controls button { width: 1.7rem; height: 1.7rem; }
+    .dashboard-month-controls > div { min-width: 5.5rem; }
+    .dashboard-month-controls > div > span { font-size: 0.68rem; }
+    .dashboard-stats-grid .kpi-card:nth-child(-n + 2) {
+      min-height: 5.25rem;
+      padding: 0.55rem 0.62rem;
+    }
+    .dashboard-stats-grid .kpi-card:nth-child(-n + 2) .kpi-icon-tile {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.72rem;
+    }
+    .dashboard-stats-grid .kpi-card:nth-child(-n + 2) .kpi-icon-tile svg { width: 1rem; height: 1rem; }
+    .dashboard-stats-grid .kpi-card:nth-child(-n + 2) p:last-child { margin-top: 0.18rem; font-size: 1.22rem; }
   }
   @media (min-width: 768px) {
     .dashboard-intro {
