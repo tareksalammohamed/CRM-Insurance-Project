@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useRef, useState, type ReactNod
 import { CheckCircle2, XCircle, HelpCircle, type LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { playSuccessSound } from './successSound';
 
 interface ToastItem {
   id: number;
@@ -58,7 +59,10 @@ export function NotifyProvider({ children }: { children: ReactNode }) {
     }, AUTO_DISMISS_MS);
   }, []);
 
-  const success = useCallback((message: string) => push(message, 'success'), [push]);
+  const success = useCallback((message: string) => {
+    playSuccessSound();
+    push(message, 'success');
+  }, [push]);
   const error = useCallback((message: string) => push(message, 'error'), [push]);
 
   const confirm = useCallback((options: NotifyConfirmOptions | string) => {
