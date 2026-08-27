@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { BellRing, Search, X, CircleUserRound, Settings2, LogOut, Menu, WalletCards, HelpCircle } from 'lucide-react';
+import { BellRing, Search, X, CircleUserRound, Settings2, LogOut, Menu, WalletCards, HelpCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { ROLE_LABELS } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
@@ -13,9 +13,12 @@ import { BrandMark } from './BrandMark';
 import { PAGE_TITLES } from '../config/navigation';
 import { BranchSelector } from './BranchSelector';
 import { HelpButton } from '../features/help/HelpButton';
+import { useNotify } from '../lib/notify';
+import { subscribeToPush } from '../lib/pushNotifications';
 
 export function Header() {
   const { user, signOut }  = useAuth();
+  const notify = useNotify();
   const navigate           = useNavigate();
   const location           = useLocation();
   const { sidebarCollapsed, toggleMobileMenu, closeMobileMenu } = useAppStore();
@@ -26,6 +29,7 @@ export function Header() {
   const [notifications,     setNotifications]     = useState<Notification[]>([]);
   const [unreadCount,       setUnreadCount]       = useState(0);
   const [profileOpen,       setProfileOpen]       = useState(false);
+  const [pushSettingsSaving, setPushSettingsSaving] = useState(false);
 
   const notificationRef = useRef<HTMLDivElement>(null);
   const profileRef      = useRef<HTMLDivElement>(null);
@@ -102,6 +106,26 @@ export function Header() {
     setNotificationsOpen(false);
     const link = getNotificationLink(n);
     if (link) navigate(link);
+  };
+
+  const handlePushSettings = async () => {
+    if (!user || pushSettingsSaving) return;
+    setProfileOpen(false);
+    setPushSettingsSaving(true);
+    const result = await subscribeToPush(user.id);
+    setPushSettingsSaving(false);
+
+    if (result.status === 'subscribed') {
+      notify.success('تم تفعيل إشعارات الهاتف لهذا الجهاز');
+    } else if (result.status === 'needs-install') {
+      notify.error('على iPhone ثبّت التطبيق على الشاشة الرئيسية أولًا ثم فعّل الإشعارات');
+    } else if (result.status === 'denied') {
+      notify.error('الإشعارات مرفوضة. افتح إعدادات الموقع في المتصفح واختر السماح بالإشعارات');
+    } else if (result.status === 'unsupported') {
+      notify.error('هذا المتصفح لا يدعم إشعارات الهاتف');
+    } else if (result.status === 'error') {
+      notify.error(result.message);
+    }
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -218,6 +242,10 @@ export function Header() {
             {profileOpen && (
               <div className="dropdown-menu left-0 right-auto min-w-[180px]">
                 <button onClick={() => { setProfileOpen(false); navigate('/profile'); }} className="dropdown-item w-full"><CircleUserRound className="w-4 h-4" /><span>الملف الشخصي</span></button>
+                <button onClick={handlePushSettings} disabled={pushSettingsSaving} className="dropdown-item w-full disabled:opacity-60">
+                  {pushSettingsSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <BellRing className="w-4 h-4" />}
+                  <span>{pushSettingsSaving ? 'جارٍ ضبط الإشعارات...' : 'ضبط إشعارات الهاتف'}</span>
+                </button>
                 <button onClick={() => { setProfileOpen(false); navigate('/help'); }} className="dropdown-item w-full"><HelpCircle className="w-4 h-4" /><span>دليل المستخدم</span></button>
                 {user.role === 'super_admin' && (
                   <button onClick={() => { setProfileOpen(false); navigate('/subscriptions-admin'); }} className="dropdown-item w-full"><WalletCards className="w-4 h-4" /><span>الاشتراكات</span></button>
