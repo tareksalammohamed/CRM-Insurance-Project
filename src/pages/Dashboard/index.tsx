@@ -25,6 +25,7 @@ export function Dashboard() {
     policyStatusData,
     teamPerformanceSections,
     sheetStack,
+    user,
     getChildrenDetails,
     openTeamMemberSheet,
     handleSelectChild,
@@ -47,6 +48,7 @@ export function Dashboard() {
         lastUpdated={lastUpdated}
         refreshing={refreshing}
         onRefresh={refresh}
+        userName={user?.name}
       />
 
       {stats && stats.totalPolicies === 0 && stats.totalCustomers === 0 && (
