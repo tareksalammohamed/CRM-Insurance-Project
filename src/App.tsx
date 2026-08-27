@@ -119,7 +119,7 @@ function AppLayout() {
         'pb-20 md:pb-8',        // pb-20 = مكان الـ bottom nav (64px + 16px)
         'app-main px-3 md:px-5 lg:px-8'
       )}>
-        <div key={location.pathname} className="app-content max-w-7xl mx-auto mt-4 md:mt-6 animate-fadeIn">
+        <div key={location.pathname} className="app-content max-w-7xl mx-auto mt-4 md:mt-6 animate-pageEnter">
           <ErrorBoundary boundaryName={location.pathname}>
             <Suspense fallback={<LoadingSpinner />}>
               <Routes>

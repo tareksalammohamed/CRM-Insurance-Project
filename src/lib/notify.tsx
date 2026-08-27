@@ -84,7 +84,7 @@ export function NotifyProvider({ children }: { children: ReactNode }) {
           <div
             key={t.id}
             className={clsx(
-              'pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg text-sm text-white animate-fadeIn max-w-md',
+              'pointer-events-auto toast-item flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg text-sm text-white max-w-md',
               t.kind === 'success' ? 'bg-secondary-900' : 'bg-error-600',
             )}
           >

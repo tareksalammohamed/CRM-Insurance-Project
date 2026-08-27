@@ -19,20 +19,20 @@ export function CardGridSkeleton({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="card animate-pulse space-y-3">
+        <div key={i} className="card skeleton-shimmer space-y-3">
           <div className="flex items-center justify-between">
-            <div className={`h-4 ${titleWidthClass} bg-secondary-200 rounded`} />
-            <div className="h-5 w-16 bg-secondary-200 rounded-full" />
+            <div className={`h-4 ${titleWidthClass} skeleton-bar rounded`} />
+            <div className="h-5 w-16 skeleton-bar rounded-full" />
           </div>
-          <div className="h-3 w-24 bg-secondary-200 rounded" />
+          <div className="h-3 w-24 skeleton-bar rounded" />
           <div className="grid grid-cols-2 gap-3 mt-2">
-            <div className="h-3 w-full bg-secondary-200 rounded" />
-            <div className="h-3 w-full bg-secondary-200 rounded" />
-            <div className="h-3 w-full bg-secondary-200 rounded" />
-            <div className="h-3 w-full bg-secondary-200 rounded" />
+            <div className="h-3 w-full skeleton-bar rounded" />
+            <div className="h-3 w-full skeleton-bar rounded" />
+            <div className="h-3 w-full skeleton-bar rounded" />
+            <div className="h-3 w-full skeleton-bar rounded" />
           </div>
           {showFooterBar && (
-            <div className="h-9 w-full bg-secondary-200 rounded-lg mt-2" />
+            <div className="h-9 w-full skeleton-bar rounded-lg mt-2" />
           )}
         </div>
       ))}

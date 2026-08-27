@@ -17,6 +17,9 @@
   --brand-teal: #0f5b59;
   --brand-lime: #c5ed58;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-fast: 160ms;
+  --motion-base: 220ms;
   color-scheme: light;
 }
 
@@ -383,6 +386,9 @@ body {
      بالظبط، بس بعمق بصري أوضح (نفس فكرة الأزرار فى تطبيقات البنوك/التأمين
      الاحترافية) */
   .btn-primary   { @apply text-white shadow-primary-glow-inset hover:shadow-elevated active:bg-primary-900; background: linear-gradient(135deg, #087f5b 0%, #0f5b59 100%); }
+  @media (hover: hover) {
+    .btn:not(:disabled):hover { transform: translateY(-1px); }
+  }
   .btn-secondary { @apply bg-secondary-100 text-secondary-700 border border-secondary-200 hover:bg-secondary-200 active:bg-secondary-300; }
   .btn-success   { @apply bg-success-600 text-white hover:bg-success-700 active:bg-success-800; }
   .btn-warning   { @apply bg-warning-500 text-white hover:bg-warning-600 active:bg-warning-700; }
@@ -406,12 +412,31 @@ body {
 
   .card-interactive {
     @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover;
+    transition-timing-function: var(--ease-spring);
+  }
+  .card-interactive:active {
+    transform: translateY(0) scale(0.99);
+    transition-duration: 100ms;
+  }
+  .kpi-card,
+  .drilldown-card,
+  .performance-row,
+  .collection-card,
+  .crm-data-card {
+    transition-property: transform, box-shadow, border-color;
+    transition-duration: var(--motion-base);
+    transition-timing-function: var(--ease-spring);
   }
   .crm-data-card {
     position: relative;
     overflow: hidden;
     isolation: isolate;
+    animation: cardReveal 360ms var(--ease-spring) both;
   }
+  .crm-data-card:nth-child(2) { animation-delay: 45ms; }
+  .crm-data-card:nth-child(3) { animation-delay: 90ms; }
+  .crm-data-card:nth-child(4) { animation-delay: 135ms; }
+  .crm-data-card:nth-child(5) { animation-delay: 180ms; }
   .crm-data-card::before {
     content: '';
     position: absolute;
@@ -523,7 +548,7 @@ body {
     background: linear-gradient(110deg, rgb(255 255 255 / 0.9), rgb(238 248 242 / 0.72));
     box-shadow: 0 7px 18px rgb(13 59 51 / 0.045);
   }
-  .performance-row:hover { border-color: rgb(8 127 91 / 0.22); box-shadow: 0 12px 24px rgb(13 59 51 / 0.1); }
+  .performance-row:hover { transform: translateY(-2px); border-color: rgb(8 127 91 / 0.22); box-shadow: 0 12px 24px rgb(13 59 51 / 0.1); }
 
   @media (min-width: 768px) {
     .card { padding: 1.5rem; }    /* 24px على الديسكتوب */
@@ -732,7 +757,7 @@ body {
   .modal-content {
     @apply bg-white w-full max-h-[92dvh] overflow-auto shadow-elevated;
     border-radius: 1.5rem 1.5rem 0 0;
-    animation: sheetIn 220ms var(--ease-out);
+    animation: sheetIn 260ms var(--ease-spring);
     overscroll-behavior: contain;
   }
   .modal-form-shell {
@@ -894,7 +919,10 @@ body {
     background: linear-gradient(180deg, #c5ed58, #087f5b);
     opacity: 0.9;
   }
-  .collection-card:hover { transform: translateY(-2px); box-shadow: 0 20px 36px rgb(13 59 51 / 0.12) !important; }
+  .collection-card:hover { transform: translateY(-3px); box-shadow: 0 20px 36px rgb(13 59 51 / 0.12) !important; }
+  .collection-card:active,
+  .performance-row:active,
+  .drilldown-card:active { transform: translateY(0) scale(0.995); }
   .collection-card-meta {
     border-top: 1px solid rgb(223 234 229 / 0.72);
     padding-top: 0.85rem;
@@ -950,7 +978,7 @@ body {
     position: relative;
     overflow: hidden;
     -webkit-tap-highlight-color: transparent;
-    transition: transform 0.12s ease;
+    transition: transform 140ms var(--ease-out), box-shadow 180ms var(--ease-out);
   }
   .pressable::after {
     content: '';
@@ -972,6 +1000,54 @@ body {
 }
 
 /* ===== ANIMATIONS ===== */
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-pageEnter { animation: pageEnter 360ms var(--ease-spring) both; }
+
+@keyframes sectionEnter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cardReveal {
+  from { opacity: 0; transform: translateY(10px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.dashboard-header,
+.dashboard-section-block {
+  animation: sectionEnter 420ms var(--ease-spring) both;
+}
+.dashboard-section-block:nth-of-type(1) { animation-delay: 40ms; }
+.dashboard-section-block:nth-of-type(2) { animation-delay: 90ms; }
+.dashboard-section-block:nth-of-type(3) { animation-delay: 140ms; }
+.dashboard-section-block:nth-of-type(4) { animation-delay: 190ms; }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes skeletonShimmer {
+  from { background-position: 140% 0; }
+  to { background-position: -40% 0; }
+}
+.skeleton-shimmer { animation: skeletonShimmer 1.4s ease-in-out infinite; }
+.skeleton-bar {
+  background: linear-gradient(100deg, #e5eee9 20%, #f7fbf8 42%, #e5eee9 64%);
+  background-size: 220% 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+.toast-item { animation: toastIn 280ms var(--ease-spring) both; }
+.toast-item svg { animation: iconPop 340ms var(--ease-spring) 80ms both; }
+
+@keyframes iconPop {
+  0% { opacity: 0; transform: scale(0.7) rotate(-8deg); }
+  70% { opacity: 1; transform: scale(1.08) rotate(2deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
 @keyframes overlayIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -991,19 +1067,19 @@ body {
   from { opacity: 0; transform: translateY(-10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.animate-fadeIn { animation: fadeIn 0.2s ease-out; }
+.animate-fadeIn { animation: fadeIn 240ms var(--ease-spring) both; }
 
 @keyframes slideInRight {
   from { opacity: 0; transform: translateX(20px); }
   to   { opacity: 1; transform: translateX(0); }
 }
-.animate-slideIn { animation: slideInRight 0.22s ease-out; }
+.animate-slideIn { animation: slideInRight 260ms var(--ease-spring) both; }
 
 @keyframes slideUp {
   from { transform: translateY(100%); }
   to   { transform: translateY(0); }
 }
-.animate-slideUp { animation: slideUp 0.25s ease-out; }
+.animate-slideUp { animation: slideUp 280ms var(--ease-spring) both; }
 
 @keyframes pulse-ring {
   0%       { transform: scale(0.33); }
