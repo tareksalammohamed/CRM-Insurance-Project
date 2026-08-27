@@ -11,6 +11,7 @@ interface DashboardHeaderProps {
   lastUpdated?: Date | null;
   refreshing?: boolean;
   onRefresh?: () => void;
+  userName?: string;
 }
 
 export function DashboardHeader({
@@ -22,12 +23,16 @@ export function DashboardHeader({
   lastUpdated,
   refreshing,
   onRefresh,
+  userName,
 }: DashboardHeaderProps) {
+  const greeting = new Date().getHours() < 12 ? 'صباح الخير' : 'مساء الخير';
+  const displayName = userName?.trim() || 'بك';
+
   return (
     <div className="dashboard-header">
       <div className="dashboard-intro">
         <div className="dashboard-intro-copy">
-          <span className="dashboard-kicker">مساحة العمل</span>
+          <span className="dashboard-kicker">{greeting}، {displayName}</span>
           <h2 className="text-2xl md:text-3xl font-black text-secondary-900">نظرة عامة</h2>
           <p className="text-sm text-secondary-500 mt-1">
             إحصائيات شهر {format(selectedMonth, 'MMMM yyyy', { locale: ar })}
