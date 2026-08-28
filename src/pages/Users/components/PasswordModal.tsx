@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import type { UseFormRegister, UseFormHandleSubmit, FieldErrors } from 'react-hook-form';
 import type { User } from '../../../lib/supabase';
 import type { PasswordFormData } from '../types';
+import { useDialogBehavior } from '../../../hooks/useDialogBehavior';
 
 interface PasswordModalProps {
   editingUser: User;
@@ -22,10 +23,16 @@ export function PasswordModal({
   editingUser, savingPwd, showPwd, showConfirmPwd,
   setShowPwd, setShowConfirmPwd, register, handleSubmit, errors, onSubmit, onClose,
 }: PasswordModalProps) {
+
+  // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
+  useDialogBehavior(onClose);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content max-w-md animate-fadeIn"
+        role="dialog"
+        aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

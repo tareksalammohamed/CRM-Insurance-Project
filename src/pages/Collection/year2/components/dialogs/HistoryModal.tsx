@@ -1,6 +1,7 @@
 import { X, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Year2EligiblePolicy, Year2Payment } from '../../types';
+import { useDialogBehavior } from '../../../../../hooks/useDialogBehavior';
 
 interface HistoryModalProps {
   policy: Year2EligiblePolicy;
@@ -15,9 +16,15 @@ interface HistoryModalProps {
 export function HistoryModal({
   policy, history, loadingHistory, formatCurrency, onCancelPayment, onClose,
 }: HistoryModalProps) {
+
+  // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
+  useDialogBehavior(onClose);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content max-w-2xl animate-fadeIn" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content max-w-2xl animate-fadeIn"
+        role="dialog"
+        aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-6 border-b border-secondary-200">
           <h3 className="text-lg font-semibold text-secondary-900">
             سجل تحصيل السنوات اللاحقة: {policy.policy_number}

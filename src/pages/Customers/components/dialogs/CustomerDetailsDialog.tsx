@@ -6,6 +6,7 @@ import type { PolicyInstallmentSummary } from '../../../../features/installments
 import type { CustomerPolicySummary, CustomerWithRelations } from '../../types';
 import { STATUS_BADGE_CLASS, STATUS_DOT_CLASS } from '../../constants';
 import { formatCurrency, sortPoliciesByStartDate } from '../../utils';
+import { useDialogBehavior } from '../../../../hooks/useDialogBehavior';
 
 interface CustomerDetailsDialogProps {
   customer: CustomerWithRelations;
@@ -31,6 +32,10 @@ export function CustomerDetailsDialog({
   onOpenPolicyDetails,
 }: CustomerDetailsDialogProps) {
   const sortedPolicies = sortPoliciesByStartDate(customer.policies || []);
+
+
+  // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
+  useDialogBehavior(onClose);
 
   return (
     <div className="modal-overlay" onClick={onClose}>

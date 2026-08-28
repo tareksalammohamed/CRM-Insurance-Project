@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { ROLE_LABELS, type User } from '../../../lib/supabase';
 import { getRoleBadgeClass } from '../business/roleHierarchy';
 import { UserAvatar } from './UserAvatar';
+import { useDialogBehavior } from '../../../hooks/useDialogBehavior';
 
 interface UserDetailsModalProps {
   user: User;
@@ -35,10 +36,16 @@ function DetailRow({
 }
 
 export function UserDetailsModal({ user: u, onClose }: UserDetailsModalProps) {
+
+  // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
+  useDialogBehavior(onClose);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content max-w-md animate-fadeIn"
+        role="dialog"
+        aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

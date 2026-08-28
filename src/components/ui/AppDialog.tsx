@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
 import type { CSSProperties, ReactNode, MouseEvent, Ref } from 'react';
 import clsx from 'clsx';
+import { useDialogBehavior } from '../../hooks/useDialogBehavior';
 
 interface AppDialogProps {
   /** يُستدعى عند الضغط خارج صندوق المحتوى. اتركه بدون تمرير لمنع الإغلاق (مثلاً أثناء التنفيذ). */
@@ -34,40 +34,9 @@ interface AppDialogProps {
  *  4) سمات role="dialog" و aria-modal للقارئات الصوتية.
  */
 export function AppDialog({ onClose, className, overlayClassName, contentRef, style, children }: AppDialogProps) {
-  // العنصر الذى كان يحمل التركيز قبل فتح المودال — نرجّع له التركيز عند الإغلاق
-  const previouslyFocused = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    previouslyFocused.current = document.activeElement as HTMLElement | null;
-    return () => {
-      const target = previouslyFocused.current;
-      // نتأكد أن العنصر لا يزال موجودًا فى الصفحة قبل إعادة التركيز له
-      if (target && typeof target.focus === 'function' && document.contains(target)) {
-        target.focus({ preventScroll: true });
-      }
-    };
-  }, []);
-
-  // الإغلاق بـ Escape — نفس سلوك الضغط على الخلفية بالضبط
-  useEffect(() => {
-    if (!onClose) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        onClose();
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
-
-  // قفل تمرير الصفحة الخلفية أثناء فتح المودال. نحتفظ بالقيمة الأصلية
-  // ونرجّعها كما هى حتى لا نتعارض مع أى مودال آخر مفتوح فى نفس اللحظة.
-  useEffect(() => {
-    const original = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = original; };
-  }, []);
+  // السلوك المشترك (Escape + قفل التمرير + إرجاع التركيز) فى hook واحد
+  // تستخدمه أيضًا النوافذ التى تبنى الـoverlay بنفسها
+  useDialogBehavior(onClose);
 
   return (
     <div className={clsx('modal-overlay', overlayClassName)} onClick={onClose}>

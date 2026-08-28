@@ -5,6 +5,7 @@ import { ROLE_LABELS, type User, type UserRole } from '../../../lib/supabase';
 import type { UserFormData } from '../types';
 import type { UserBranchRoleRow } from '../../../features/branches/types';
 import { UserBranchRolesSection } from './UserBranchRolesSection';
+import { useDialogBehavior } from '../../../hooks/useDialogBehavior';
 
 interface UserFormModalProps {
   editingUser: User | null;
@@ -26,10 +27,16 @@ export function UserFormModal({
   editingUser, saving, register, handleSubmit, errors,
   selectedRole, allowedManagers, allowedRoles, managerBranches, onSubmit, onClose,
 }: UserFormModalProps) {
+
+  // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
+  useDialogBehavior(onClose);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content max-w-lg animate-fadeIn"
+        role="dialog"
+        aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

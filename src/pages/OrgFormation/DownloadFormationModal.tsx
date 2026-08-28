@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, FileDown, Calendar } from 'lucide-react';
+import { useDialogBehavior } from '../../hooks/useDialogBehavior';
 
 interface DownloadFormationModalProps {
   onClose: () => void;
@@ -19,9 +20,15 @@ export function DownloadFormationModal({ onClose, onPreview }: DownloadFormation
     onPreview(branchName.trim(), asOfDate);
   };
 
+
+  // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
+  useDialogBehavior(onClose);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content max-w-sm animate-fadeIn" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content max-w-sm animate-fadeIn"
+        role="dialog"
+        aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-6 border-b border-secondary-200">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center shrink-0">

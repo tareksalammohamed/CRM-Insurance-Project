@@ -1,9 +1,5 @@
-export const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat('ar-EG', {
-    style: 'currency',
-    currency: 'EGP',
-    minimumFractionDigits: 0
-  }).format(amount);
+// إعادة تصدير من المصدر الموحّد — نفس المخرجات (الكسور تظهر لو موجودة)
+export { formatCurrency } from '../../lib/formatCurrency';
 
 // نفس الترتيب المستخدم فى أكتر من مكان (تفاصيل العميل + الطباعة): أحدث
 // وثيقة أولاً حسب تاريخ البداية

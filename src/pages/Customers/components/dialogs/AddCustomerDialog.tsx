@@ -6,6 +6,7 @@ import { MARITAL_STATUS_LABELS, PAYMENT_METHOD_LABELS, type User } from '../../.
 import type { CustomerFormData, CustomerWithRelations } from '../../types';
 import { AgentCombobox } from '../AgentCombobox';
 import { ExtractDataButton } from '../../../../features/customerDataExtraction/components/ExtractDataButton';
+import { useDialogBehavior } from '../../../../hooks/useDialogBehavior';
 
 interface CustomerFormDialogProps {
   editingCustomer: CustomerWithRelations | null;
@@ -41,6 +42,10 @@ export function CustomerFormDialog({
   onClose,
 }: CustomerFormDialogProps) {
   const formRef = useRef<HTMLFormElement>(null);
+
+
+  // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
+  useDialogBehavior(onClose);
 
   return (
     <div className="modal-overlay" onClick={onClose}>

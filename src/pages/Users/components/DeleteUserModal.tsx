@@ -1,6 +1,7 @@
 import { AlertTriangle, X, Trash2 } from 'lucide-react';
 import type { User } from '../../../lib/supabase';
 import { UserAvatar } from './UserAvatar';
+import { useDialogBehavior } from '../../../hooks/useDialogBehavior';
 
 interface DeleteUserModalProps {
   user: User;
@@ -10,10 +11,15 @@ interface DeleteUserModalProps {
 }
 
 export function DeleteUserModal({ user: u, deleting, onConfirm, onClose }: DeleteUserModalProps) {
+  // نفس شرط الخلفية بالحرف: أثناء تنفيذ الحذف لا يُسمح بالإغلاق (ولا بـEscape)
+  useDialogBehavior(deleting ? undefined : onClose);
+
   return (
     <div className="modal-overlay" onClick={deleting ? undefined : onClose}>
       <div
         className="modal-content max-w-md animate-fadeIn"
+        role="dialog"
+        aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

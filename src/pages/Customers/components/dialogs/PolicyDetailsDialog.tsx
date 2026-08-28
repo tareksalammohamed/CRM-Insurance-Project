@@ -7,6 +7,7 @@ import { InstallmentsTable } from '../../../../features/installments/Installment
 import type { PolicyWithRelations } from '../../../PolicyDetail/types';
 import type { CustomerPolicySummary } from '../../types';
 import { formatCurrency } from '../../utils';
+import { useDialogBehavior } from '../../../../hooks/useDialogBehavior';
 
 interface PolicyDetailsDialogProps {
   openPolicySummary: CustomerPolicySummary;
@@ -28,10 +29,16 @@ export function PolicyDetailsDialog({
   onPay,
   onCancel,
 }: PolicyDetailsDialogProps) {
+
+  // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
+  useDialogBehavior(onClose);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content max-w-2xl animate-fadeIn max-h-[92dvh] overflow-y-auto"
+        role="dialog"
+        aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-6 border-b border-secondary-200 sticky top-0 bg-white z-10">

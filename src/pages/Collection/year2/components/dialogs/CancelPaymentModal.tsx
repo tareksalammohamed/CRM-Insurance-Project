@@ -1,5 +1,6 @@
 import { X, XCircle } from 'lucide-react';
 import type { Year2Payment } from '../../types';
+import { useDialogBehavior } from '../../../../../hooks/useDialogBehavior';
 
 interface CancelPaymentModalProps {
   payment: Year2Payment;
@@ -15,9 +16,15 @@ interface CancelPaymentModalProps {
 export function CancelPaymentModal({
   payment, saving, cancelReason, setCancelReason, formatCurrency, onConfirm, onClose,
 }: CancelPaymentModalProps) {
+
+  // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
+  useDialogBehavior(onClose);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content max-w-md animate-fadeIn" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content max-w-md animate-fadeIn"
+        role="dialog"
+        aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-6 border-b border-secondary-200">
           <h3 className="text-lg font-semibold text-secondary-900">إلغاء التحصيل</h3>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-secondary-100">

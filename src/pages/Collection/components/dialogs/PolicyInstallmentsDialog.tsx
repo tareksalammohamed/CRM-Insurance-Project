@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import type { Policy, Installment } from '../../../../lib/supabase';
 import { InstallmentsTable } from '../../../../features/installments/InstallmentsTable';
+import { useDialogBehavior } from '../../../../hooks/useDialogBehavior';
 
 interface PolicyInstallmentsDialogProps {
   policy: Policy;
@@ -20,9 +21,15 @@ export function PolicyInstallmentsDialog({
   onPay,
   onCancel,
 }: PolicyInstallmentsDialogProps) {
+
+  // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
+  useDialogBehavior(onClose);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content max-w-2xl animate-fadeIn max-h-[92dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content max-w-2xl animate-fadeIn max-h-[92dvh] overflow-y-auto"
+        role="dialog"
+        aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-6 border-b border-secondary-200 sticky top-0 bg-white z-10">
           <h3 className="text-lg font-semibold text-secondary-900">
             جميع أقساط الوثيقة: {policy.policy_number}

@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import { useHelp } from './HelpContext';
 import { searchHelp } from './content';
 import type { HelpItem, HelpMessageItem, HelpErrorItem } from './types';
+import { useDialogBehavior } from '../../hooks/useDialogBehavior';
 
 function Section({ title, items }: { title: string; items?: HelpItem[] }) {
   if (!items || items.length === 0) return null;
@@ -72,6 +73,11 @@ export function HelpPanel() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
 
+  // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى.
+  // لازم ينادى قبل الـearly return (قواعد الـHooks)، فنمرّر isPanelOpen
+  // كمفتاح تفعيل حتى لا يقفل التمرير واللوحة مقفولة.
+  useDialogBehavior(closePanel, isPanelOpen);
+
   if (!isPanelOpen) return null;
 
   const results = query.trim() ? searchHelp(query) : [];
@@ -80,6 +86,8 @@ export function HelpPanel() {
     <div className="modal-overlay" onClick={closePanel}>
       <div
         className="modal-content sm:max-w-md sm:h-full sm:!rounded-none sm:!my-0 sm:mr-0 sm:ml-auto flex flex-col"
+        role="dialog"
+        aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b border-secondary-100 flex-shrink-0">

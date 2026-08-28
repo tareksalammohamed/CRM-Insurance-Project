@@ -6,6 +6,7 @@ import { POLICY_TYPE_LABELS, PAYMENT_METHOD_LABELS, type Policy } from '../../..
 import type { PolicyFormData } from '../../types';
 import type { CustomerPickerItem } from '../../services/policiesService';
 import { ExtractPolicyDataButton } from '../../../../features/policyDocumentExtraction/components/ExtractPolicyDataButton';
+import { useDialogBehavior } from '../../../../hooks/useDialogBehavior';
 
 interface PolicyFormDialogProps {
   editingPolicy: Policy | null;
@@ -45,6 +46,10 @@ export function PolicyFormDialog({
   onClose,
 }: PolicyFormDialogProps) {
   const formRef = useRef<HTMLFormElement>(null);
+
+
+  // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
+  useDialogBehavior(onClose);
 
   return (
     <div className="modal-overlay" onClick={onClose}>

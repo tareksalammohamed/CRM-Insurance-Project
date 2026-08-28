@@ -343,7 +343,7 @@ export function Reports() {
     <div className="print-report space-y-6 animate-fadeIn print:space-y-3">
       {/* رأس خاص بالطباعة فقط - لا يظهر أثناء الاستخدام العادى */}
       <div className="hidden print:block text-center mb-4">
-        <h1 className="text-xl font-bold">{currentReportLabel}</h1>
+        <h2 className="text-xl font-bold">{currentReportLabel}</h2>
         <p className="text-sm text-secondary-600 mt-1">
           الفترة من {format(periodStart, 'd MMMM yyyy', { locale: ar })} إلى{' '}
           {format(periodEnd, 'd MMMM yyyy', { locale: ar })}
@@ -575,7 +575,7 @@ export function Reports() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print:grid-cols-1">
             <div className="lg:col-span-2 card print:shadow-none print:border print:break-inside-avoid">
-              <h3 className="font-semibold text-secondary-900 mb-4 print:hidden">
+              <h3 className="type-h3 mb-4 print:hidden">
                 {reportType === 'customers' ? 'الطلبات المسجلة حسب الفترة' : currentReportLabel}
               </h3>
               <div className="h-64">
@@ -611,7 +611,7 @@ export function Reports() {
             </div>
 
             <div className="card print:shadow-none print:border print:break-inside-avoid">
-              <h3 className="font-semibold text-secondary-900 mb-4">ملخص التقرير</h3>
+              <h3 className="type-h3 mb-4">ملخص التقرير</h3>
               {data && (
                 <div className="space-y-4">
                   {data.supervisoryPerformance && (
@@ -762,7 +762,7 @@ export function Reports() {
             <div className="card print:shadow-none print:border print:break-inside-avoid space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <h3 className="font-bold text-secondary-900">سجل طلبات التأمين</h3>
+                  <h3 className="type-h3">سجل طلبات التأمين</h3>
                   <p className="text-xs text-secondary-500 mt-1">الاسم، تاريخ التسجيل، مبلغ التأمين، والوكيل المسؤول</p>
                 </div>
                 <span className="badge badge-secondary">{data?.total ?? 0} طلب</span>
@@ -806,7 +806,7 @@ export function Reports() {
             </div>
           ) : (
             <div className="card print:shadow-none print:border print:break-inside-avoid">
-              <h3 className="font-semibold text-secondary-900 mb-4">تفاصيل السجلات</h3>
+              <h3 className="type-h3 mb-4">تفاصيل السجلات</h3>
               {detailsColumns.length > 0 ? (
                 <div className="table-container print:hover:bg-transparent">
                   <table>

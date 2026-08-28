@@ -1,6 +1,7 @@
 import clsx from 'clsx';
 import { Lock, Unlock } from 'lucide-react';
 import { fmt } from '../utils';
+import { useDialogBehavior } from '../../../hooks/useDialogBehavior';
 
 interface ConfirmActionModalProps {
   confirmAction: 'close' | 'open';
@@ -24,9 +25,15 @@ export function ConfirmActionModal({
   onClose,
   onConfirm,
 }: ConfirmActionModalProps) {
+
+  // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
+  useDialogBehavior(onClose);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content max-w-sm animate-fadeIn" onClick={e => e.stopPropagation()}>
+      <div className="modal-content max-w-sm animate-fadeIn"
+        role="dialog"
+        aria-modal="true" onClick={e => e.stopPropagation()}>
         <div className="p-6 text-center">
           <div className={clsx(
             'w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4',

@@ -6,6 +6,7 @@ import { ROLE_LABELS } from '../../../lib/supabase';
 import type { TeamMemberDetail } from '../types';
 import { fetchAgentExtraStats } from '../services/dashboardService';
 import { buildCollectionDrillDownUrl } from '../utils';
+import { useDialogBehavior } from '../../../hooks/useDialogBehavior';
 
 interface TeamPerformanceSheetProps {
   // سلسلة التنقل من الجذر (أول اسم تم الضغط عليه من بطاقة "أداء الفريق")
@@ -73,9 +74,19 @@ export function TeamPerformanceSheet({ stack, children, onSelectChild, onBack, o
 
   const agentExtra = agentExtraCache[current.id];
 
+
+  // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
+  useDialogBehavior(onClose);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="team-performance-modal modal-content max-w-md flex flex-col animate-slideUp" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="team-performance-modal modal-content max-w-md flex flex-col animate-slideUp"
+        role="dialog"
+        aria-modal="true"
+        aria-label="أداء الفريق"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header + شريط المسار الهرمي */}
         <div className="sticky top-0 bg-white border-b border-secondary-200 px-4 py-3 z-10">
           <div className="flex items-center justify-between">

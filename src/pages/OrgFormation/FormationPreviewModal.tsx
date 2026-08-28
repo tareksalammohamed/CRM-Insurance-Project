@@ -7,6 +7,7 @@ import { OrgChartTree, type ChartDensity } from './OrgChartTree';
 import { countChartEntities, type OrgChartNode } from './orgChartBuilder';
 import { exportNodeToPdf, printNode } from './pdfExport';
 import { useNotify } from '../../lib/notify';
+import { useDialogBehavior } from '../../hooks/useDialogBehavior';
 
 interface FormationPreviewModalProps {
   heads: OrgChartNode[];
@@ -124,10 +125,16 @@ export function FormationPreviewModal({ heads, branchName, asOfDate, onClose }: 
     }
   };
 
+
+  // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
+  useDialogBehavior(onClose);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content max-w-6xl w-full animate-fadeIn p-0 overflow-hidden flex flex-col"
+        role="dialog"
+        aria-modal="true"
         style={{ maxHeight: '92vh' }}
         onClick={(e) => e.stopPropagation()}
       >

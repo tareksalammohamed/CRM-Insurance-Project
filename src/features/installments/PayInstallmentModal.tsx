@@ -4,6 +4,7 @@ import { ar } from 'date-fns/locale';
 
 import type { Installment } from '../../lib/supabase';
 import { isEarlyPayment, formatCurrency } from './installmentHelpers';
+import { useDialogBehavior } from '../../hooks/useDialogBehavior';
 
 // ===================================
 // مودال تأكيد السداد الموحّد — يُعاد استخدامه فى كل الشاشات التي تسدد قسطاً
@@ -30,9 +31,15 @@ export function PayInstallmentModal({
   onConfirm,
   onClose,
 }: PayInstallmentModalProps) {
+
+  // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
+  useDialogBehavior(onClose);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content max-w-md animate-fadeIn" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content max-w-md animate-fadeIn"
+        role="dialog"
+        aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-6 border-b border-secondary-200">
           <h3 className="text-lg font-semibold text-secondary-900">تأكيد السداد</h3>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-secondary-100">

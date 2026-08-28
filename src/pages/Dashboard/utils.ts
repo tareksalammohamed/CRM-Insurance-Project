@@ -1,13 +1,8 @@
 import { format, startOfMonth } from 'date-fns';
 
-export const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('ar-EG', {
-    style: 'currency',
-    currency: 'EGP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(amount);
-};
+// لوحة التحكم تعرض أرقامًا صحيحة بدون كسور — نفس المخرجات السابقة بالحرف،
+// لكن من مصدر تنسيق موحّد واحد بدل تعريف مكرّر فى كل صفحة.
+export { formatCurrencyWhole as formatCurrency } from '../../lib/formatCurrency';
 
 type DrillDownQuickFilter = 'month' | 'overdue' | 'paid';
 type DrillDownSubType = 'all' | 'new' | 'periodic';
