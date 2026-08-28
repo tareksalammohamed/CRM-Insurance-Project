@@ -1,8 +1,9 @@
 import { friendlyError } from '../../lib/errorMessages';
 import { useRef, useState, type KeyboardEvent } from 'react';
+import html2canvas from 'html2canvas';
 import {
   Calculator, RotateCcw, PlusCircle, Copy, Printer, Check, AlertCircle,
-  DollarSign, Percent,
+  DollarSign, Percent, ImageDown, Loader2,
 } from 'lucide-react';
 
 import { PageHeader } from '../../components/layout/PageHeader';
@@ -18,6 +19,30 @@ import {
 import { PrintQuote } from './PrintQuote';
 import { PolicyBenefits } from './PolicyBenefitsCard';
 import { printWithTitle } from '../../lib/printWithTitle';
+import { useNotify } from '../../lib/notify';
+import { useSettings } from '../../hooks/useSettings';
+
+async function imageToDataUrl(src: string | null): Promise<string | null> {
+  if (!src || src.startsWith('data:')) return src;
+
+  try {
+    const response = await fetch(src, { mode: 'cors', credentials: 'omit' });
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    return await new Promise<string | null>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+function waitForPaint(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+}
 
 // ─── صفحة "حاسبة الأسعار" ───────────────────────────────────
 // صفحة مستقلة بالكامل عن دورة عمل النظام: لا تُنشئ عميل/وثيقة/قسط/تحصيل،
@@ -30,8 +55,13 @@ export function PriceCalculator() {
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [savingImage, setSavingImage] = useState(false);
+  const [imageLogoSrc, setImageLogoSrc] = useState<string | null>(null);
+  const { branding } = useSettings();
+  const notify = useNotify();
 
   const ageInputRef = useRef<HTMLInputElement>(null);
+  const printQuoteRef = useRef<HTMLDivElement>(null);
 
 
   function handleCalculate() {
@@ -93,6 +123,47 @@ export function PriceCalculator() {
       printWithTitle(`عرض-سعر-${result.variant.label}`);
     } else {
       window.print();
+    }
+  }
+
+  async function handleSaveImage() {
+    if (!result || savingImage || !printQuoteRef.current) return;
+
+    setSavingImage(true);
+    try {
+      // تحويل الشعار إلى Data URL يمنع CORS من تلويث الـ canvas، مع استخدام
+      // نفس مصدر الشعار الموجود في العرض المطبوع لا نسخة بديلة.
+      const logoDataUrl = await imageToDataUrl(branding.company_logo_url);
+      setImageLogoSrc(logoDataUrl);
+      await waitForPaint();
+
+      const printableElement = printQuoteRef.current;
+      if (!printableElement) throw new Error('printable element is unavailable');
+
+      const canvas = await html2canvas(printableElement, {
+        backgroundColor: '#ffffff',
+        scale: Math.min(3, Math.max(2, window.devicePixelRatio || 1)),
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        imageTimeout: 15000,
+        width: printableElement.scrollWidth,
+        height: printableElement.scrollHeight,
+        windowWidth: printableElement.scrollWidth,
+        windowHeight: printableElement.scrollHeight,
+      });
+
+      const link = document.createElement('a');
+      link.download = `عرض-سعر-${result.variant.label}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      notify.success('تم حفظ العرض كصورة PNG عالية الجودة');
+    } catch (error) {
+      console.error('Error saving price quote image:', error);
+      notify.error('تعذر حفظ العرض كصورة. حاول مرة أخرى');
+    } finally {
+      setImageLogoSrc(null);
+      setSavingImage(false);
     }
   }
 
@@ -240,10 +311,21 @@ export function PriceCalculator() {
           <button onClick={handlePrint} className="btn btn-success btn-sm">
             <Printer className="w-4 h-4" /> طباعة / حفظ PDF
           </button>
+          <button onClick={handleSaveImage} disabled={savingImage} className="btn btn-primary btn-sm disabled:opacity-70">
+            {savingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageDown className="w-4 h-4" />}
+            {savingImage ? 'جارٍ حفظ الصورة...' : 'حفظ كصورة'}
+          </button>
         </div>
       )}
 
-      {result && <PrintQuote result={result} />}
+      {result && (
+        <PrintQuote
+          result={result}
+          forceVisible={savingImage}
+          containerRef={printQuoteRef}
+          logoOverrideSrc={imageLogoSrc}
+        />
+      )}
     </div>
   );
 }
