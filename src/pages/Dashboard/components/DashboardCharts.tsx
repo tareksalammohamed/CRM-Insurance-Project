@@ -1,4 +1,5 @@
 import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { PieChart as PieChartIcon } from 'lucide-react';
 import { formatCurrency } from '../utils';
 
 interface DashboardChartsProps {
@@ -25,9 +26,32 @@ const TOOLTIP_STYLE = {
 
 const TOOLTIP_ITEM_STYLE = { color: '#0d2925', fontWeight: 700 };
 
+/**
+ * بديل صريح لما تكون كل قيم الرسم أصفار. بدون ده recharts برسم حلقة فاضية
+ * والمستخدم مش عارف هل الشهر ده مفيهوش بيانات فعلاً ولا فيه خطأ تحميل.
+ * لا نضيف زر إجراء هنا: إضافة الوثائق/الدفعات ليها صفحاتها الخاصة، والـCTA
+ * المطلوب فى الـEmpty State يُضاف فقط لو الوظيفة موجودة فى نفس السياق.
+ */
+function ChartEmpty({ note }: { note: string }) {
+  return (
+    <div className="chart-empty">
+      <span className="chart-empty-icon" aria-hidden="true">
+        <PieChartIcon className="w-4 h-4" />
+      </span>
+      <p className="chart-empty-title">لا توجد بيانات لعرضها</p>
+      <p className="chart-empty-note">{note}</p>
+    </div>
+  );
+}
+
 export function DashboardCharts({ totalPolicies, policyStatusData, chartData }: DashboardChartsProps) {
   const combined = chartData.production + chartData.collection;
   const productionShare = combined > 0 ? Math.round((chartData.production / combined) * 100) : 0;
+
+  // الرسم يبقى فاضى لو مجموع القيم صفر — نفحص المجموع لا طول المصفوفة،
+  // لأن policyStatusData بيرجع عنصرين بقيمة صفر وقت ما تكون المحفظة فاضية.
+  const hasPolicyStatusData = policyStatusData.some((entry) => entry.value > 0);
+  const hasProductionData = combined > 0;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
@@ -43,45 +67,55 @@ export function DashboardCharts({ totalPolicies, policyStatusData, chartData }: 
           </div>
         </div>
 
-        <div className="chart-canvas h-40 md:h-44">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={policyStatusData}
-                cx="50%"
-                cy="50%"
-                innerRadius={48}
-                outerRadius={66}
-                paddingAngle={3}
-                strokeWidth={0}
-                dataKey="value"
-              >
-                {policyStatusData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value: any, name: any) => [value, name]}
-                contentStyle={TOOLTIP_STYLE}
-                itemStyle={TOOLTIP_ITEM_STYLE}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="chart-center">
-            <span className="chart-center-value">{totalPolicies || 0}</span>
-            <span className="chart-center-label">وثيقة</span>
-          </div>
+        {/* الرسم نفسه مخفى عن قارئات الشاشة لأن SVG الـrecharts بيتقرأ كسلسلة
+            أرقام بلا معنى، والمفتاح أسفله هو التمثيل النصّى المكافئ بنفس القيم
+            كاملة. لكن الإخفاء مشروط: وقت الحالة الفاضية المحتوى بيبقى رسالة
+            نصّية لازم تُقرأ فعلاً، فلو خبّيناها دايمًا هنمنع أهم معلومة. */}
+        <div className="chart-canvas h-40 md:h-44" aria-hidden={hasPolicyStatusData || undefined}>
+          {hasPolicyStatusData ? (
+            <>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={policyStatusData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={48}
+                    outerRadius={66}
+                    paddingAngle={3}
+                    strokeWidth={0}
+                    dataKey="value"
+                  >
+                    {policyStatusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: any, name: any) => [value, name]}
+                    contentStyle={TOOLTIP_STYLE}
+                    itemStyle={TOOLTIP_ITEM_STYLE}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="chart-center">
+                <span className="chart-center-value">{totalPolicies || 0}</span>
+                <span className="chart-center-label">وثيقة</span>
+              </div>
+            </>
+          ) : (
+            <ChartEmpty note="لم تُسجَّل وثائق بعد فى النطاق المحدد" />
+          )}
         </div>
 
-        <div className="chart-legend">
+        <ul className="chart-legend">
           {policyStatusData.map((entry) => (
-            <div key={entry.name} className="chart-legend-item">
-              <span className="chart-legend-dot" style={{ backgroundColor: entry.color }} />
+            <li key={entry.name} className="chart-legend-item">
+              <span className="chart-legend-dot" style={{ backgroundColor: entry.color }} aria-hidden="true" />
               <span className="chart-legend-name">{entry.name}</span>
               <span className="chart-legend-value">{entry.value}</span>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
 
       <div className="card chart-panel">
@@ -96,51 +130,57 @@ export function DashboardCharts({ totalPolicies, policyStatusData, chartData }: 
           </div>
         </div>
 
-        <div className="chart-canvas h-40 md:h-44">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={[
-                  { name: 'الإنتاج الجديد', value: chartData.production, color: PRODUCTION_COLOR },
-                  { name: 'التحصيل الدوري', value: chartData.collection, color: COLLECTION_COLOR }
-                ]}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                innerRadius={48}
-                outerRadius={66}
-                paddingAngle={3}
-                strokeWidth={0}
-              >
-                <Cell fill={PRODUCTION_COLOR} />
-                <Cell fill={COLLECTION_COLOR} />
-              </Pie>
-              <Tooltip
-                formatter={(value: any) => formatCurrency(value)}
-                contentStyle={TOOLTIP_STYLE}
-                itemStyle={TOOLTIP_ITEM_STYLE}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="chart-center">
-            <span className="chart-center-value">{productionShare}%</span>
-            <span className="chart-center-label">إنتاج جديد</span>
-          </div>
+        <div className="chart-canvas h-40 md:h-44" aria-hidden={hasProductionData || undefined}>
+          {hasProductionData ? (
+            <>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: 'الإنتاج الجديد', value: chartData.production, color: PRODUCTION_COLOR },
+                      { name: 'التحصيل الدوري', value: chartData.collection, color: COLLECTION_COLOR }
+                    ]}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={48}
+                    outerRadius={66}
+                    paddingAngle={3}
+                    strokeWidth={0}
+                  >
+                    <Cell fill={PRODUCTION_COLOR} />
+                    <Cell fill={COLLECTION_COLOR} />
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: any) => formatCurrency(value)}
+                    contentStyle={TOOLTIP_STYLE}
+                    itemStyle={TOOLTIP_ITEM_STYLE}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="chart-center">
+                <span className="chart-center-value">{productionShare}%</span>
+                <span className="chart-center-label">إنتاج جديد</span>
+              </div>
+            </>
+          ) : (
+            <ChartEmpty note="لم يُسجَّل إنتاج أو تحصيل فى النطاق المحدد" />
+          )}
         </div>
 
-        <div className="chart-legend">
-          <div className="chart-legend-item">
-            <span className="chart-legend-dot" style={{ backgroundColor: PRODUCTION_COLOR }} />
+        <ul className="chart-legend">
+          <li className="chart-legend-item">
+            <span className="chart-legend-dot" style={{ backgroundColor: PRODUCTION_COLOR }} aria-hidden="true" />
             <span className="chart-legend-name">الإنتاج الجديد</span>
             <span className="chart-legend-value">{formatCurrency(chartData.production)}</span>
-          </div>
-          <div className="chart-legend-item">
-            <span className="chart-legend-dot" style={{ backgroundColor: COLLECTION_COLOR }} />
+          </li>
+          <li className="chart-legend-item">
+            <span className="chart-legend-dot" style={{ backgroundColor: COLLECTION_COLOR }} aria-hidden="true" />
             <span className="chart-legend-name">التحصيل الدوري</span>
             <span className="chart-legend-value">{formatCurrency(chartData.collection)}</span>
-          </div>
-        </div>
+          </li>
+        </ul>
       </div>
     </div>
   );

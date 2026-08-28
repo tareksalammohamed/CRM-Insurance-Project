@@ -1257,8 +1257,9 @@ body {
   }
   .detail-summary-metric span {
     display: block;
-    color: rgb(232 250 240 / 0.7);
-    font-size: 0.625rem;
+    /* رُفعت التعتيمة مع المقاس: لابل رفيع على خلفية داكنة أصعب فى القراءة */
+    color: rgb(232 250 240 / 0.82);
+    font-size: 0.6875rem;
     font-weight: 700;
   }
   .detail-summary-metric strong {
@@ -2127,12 +2128,15 @@ body {
     flex-shrink: 0;
     text-align: left;
   }
+  /* 11px هو الحد الأدنى المعتمد فى النظام (المتطلب: لا خطوط صغيرة جدًا على
+     الموبايل). القياس الفعلى رصد 10px هنا، والـletter-spacing الواسع كان
+     بيزود صعوبة القراءة على العربى فقُلّل. */
   .chart-panel-total span {
     display: block;
     color: var(--faint-ink);
-    font-size: 0.625rem;
+    font-size: 0.6875rem;
     font-weight: 700;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.03em;
   }
   .chart-panel-total strong {
     display: block;
@@ -2168,7 +2172,7 @@ body {
   .chart-center-label {
     margin-top: 0.0625rem;
     color: var(--faint-ink);
-    font-size: 0.625rem;
+    font-size: 0.6875rem;
     font-weight: 700;
   }
   /* مفتاح الرسم — صفوف قابلة للقراءة بأرقام مصطفّة */
@@ -2216,6 +2220,47 @@ body {
     box-shadow: var(--shadow-md) !important;
     font-size: 0.75rem !important;
     padding: 0.5rem 0.625rem !important;
+  }
+
+  /* حالة "لا توجد بيانات" داخل لوحة الرسم.
+     recharts برسم دونات فاضية بدون أى تفسير لما كل القيم تكون صفر، فالمستخدم
+     مش عارف: مفيش بيانات للشهر ده؟ ولا فيه مشكلة تحميل؟ ده بديل صريح يشغل
+     نفس مساحة الرسم فلا يقفز الـlayout. */
+  .chart-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    height: 100%;
+    padding: 0.75rem;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--r-xl);
+    background: var(--surface-sunken);
+    text-align: center;
+  }
+  .chart-empty-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: var(--r-md);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--faint-ink);
+  }
+  .chart-empty-title {
+    color: var(--ink-soft);
+    font-size: 0.8125rem;
+    font-weight: 700;
+  }
+  .chart-empty-note {
+    color: var(--faint-ink);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.5;
   }
 
   /* ===== شريط تقدّم موحّد ===== */
@@ -2285,7 +2330,7 @@ body {
 
     .dashboard-section-heading { align-items: flex-start; margin-bottom: 0.5rem; }
     .dashboard-section-heading h3 { font-size: 0.9375rem; }
-    .dashboard-section-note { padding-top: 0.25rem; font-size: 0.625rem; }
+    .dashboard-section-note { padding-top: 0.25rem; font-size: 0.6875rem; }
 
     .dashboard-stats-grid { gap: 0.5rem; }
     .dashboard-stats-grid .kpi-card { padding: 0.75rem; }
