@@ -1,3 +1,5 @@
+import { useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { CSSProperties, ReactNode } from 'react';
 import { X } from 'lucide-react';
 import clsx from 'clsx';
@@ -43,22 +45,46 @@ export function AppBottomSheet({
   const isCentered = presentation === 'centered' && !isAnchored;
   const viewportWidth = typeof window === 'undefined' ? 0 : window.innerWidth;
   const viewportHeight = typeof window === 'undefined' ? 0 : window.innerHeight;
-  const menuWidth = Math.min(360, Math.max(0, viewportWidth - 24));
-  const belowTop = anchor ? anchor.bottom + 8 : 0;
-  const aboveTop = anchor ? anchor.top - estimatedHeight - 8 : 0;
-  const top = anchor && viewportHeight
-    ? (belowTop + estimatedHeight <= viewportHeight - 12 ? belowTop : Math.max(12, aboveTop))
-    : undefined;
-  const left = anchor && viewportWidth
-    ? Math.min(Math.max(12, anchor.right - menuWidth), viewportWidth - menuWidth - 12)
-    : undefined;
-  const anchoredStyle: CSSProperties | undefined = isAnchored && top !== undefined && left !== undefined
-    ? { top, left, width: menuWidth }
-    : undefined;
+  const menuWidth = Math.min(300, Math.max(0, viewportWidth - 24));
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [anchoredPosition, setAnchoredPosition] = useState<{ top: number; left: number } | null>(null);
 
-  return (
+  useLayoutEffect(() => {
+    if (!isAnchored || !anchor || !viewportWidth || !viewportHeight) {
+      setAnchoredPosition(null);
+      return;
+    }
+
+    const placeMenu = () => {
+      const menuHeight = contentRef.current?.getBoundingClientRect().height || estimatedHeight;
+      const belowTop = anchor.bottom + 8;
+      const aboveTop = anchor.top - menuHeight - 8;
+      const top = belowTop + menuHeight <= window.innerHeight - 12
+        ? belowTop
+        : Math.max(12, aboveTop);
+      const anchorCenter = (anchor.left + anchor.right) / 2;
+      const left = Math.min(
+        Math.max(12, anchorCenter - menuWidth / 2),
+        window.innerWidth - menuWidth - 12,
+      );
+      setAnchoredPosition({ top, left });
+    };
+
+    placeMenu();
+    window.addEventListener('resize', placeMenu);
+    return () => window.removeEventListener('resize', placeMenu);
+  }, [anchor, estimatedHeight, isAnchored, menuWidth, viewportHeight, viewportWidth]);
+
+  const anchoredStyle: CSSProperties | undefined = isAnchored && anchoredPosition
+    ? { top: anchoredPosition.top, left: anchoredPosition.left, width: menuWidth }
+    : isAnchored
+      ? { top: anchor?.bottom ? anchor.bottom + 8 : 12, left: 12, width: menuWidth }
+      : undefined;
+
+  const dialog = (
     <AppDialog
       onClose={onClose}
+      contentRef={contentRef}
       overlayClassName={isAnchored ? 'modal-overlay-anchored' : isCentered ? 'modal-overlay-centered' : undefined}
       style={anchoredStyle}
       className={clsx(
@@ -82,4 +108,8 @@ export function AppBottomSheet({
       <div className="safe-area-bottom" />
     </AppDialog>
   );
+
+  return isAnchored && typeof document !== 'undefined'
+    ? createPortal(dialog, document.body)
+    : dialog;
 }

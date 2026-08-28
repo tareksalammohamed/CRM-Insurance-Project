@@ -885,6 +885,8 @@ body {
     align-items: stretch !important;
     justify-content: stretch !important;
     padding: 0 !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
   }
   .modal-overlay-anchored .app-action-menu-anchored {
     position: fixed !important;
@@ -894,7 +896,8 @@ body {
     max-height: min(70dvh, 560px) !important;
     overflow-y: auto;
     border-radius: 1rem !important;
-    box-shadow: 0 18px 44px rgb(13 59 51 / 0.2);
+    box-shadow: 0 14px 34px rgb(13 59 51 / 0.22), 0 2px 8px rgb(13 59 51 / 0.08);
+    border: 1px solid rgb(13 59 51 / 0.1);
     animation: menuIn 180ms var(--ease-out);
   }
   .modal-overlay-anchored .app-action-menu-anchored > div:first-child {
