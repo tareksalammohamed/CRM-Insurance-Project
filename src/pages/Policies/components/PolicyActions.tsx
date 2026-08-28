@@ -1,10 +1,11 @@
 import { Eye, MoreVertical } from 'lucide-react';
+import { type ActionMenuAnchor } from '../../../components/ui/AppBottomSheet';
 import type { Policy } from '../../../lib/supabase';
 
 interface PolicyActionsProps {
   policy: Policy;
   onViewDetails: (policy: Policy) => void;
-  onOpenMoreMenu: (policy: Policy) => void;
+  onOpenMoreMenu: (policy: Policy, anchor: ActionMenuAnchor) => void;
 }
 
 export function PolicyActions({ policy, onViewDetails, onOpenMoreMenu }: PolicyActionsProps) {
@@ -19,7 +20,11 @@ export function PolicyActions({ policy, onViewDetails, onOpenMoreMenu }: PolicyA
       </button>
 
       <button
-        onClick={(e) => { e.stopPropagation(); onOpenMoreMenu(policy); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          const rect = e.currentTarget.getBoundingClientRect();
+          onOpenMoreMenu(policy, { top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom });
+        }}
         className="btn btn-secondary btn-sm touch-target"
         title="المزيد"
       >

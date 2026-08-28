@@ -4,6 +4,7 @@ import { Pagination } from '../../../components/ui/Pagination';
 import { LoadingState } from './LoadingState';
 import { EmptyState } from './EmptyState';
 import { PolicyCard } from './PolicyCard';
+import type { ActionMenuAnchor } from '../../../components/ui/AppBottomSheet';
 
 interface PoliciesListProps {
   isInitialLoading: boolean;
@@ -12,7 +13,7 @@ interface PoliciesListProps {
   onResetAll: () => void;
   onAddPolicy: () => void;
   onOpenDetails: (policy: Policy) => void;
-  onOpenMoreMenu: (policy: Policy) => void;
+  onOpenMoreMenu: (policy: Policy, anchor: ActionMenuAnchor) => void;
   page: number;
   setPage: (updater: (p: number) => number) => void;
   totalPages: number;

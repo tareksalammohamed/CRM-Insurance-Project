@@ -1,5 +1,5 @@
 import { User, Receipt, History as HistoryIcon, XCircle, CheckCircle } from 'lucide-react';
-import { AppBottomSheet } from '../../../../components/ui/AppBottomSheet';
+import { AppBottomSheet, type ActionMenuAnchor } from '../../../../components/ui/AppBottomSheet';
 import type { InstallmentWithRelations } from '../../types';
 
 interface MoreMenuDialogProps {
@@ -10,6 +10,7 @@ interface MoreMenuDialogProps {
   onOpenPolicyHistory: () => void;
   onOpenCancel: () => void;
   onOpenPayment: () => void;
+  anchor?: ActionMenuAnchor | null;
 }
 
 // ===== مودال "المزيد" — إجراءات إضافية لكل قسط =====
@@ -21,6 +22,7 @@ export function MoreMenuDialog({
   onOpenPolicyHistory,
   onOpenCancel,
   onOpenPayment,
+  anchor,
 }: MoreMenuDialogProps) {
   return (
     <AppBottomSheet
@@ -31,7 +33,8 @@ export function MoreMenuDialog({
         </p>
       }
       onClose={onClose}
-      presentation="centered"
+      anchor={anchor || undefined}
+      estimatedHeight={300}
     >
       <button onClick={onShowCustomerDetails} className="dropdown-item w-full">
         <User className="w-4 h-4" />

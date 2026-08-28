@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useBranchContext } from '../../lib/branchContext';
@@ -21,6 +22,7 @@ import { useCustomerFilters } from './hooks/useCustomerFilters';
 import { useCustomers } from './hooks/useCustomers';
 import { useCustomerActions } from './hooks/useCustomerActions';
 import type { CustomerWithRelations } from './types';
+import type { ActionMenuAnchor } from '../../components/ui/AppBottomSheet';
 
 export function Customers() {
   const { user } = useAuth();
@@ -45,6 +47,8 @@ export function Customers() {
   } = useCustomers(user, page, searchQuery, statusFilter, agentFilter, monthFilter, noPolicyOnly, currentBranchId);
 
   const actions = useCustomerActions({ user, searchParams, setSearchParams, loadCustomers, loadStats });
+  const [moreMenuAnchor, setMoreMenuAnchor] = useState<ActionMenuAnchor | null>(null);
+
   const {
     showModal, editingCustomer, saving, handleOpenModal, handleCloseModal, onSubmit,
     register, handleSubmit, setValue, errors, ownerIdValue,
@@ -131,7 +135,10 @@ export function Customers() {
         onResetAll={handleResetAll}
         onAddCustomer={openAddCustomerModal}
         onOpenDetails={handleOpenCustomerDetails}
-        onOpenMoreMenu={setMoreMenuCustomer}
+        onOpenMoreMenu={(customer, anchor) => {
+          setMoreMenuAnchor(anchor);
+          setMoreMenuCustomer(customer);
+        }}
         page={page}
         setPage={setPage}
         totalPages={totalPages}
@@ -180,12 +187,16 @@ export function Customers() {
         <MoreActionsDialog
           customer={moreMenuCustomer}
           canDelete={deletableIds.has(moreMenuCustomer.id)}
-          onClose={() => setMoreMenuCustomer(null)}
+          onClose={() => {
+            setMoreMenuAnchor(null);
+            setMoreMenuCustomer(null);
+          }}
           onEdit={handleOpenModal}
           onIssueNewPolicy={handleIssueNewPolicy}
           onOpenCustomerPolicies={handleOpenCustomerPolicies}
           onPrint={handlePrintCustomer}
           onDeleteRequest={handleDeleteRequest}
+          anchor={moreMenuAnchor}
         />
       )}
 

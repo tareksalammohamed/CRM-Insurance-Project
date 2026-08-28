@@ -1,7 +1,8 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useBranchContext } from '../../lib/branchContext';
 import type { Policy } from '../../lib/supabase';
+import type { ActionMenuAnchor } from '../../components/ui/AppBottomSheet';
 
 import { PoliciesHeader } from './components/PoliciesHeader';
 import { PoliciesStats } from './components/PoliciesStats';
@@ -37,6 +38,7 @@ export function Policies() {
   } = usePolicies(user, page, searchQuery, statusFilter, typeFilter, monthFilter, currentBranchId);
 
   const actions = usePolicyActions({ user, searchParams, setSearchParams, loadPolicies, loadStats });
+  const [moreMenuAnchor, setMoreMenuAnchor] = useState<ActionMenuAnchor | null>(null);
   const {
     showModal, editingPolicy, saving, handleOpenModal, handleCloseModal, onSubmit,
     register, handleSubmit, setValue, errors,
@@ -55,17 +57,20 @@ export function Policies() {
   // فتح تفاصيل الوثيقة — نفس التنقل الموجود فى الكارت وفى مودال "المزيد"
   // (تسجيل سداد / عرض الأقساط كلاهما بيودّي لنفس صفحة تفاصيل الوثيقة)
   const handleGoToPolicy = (policy: Policy) => {
+    setMoreMenuAnchor(null);
     setMoreMenuPolicy(null);
     navigate(`/policies/${policy.id}`);
   };
 
   // طلب حذف وثيقة من مودال "المزيد": بيقفل مودال المزيد ويفتح تأكيد الحذف
   const handleDeleteRequest = (policy: Policy) => {
+    setMoreMenuAnchor(null);
     setMoreMenuPolicy(null);
     setDeleteConfirm(policy);
   };
 
   const handleOpenActivityLog = () => {
+    setMoreMenuAnchor(null);
     setMoreMenuPolicy(null);
     navigate('/activity-log');
   };
@@ -113,7 +118,10 @@ export function Policies() {
         onResetAll={handleResetAll}
         onAddPolicy={openAddPolicyModal}
         onOpenDetails={goToPolicyDetails}
-        onOpenMoreMenu={setMoreMenuPolicy}
+        onOpenMoreMenu={(policy, anchor) => {
+          setMoreMenuAnchor(anchor);
+          setMoreMenuPolicy(policy);
+        }}
         page={page}
         setPage={setPage}
         totalPages={totalPages}
@@ -159,7 +167,10 @@ export function Policies() {
         <MoreActionsDialog
           policy={moreMenuPolicy}
           canDelete={deletableIds.has(moreMenuPolicy.id)}
-          onClose={() => setMoreMenuPolicy(null)}
+          onClose={() => {
+            setMoreMenuAnchor(null);
+            setMoreMenuPolicy(null);
+          }}
           onEdit={handleOpenModal}
           onGoToPolicy={handleGoToPolicy}
           onPrint={handlePrintPolicy}
@@ -167,6 +178,7 @@ export function Policies() {
           onCancelPolicy={(policy) => handleStatusChange(policy, 'cancelled')}
           onDeleteRequest={handleDeleteRequest}
           onOpenActivityLog={handleOpenActivityLog}
+          anchor={moreMenuAnchor}
         />
       )}
     </div>

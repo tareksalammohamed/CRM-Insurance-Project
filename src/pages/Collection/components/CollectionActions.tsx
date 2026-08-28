@@ -1,4 +1,5 @@
 import { CheckCircle, XCircle, MoreVertical } from 'lucide-react';
+import { type ActionMenuAnchor } from '../../../components/ui/AppBottomSheet';
 import type { InstallmentWithRelations } from '../types';
 
 interface CollectionActionsProps {
@@ -6,7 +7,7 @@ interface CollectionActionsProps {
   isPaid: boolean;
   onPay: (installment: InstallmentWithRelations) => void;
   onCancel: (installment: InstallmentWithRelations) => void;
-  onMore: (installment: InstallmentWithRelations) => void;
+  onMore: (installment: InstallmentWithRelations, anchor: ActionMenuAnchor) => void;
 }
 
 export function CollectionActions({ installment, isPaid, onPay, onCancel, onMore }: CollectionActionsProps) {
@@ -24,7 +25,10 @@ export function CollectionActions({ installment, isPaid, onPay, onCancel, onMore
         </button>
       )}
       <button
-        onClick={() => onMore(installment)}
+        onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          onMore(installment, { top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom });
+        }}
         className="btn btn-secondary btn-sm touch-target"
         title="المزيد"
       >

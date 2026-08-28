@@ -1,10 +1,11 @@
 import { Eye, MoreVertical } from 'lucide-react';
+import { type ActionMenuAnchor } from '../../../components/ui/AppBottomSheet';
 import type { CustomerWithRelations } from '../types';
 
 interface CustomerActionsProps {
   customer: CustomerWithRelations;
   onViewDetails: (customer: CustomerWithRelations) => void;
-  onOpenMoreMenu: (customer: CustomerWithRelations) => void;
+  onOpenMoreMenu: (customer: CustomerWithRelations, anchor: ActionMenuAnchor) => void;
 }
 
 export function CustomerActions({ customer, onViewDetails, onOpenMoreMenu }: CustomerActionsProps) {
@@ -19,7 +20,11 @@ export function CustomerActions({ customer, onViewDetails, onOpenMoreMenu }: Cus
       </button>
 
       <button
-        onClick={(e) => { e.stopPropagation(); onOpenMoreMenu(customer); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          const rect = e.currentTarget.getBoundingClientRect();
+          onOpenMoreMenu(customer, { top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom });
+        }}
         className="btn btn-secondary btn-sm touch-target"
         title="المزيد"
       >

@@ -4,6 +4,7 @@ import { Pagination } from '../../../components/ui/Pagination';
 import { LoadingState } from './LoadingState';
 import { EmptyState } from './EmptyState';
 import { CustomerCard } from './CustomerCard';
+import type { ActionMenuAnchor } from '../../../components/ui/AppBottomSheet';
 
 interface CustomerListProps {
   isInitialLoading: boolean;
@@ -12,7 +13,7 @@ interface CustomerListProps {
   onResetAll: () => void;
   onAddCustomer: () => void;
   onOpenDetails: (customer: CustomerWithRelations) => void;
-  onOpenMoreMenu: (customer: CustomerWithRelations) => void;
+  onOpenMoreMenu: (customer: CustomerWithRelations, anchor: ActionMenuAnchor) => void;
   page: number;
   setPage: (updater: (p: number) => number) => void;
   totalPages: number;

@@ -1,5 +1,5 @@
 import { Edit2, ShieldPlus, FileText, ListChecks, Printer, Trash2 } from 'lucide-react';
-import { AppBottomSheet } from '../../../../components/ui/AppBottomSheet';
+import { AppBottomSheet, type ActionMenuAnchor } from '../../../../components/ui/AppBottomSheet';
 import type { CustomerWithRelations } from '../../types';
 
 interface MoreActionsDialogProps {
@@ -11,6 +11,7 @@ interface MoreActionsDialogProps {
   onOpenCustomerPolicies: (customer: CustomerWithRelations) => void;
   onPrint: (customer: CustomerWithRelations) => void;
   onDeleteRequest: (customer: CustomerWithRelations) => void;
+  anchor?: ActionMenuAnchor | null;
 }
 
 export function MoreActionsDialog({
@@ -22,6 +23,7 @@ export function MoreActionsDialog({
   onOpenCustomerPolicies,
   onPrint,
   onDeleteRequest,
+  anchor,
 }: MoreActionsDialogProps) {
   return (
     <AppBottomSheet
@@ -30,7 +32,8 @@ export function MoreActionsDialog({
         <p className="text-xs text-secondary-500 mt-0.5" dir="ltr">{customer.phone || '-'}</p>
       }
       onClose={onClose}
-      presentation="centered"
+      anchor={anchor || undefined}
+      estimatedHeight={460}
     >
       <button
         onClick={() => onEdit(customer)}

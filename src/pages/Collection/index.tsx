@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useBranchContext } from '../../lib/branchContext';
 import type { InstallmentWithRelations, QuickFilter } from './types';
+import type { ActionMenuAnchor } from '../../components/ui/AppBottomSheet';
 import { Year2Collection } from './year2/Year2Collection';
 import { PayInstallmentModal } from '../../features/installments/PayInstallmentModal';
 import { CancelInstallmentModal } from '../../features/installments/CancelInstallmentModal';
@@ -116,6 +117,11 @@ export function Collection() {
   });
 
   const [moreMenuInstallment, setMoreMenuInstallment] = useState<InstallmentWithRelations | null>(null);
+  const [moreMenuAnchor, setMoreMenuAnchor] = useState<ActionMenuAnchor | null>(null);
+  const closeMoreMenu = () => {
+    setMoreMenuAnchor(null);
+    setMoreMenuInstallment(null);
+  };
   const [detailsView, setDetailsView] = useState<{ installment: InstallmentWithRelations; view: 'customer' | 'policy' } | null>(null);
 
   return (
@@ -173,7 +179,10 @@ export function Collection() {
             onResetSearchAndFilters={() => { setLocalSearch(''); handleResetFilters(); }}
             onPay={handleOpenPayment}
             onCancel={handleOpenCancel}
-            onMore={setMoreMenuInstallment}
+            onMore={(installment, anchor) => {
+              setMoreMenuAnchor(anchor);
+              setMoreMenuInstallment(installment);
+            }}
             page={page}
             totalPages={totalPages}
             onPageChange={setPage}
@@ -214,12 +223,13 @@ export function Collection() {
       {moreMenuInstallment && (
         <MoreMenuDialog
           installment={moreMenuInstallment}
-          onClose={() => setMoreMenuInstallment(null)}
-          onShowCustomerDetails={() => { setDetailsView({ installment: moreMenuInstallment, view: 'customer' }); setMoreMenuInstallment(null); }}
-          onShowPolicyDetails={() => { setDetailsView({ installment: moreMenuInstallment, view: 'policy' }); setMoreMenuInstallment(null); }}
-          onOpenPolicyHistory={() => { handleOpenPolicyDetails(moreMenuInstallment.policy); setMoreMenuInstallment(null); }}
-          onOpenCancel={() => { handleOpenCancel(moreMenuInstallment); setMoreMenuInstallment(null); }}
-          onOpenPayment={() => { handleOpenPayment(moreMenuInstallment); setMoreMenuInstallment(null); }}
+          onClose={closeMoreMenu}
+          onShowCustomerDetails={() => { setDetailsView({ installment: moreMenuInstallment, view: 'customer' }); closeMoreMenu(); }}
+          onShowPolicyDetails={() => { setDetailsView({ installment: moreMenuInstallment, view: 'policy' }); closeMoreMenu(); }}
+          onOpenPolicyHistory={() => { handleOpenPolicyDetails(moreMenuInstallment.policy); closeMoreMenu(); }}
+          onOpenCancel={() => { handleOpenCancel(moreMenuInstallment); closeMoreMenu(); }}
+          onOpenPayment={() => { handleOpenPayment(moreMenuInstallment); closeMoreMenu(); }}
+          anchor={moreMenuAnchor}
         />
       )}
 

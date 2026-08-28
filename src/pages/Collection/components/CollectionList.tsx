@@ -4,6 +4,7 @@ import { LoadingState } from './LoadingState';
 import { EmptyState } from './EmptyState';
 import { CollectionCard } from './CollectionCard';
 import { Pagination } from '../../../components/ui/Pagination';
+import type { ActionMenuAnchor } from '../../../components/ui/AppBottomSheet';
 
 interface CollectionListProps {
   isInitialLoading: boolean;
@@ -12,7 +13,7 @@ interface CollectionListProps {
   onResetSearchAndFilters: () => void;
   onPay: (installment: InstallmentWithRelations) => void;
   onCancel: (installment: InstallmentWithRelations) => void;
-  onMore: (installment: InstallmentWithRelations) => void;
+  onMore: (installment: InstallmentWithRelations, anchor: ActionMenuAnchor) => void;
   page: number;
   totalPages: number;
   onPageChange: (updater: (p: number) => number) => void;

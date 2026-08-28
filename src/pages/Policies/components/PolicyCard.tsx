@@ -6,11 +6,12 @@ import { POLICY_TYPE_LABELS, POLICY_STATUS_LABELS, type Policy } from '../../../
 import { STATUS_BADGE_CLASS, STATUS_DOT_CLASS } from '../constants';
 import { formatCurrency } from '../utils/formatCurrency';
 import { PolicyActions } from './PolicyActions';
+import type { ActionMenuAnchor } from '../../../components/ui/AppBottomSheet';
 
 interface PolicyCardProps {
   policy: Policy;
   onOpenDetails: (policy: Policy) => void;
-  onOpenMoreMenu: (policy: Policy) => void;
+  onOpenMoreMenu: (policy: Policy, anchor: ActionMenuAnchor) => void;
 }
 
 function PolicyCardImpl({ policy, onOpenDetails, onOpenMoreMenu }: PolicyCardProps) {

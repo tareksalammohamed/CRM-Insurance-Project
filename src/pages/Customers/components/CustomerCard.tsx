@@ -7,11 +7,12 @@ import { getLatestPolicy, getCustomerPolicyStatus } from '../services/customersS
 import { STATUS_BADGE_CLASS, STATUS_DOT_CLASS, STATUS_LABEL } from '../constants';
 import { formatCurrency } from '../utils';
 import { CustomerActions } from './CustomerActions';
+import type { ActionMenuAnchor } from '../../../components/ui/AppBottomSheet';
 
 interface CustomerCardProps {
   customer: CustomerWithRelations;
   onOpenDetails: (customer: CustomerWithRelations) => void;
-  onOpenMoreMenu: (customer: CustomerWithRelations) => void;
+  onOpenMoreMenu: (customer: CustomerWithRelations, anchor: ActionMenuAnchor) => void;
 }
 
 function CustomerCardImpl({ customer, onOpenDetails, onOpenMoreMenu }: CustomerCardProps) {

@@ -1,5 +1,5 @@
 import { Edit2, DollarSign, ListChecks, Printer, RotateCcw, XCircle, Trash2, History } from 'lucide-react';
-import { AppBottomSheet } from '../../../../components/ui/AppBottomSheet';
+import { AppBottomSheet, type ActionMenuAnchor } from '../../../../components/ui/AppBottomSheet';
 import type { Policy } from '../../../../lib/supabase';
 
 interface MoreActionsDialogProps {
@@ -13,6 +13,7 @@ interface MoreActionsDialogProps {
   onCancelPolicy: (policy: Policy) => void;
   onDeleteRequest: (policy: Policy) => void;
   onOpenActivityLog: () => void;
+  anchor?: ActionMenuAnchor | null;
 }
 
 export function MoreActionsDialog({
@@ -26,6 +27,7 @@ export function MoreActionsDialog({
   onCancelPolicy,
   onDeleteRequest,
   onOpenActivityLog,
+  anchor,
 }: MoreActionsDialogProps) {
   const canReactivate = policy.status === 'cancelled';
   const canCancel = policy.status !== 'cancelled';
@@ -37,7 +39,8 @@ export function MoreActionsDialog({
         <p className="text-xs text-secondary-500 font-mono mt-0.5">#{policy.policy_number}</p>
       }
       onClose={onClose}
-      presentation="centered"
+      anchor={anchor || undefined}
+      estimatedHeight={500}
     >
       <button
         onClick={() => onEdit(policy)}

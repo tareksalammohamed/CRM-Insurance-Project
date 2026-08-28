@@ -6,12 +6,13 @@ import type { InstallmentWithRelations } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getInstallmentDisplayInfo } from '../utils/installmentDisplay';
 import { CollectionActions } from './CollectionActions';
+import type { ActionMenuAnchor } from '../../../components/ui/AppBottomSheet';
 
 interface CollectionCardProps {
   installment: InstallmentWithRelations;
   onPay: (installment: InstallmentWithRelations) => void;
   onCancel: (installment: InstallmentWithRelations) => void;
-  onMore: (installment: InstallmentWithRelations) => void;
+  onMore: (installment: InstallmentWithRelations, anchor: ActionMenuAnchor) => void;
 }
 
 function CollectionCardImpl({ installment, onPay, onCancel, onMore }: CollectionCardProps) {

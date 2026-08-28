@@ -80,22 +80,28 @@ export function ProductPicker({ value, onChange, error }: ProductPickerProps) {
           className="product-picker-dialog animate-fadeIn"
         >
           {/* رأس الصندوق + مربع البحث */}
-          <div className="p-4 border-b border-secondary-200 sticky top-0 bg-white z-10 space-y-3 rounded-t-2xl sm:rounded-t-2xl">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold text-secondary-900">اختر نوع الوثيقة</h3>
+          <div className="product-picker-header shrink-0">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <span className="product-picker-kicker">الحاسبة</span>
+                <h3 className="text-lg font-extrabold text-secondary-900 leading-tight">اختر نوع الوثيقة</h3>
+                <p className="text-xs text-secondary-500 mt-1">ابحث أو اختر من الأنواع المتاحة</p>
+              </div>
               <button
+                type="button"
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-secondary-100 text-secondary-500 text-xl leading-none"
+                className="icon-button shrink-0"
                 aria-label="إغلاق"
               >
                 ×
               </button>
             </div>
-            <div className="relative">
+            <div className="relative mt-3">
               <Search className="w-4 h-4 text-secondary-400 absolute top-1/2 -translate-y-1/2 right-3.5 pointer-events-none" />
               <input
                 ref={searchRef}
-                type="text"
+                type="search"
+                inputMode="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="ابحث عن نوع الوثيقة..."
@@ -105,7 +111,7 @@ export function ProductPicker({ value, onChange, error }: ProductPickerProps) {
           </div>
 
           {/* قائمة المنتجات المجمعة */}
-          <div className="overflow-y-auto flex-1 scrollbar-thin px-2 py-2">
+          <div className="product-picker-list overflow-y-auto flex-1 scrollbar-thin">
             {!hasResults && (
               <div className="flex flex-col items-center justify-center gap-2 py-14 text-secondary-400">
                 <PackageSearch className="w-8 h-8" />
@@ -118,10 +124,11 @@ export function ProductPicker({ value, onChange, error }: ProductPickerProps) {
               if (!items) return null;
               return (
                 <div key={family} className="mb-2">
-                  <div className="sticky top-0 bg-secondary-50 text-secondary-500 text-xs font-semibold px-3 py-1.5 rounded-lg mb-1">
-                    {FAMILY_LABELS[family]}
+                  <div className="product-family-heading">
+                    <span>{FAMILY_LABELS[family]}</span>
+                    <span className="text-[11px] font-semibold text-secondary-400">{items.length} أنواع</span>
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     {items.map((v) => {
                       const active = v.key === value;
                       return (
@@ -130,7 +137,7 @@ export function ProductPicker({ value, onChange, error }: ProductPickerProps) {
                           type="button"
                           onClick={() => handleSelect(v.key)}
                           className={clsx(
-                            'w-full flex items-center justify-between gap-2 rounded-xl px-3.5 py-3 text-sm text-right transition-colors duration-150',
+                            'product-option w-full flex items-center justify-between gap-2 rounded-xl px-3.5 py-3 text-sm text-right transition-colors duration-150',
                             active
                               ? 'bg-primary-50 text-primary-700 font-semibold ring-1 ring-primary-200'
                               : 'text-secondary-700 hover:bg-secondary-50 active:bg-secondary-100'
