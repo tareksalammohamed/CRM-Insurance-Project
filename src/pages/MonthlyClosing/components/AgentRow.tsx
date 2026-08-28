@@ -40,12 +40,12 @@ export function AgentRow({ agent, expanded, onToggle }: {
           <table className="w-full text-xs">
             <thead>
               <tr className="text-secondary-400 border-b border-secondary-100">
-                <th className="text-right py-1.5 font-medium">العميل</th>
-                <th className="text-right py-1.5 font-medium">رقم الوثيقة</th>
-                <th className="text-right py-1.5 font-medium">رقم القسط</th>
-                <th className="text-right py-1.5 font-medium">النوع</th>
-                <th className="text-left py-1.5 font-medium">القيمة</th>
-                <th className="text-left py-1.5 font-medium">تاريخ السداد</th>
+                <th scope="col" className="text-right py-1.5 font-medium">العميل</th>
+                <th scope="col" className="text-right py-1.5 font-medium">رقم الوثيقة</th>
+                <th scope="col" className="text-right py-1.5 font-medium">رقم القسط</th>
+                <th scope="col" className="text-right py-1.5 font-medium">النوع</th>
+                <th scope="col" className="text-left py-1.5 font-medium">القيمة</th>
+                <th scope="col" className="text-left py-1.5 font-medium">تاريخ السداد</th>
               </tr>
             </thead>
             <tbody>

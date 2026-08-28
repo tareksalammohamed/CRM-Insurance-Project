@@ -258,12 +258,12 @@ export function Year2Collection({ branchId = null }: Year2CollectionProps) {
               <table>
                 <thead>
                   <tr>
-                    <th>رقم الوثيقة</th>
-                    <th>العميل</th>
-                    <th>تاريخ البداية</th>
-                    <th>المسؤول</th>
-                    <th>إجمالي المحصل (السنوات اللاحقة)</th>
-                    <th>إجراءات</th>
+                    <th scope="col">رقم الوثيقة</th>
+                    <th scope="col">العميل</th>
+                    <th scope="col">تاريخ البداية</th>
+                    <th scope="col">المسؤول</th>
+                    <th scope="col">إجمالي المحصل (السنوات اللاحقة)</th>
+                    <th scope="col">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody>

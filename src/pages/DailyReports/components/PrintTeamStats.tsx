@@ -122,18 +122,18 @@ export function PrintTeamStats({
       <table>
         <thead>
           <tr>
-            <th style={{ width: '20%' }}>الاسم</th>
-            <th>الدرجة</th>
-            <th>أيام مسجّلة</th>
-            <th>الالتزام</th>
-            <th>مكالمات</th>
-            <th>نتج عنها مواعيد</th>
-            <th>مواعيد فعلية</th>
-            <th>ممتاز</th>
-            <th>متوسط</th>
-            <th>ضعيف</th>
-            <th>عملاء جدد</th>
-            <th>outdoor</th>
+            <th scope="col" style={{ width: '20%' }}>الاسم</th>
+            <th scope="col">الدرجة</th>
+            <th scope="col">أيام مسجّلة</th>
+            <th scope="col">الالتزام</th>
+            <th scope="col">مكالمات</th>
+            <th scope="col">نتج عنها مواعيد</th>
+            <th scope="col">مواعيد فعلية</th>
+            <th scope="col">ممتاز</th>
+            <th scope="col">متوسط</th>
+            <th scope="col">ضعيف</th>
+            <th scope="col">عملاء جدد</th>
+            <th scope="col">outdoor</th>
           </tr>
         </thead>
         <tbody>

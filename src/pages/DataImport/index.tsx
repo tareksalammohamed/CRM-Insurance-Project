@@ -300,12 +300,12 @@ export function DataImport() {
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-white">
                     <tr className="border-b border-secondary-200 text-secondary-500">
-                      <th className="text-right py-2 px-2">صف</th>
-                      <th className="text-right py-2 px-2">العميل</th>
-                      <th className="text-right py-2 px-2">الوكيل</th>
-                      <th className="text-right py-2 px-2">رقم الوثيقة</th>
-                      <th className="text-right py-2 px-2">الحالة</th>
-                      <th className="text-right py-2 px-2">إجراء</th>
+                      <th scope="col" className="text-right py-2 px-2">صف</th>
+                      <th scope="col" className="text-right py-2 px-2">العميل</th>
+                      <th scope="col" className="text-right py-2 px-2">الوكيل</th>
+                      <th scope="col" className="text-right py-2 px-2">رقم الوثيقة</th>
+                      <th scope="col" className="text-right py-2 px-2">الحالة</th>
+                      <th scope="col" className="text-right py-2 px-2">إجراء</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -419,11 +419,11 @@ export function DataImport() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-secondary-200 text-secondary-500">
-                    <th className="text-right py-2 px-2">صف</th>
-                    <th className="text-right py-2 px-2">العميل</th>
-                    <th className="text-right py-2 px-2">رقم الوثيقة</th>
-                    <th className="text-right py-2 px-2">الحالة</th>
-                    <th className="text-right py-2 px-2">سبب الفشل</th>
+                    <th scope="col" className="text-right py-2 px-2">صف</th>
+                    <th scope="col" className="text-right py-2 px-2">العميل</th>
+                    <th scope="col" className="text-right py-2 px-2">رقم الوثيقة</th>
+                    <th scope="col" className="text-right py-2 px-2">الحالة</th>
+                    <th scope="col" className="text-right py-2 px-2">سبب الفشل</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -455,9 +455,9 @@ export function DataImport() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-secondary-200 text-secondary-500">
-                      <th className="text-right py-2 px-2">صف</th>
-                      <th className="text-right py-2 px-2">العميل</th>
-                      <th className="text-right py-2 px-2">رقم الوثيقة</th>
+                      <th scope="col" className="text-right py-2 px-2">صف</th>
+                      <th scope="col" className="text-right py-2 px-2">العميل</th>
+                      <th scope="col" className="text-right py-2 px-2">رقم الوثيقة</th>
                     </tr>
                   </thead>
                   <tbody>

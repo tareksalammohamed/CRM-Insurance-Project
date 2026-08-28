@@ -212,7 +212,7 @@ export function Cancellations() {
                   <thead>
                     <tr className="border-b border-secondary-200">
                       {columns.map((col) => (
-                        <th
+                        <th scope="col"
                           key={col.label}
                           className="text-right py-2 px-3 text-secondary-500 font-medium whitespace-nowrap"
                         >

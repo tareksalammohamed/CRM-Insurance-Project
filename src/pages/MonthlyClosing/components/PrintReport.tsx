@@ -456,10 +456,10 @@ export function PrintReport({
             <table>
               <thead>
                 <tr>
-                  <th style={{ width: '32%' }}>البيان</th>
-                  <th>إجمالي الجديد</th>
-                  <th>إجمالي التحصيل</th>
-                  <th>الإجمالي</th>
+                  <th scope="col" style={{ width: '32%' }}>البيان</th>
+                  <th scope="col">إجمالي الجديد</th>
+                  <th scope="col">إجمالي التحصيل</th>
+                  <th scope="col">الإجمالي</th>
                 </tr>
               </thead>
               <tbody>
@@ -543,7 +543,7 @@ export function PrintReport({
                 <table className={`pr-detail-table ${meta.tableClass}`}>
                   <thead>
                     <tr className="pr-detail-title-row">
-                      <th colSpan={4}>
+                      <th scope="col" colSpan={4}>
                         <div className="pr-company-flat">
                           {branding.company_logo_url && <img src={branding.company_logo_url} alt={branding.company_name} />}
                           <span>{branding.company_name}</span>
@@ -553,14 +553,14 @@ export function PrintReport({
                       </th>
                     </tr>
                     <tr className="pr-detail-meta-row">
-                      <th colSpan={2}>{supervisorRoleLabel}: {supervisorName}</th>
-                      <th colSpan={2}>الشهر: {monthLabel}{branchName && ` — الفرع: ${branchName}`}</th>
+                      <th scope="col" colSpan={2}>{supervisorRoleLabel}: {supervisorName}</th>
+                      <th scope="col" colSpan={2}>الشهر: {monthLabel}{branchName && ` — الفرع: ${branchName}`}</th>
                     </tr>
                     <tr>
-                      <th>العميل</th>
-                      <th>آخر 6 أرقام الوثيقة</th>
-                      <th>رقم القسط</th>
-                      <th>قيمة القسط</th>
+                      <th scope="col">العميل</th>
+                      <th scope="col">آخر 6 أرقام الوثيقة</th>
+                      <th scope="col">رقم القسط</th>
+                      <th scope="col">قيمة القسط</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -588,7 +588,7 @@ export function PrintReport({
                 <table className={`pr-detail-table ${meta.tableClass}`}>
                   <thead>
                     <tr className="pr-detail-title-row">
-                      <th colSpan={4}>
+                      <th scope="col" colSpan={4}>
                         <div className="pr-company-flat">
                           {branding.company_logo_url && <img src={branding.company_logo_url} alt={branding.company_name} />}
                           <span>{branding.company_name}</span>
@@ -598,14 +598,14 @@ export function PrintReport({
                       </th>
                     </tr>
                     <tr className="pr-detail-meta-row">
-                      <th colSpan={2}>{supervisorRoleLabel}: {supervisorName}</th>
-                      <th colSpan={2}>الشهر: {monthLabel}{branchName && ` — الفرع: ${branchName}`}</th>
+                      <th scope="col" colSpan={2}>{supervisorRoleLabel}: {supervisorName}</th>
+                      <th scope="col" colSpan={2}>الشهر: {monthLabel}{branchName && ` — الفرع: ${branchName}`}</th>
                     </tr>
                     <tr>
-                      <th>العميل</th>
-                      <th>آخر 6 أرقام الوثيقة</th>
-                      <th>رقم القسط</th>
-                      <th>قيمة القسط</th>
+                      <th scope="col">العميل</th>
+                      <th scope="col">آخر 6 أرقام الوثيقة</th>
+                      <th scope="col">رقم القسط</th>
+                      <th scope="col">قيمة القسط</th>
                     </tr>
                   </thead>
                   {chunkPageIntoAgentBlocks(rowsOnPage).map((block, blockIdx) => {

@@ -134,12 +134,14 @@ function AppLayout() {
 
   return (
     <div className="app-shell min-h-screen min-h-[100dvh] bg-secondary-50">
+      {/* تخطّى عناصر التنقّل المتكرّرة (الهيدر/القائمة) للوصول مباشرة للمحتوى — لمستخدمى الكيبورد وقارئات الشاشة */}
+      <a href="#main-content" className="skip-link">تخطَّ إلى المحتوى الرئيسى</a>
       <Sidebar />
       <Header />
       <PushNotificationPrompt />
 
-      <main className={clsx(
-        'transition-all duration-300',
+      <main id="main-content" tabIndex={-1} className={clsx(
+        'transition-all duration-300 focus:outline-none',
         // ===== Desktop: يتحرك مع الـ sidebar =====
         sidebarCollapsed ? 'md:mr-20' : 'md:mr-64',
         // ===== Mobile: padding top للـ header + bottom للـ bottom nav =====

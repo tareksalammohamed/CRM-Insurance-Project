@@ -113,11 +113,11 @@ export function CollectionDetailsByAgent({
                   <table>
                     <thead>
                       <tr>
-                        <th>العميل</th>
-                        <th>رقم الوثيقة</th>
-                        <th>التاريخ</th>
-                        <th>المبلغ</th>
-                        <th>الحالة</th>
+                        <th scope="col">العميل</th>
+                        <th scope="col">رقم الوثيقة</th>
+                        <th scope="col">التاريخ</th>
+                        <th scope="col">المبلغ</th>
+                        <th scope="col">الحالة</th>
                       </tr>
                     </thead>
                     <tbody>

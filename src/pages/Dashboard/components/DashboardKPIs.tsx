@@ -29,6 +29,8 @@ interface KpiTileProps {
   accentBorder: string;
   iconClassName: string;
   valueClassName?: string;
+  /** بلاطة قيادية: رقمها أكبر وإطارها أوضح — مش كل الـKPI بنفس الوزن البصرى */
+  emphasis?: boolean;
   onClick: () => void;
   ariaLabel: string;
 }
@@ -46,6 +48,7 @@ function KpiTile({
   accentBorder,
   iconClassName,
   valueClassName = 'text-secondary-900',
+  emphasis = false,
   onClick,
   ariaLabel,
 }: KpiTileProps) {
@@ -54,7 +57,7 @@ function KpiTile({
       type="button"
       onClick={onClick}
       aria-label={ariaLabel}
-      className={`kpi-card pressable text-right w-full cursor-pointer border-r-4 ${accentBorder}`}
+      className={`kpi-card pressable text-right w-full cursor-pointer border-r-4 ${accentBorder}${emphasis ? ' kpi-card-lead' : ''}`}
     >
       <div className="flex items-start justify-between gap-2">
         <p className="metric-label min-w-0">{label}</p>
@@ -87,6 +90,7 @@ export function DashboardKPIs({ stats, cancellationSummary, selectedMonth }: Das
           accentBorder={rateColor.border}
           iconClassName={`w-4 h-4 ${rateColor.text} shrink-0`}
           valueClassName={rateColor.text}
+          emphasis
           onClick={() => openCollection('month')}
           ariaLabel={`معدل التحصيل الشهري ${rate}% — عرض أقساط الشهر`}
         />

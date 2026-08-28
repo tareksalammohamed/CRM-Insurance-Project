@@ -38,11 +38,11 @@ export function HistoryModal({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-secondary-200">
-                    <th className="text-right py-2 px-3">تاريخ التحصيل</th>
-                    <th className="text-right py-2 px-3">المبلغ</th>
-                    <th className="text-right py-2 px-3">بواسطة</th>
-                    <th className="text-right py-2 px-3">الحالة</th>
-                    <th className="text-center py-2 px-3">إجراء</th>
+                    <th scope="col" className="text-right py-2 px-3">تاريخ التحصيل</th>
+                    <th scope="col" className="text-right py-2 px-3">المبلغ</th>
+                    <th scope="col" className="text-right py-2 px-3">بواسطة</th>
+                    <th scope="col" className="text-right py-2 px-3">الحالة</th>
+                    <th scope="col" className="text-center py-2 px-3">إجراء</th>
                   </tr>
                 </thead>
                 <tbody>

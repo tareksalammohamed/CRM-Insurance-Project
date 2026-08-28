@@ -17,14 +17,14 @@ export function EntriesTable({ entries }: EntriesTableProps) {
       <table className="w-full text-sm text-start">
         <thead>
           <tr className="text-secondary-500 border-b border-secondary-100">
-            <th className="py-2 px-2 font-medium">التاريخ</th>
-            <th className="py-2 px-2 font-medium">الالتزام</th>
-            <th className="py-2 px-2 font-medium">مكالمات</th>
-            <th className="py-2 px-2 font-medium">نتج عنها مواعيد</th>
-            <th className="py-2 px-2 font-medium">مواعيد فعلية</th>
-            <th className="py-2 px-2 font-medium">جودة المواعيد</th>
-            <th className="py-2 px-2 font-medium">عملاء جدد</th>
-            <th className="py-2 px-2 font-medium">outdoor</th>
+            <th scope="col" className="py-2 px-2 font-medium">التاريخ</th>
+            <th scope="col" className="py-2 px-2 font-medium">الالتزام</th>
+            <th scope="col" className="py-2 px-2 font-medium">مكالمات</th>
+            <th scope="col" className="py-2 px-2 font-medium">نتج عنها مواعيد</th>
+            <th scope="col" className="py-2 px-2 font-medium">مواعيد فعلية</th>
+            <th scope="col" className="py-2 px-2 font-medium">جودة المواعيد</th>
+            <th scope="col" className="py-2 px-2 font-medium">عملاء جدد</th>
+            <th scope="col" className="py-2 px-2 font-medium">outdoor</th>
           </tr>
         </thead>
         <tbody>

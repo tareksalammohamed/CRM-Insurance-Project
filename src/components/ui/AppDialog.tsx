@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { CSSProperties, ReactNode, MouseEvent, Ref } from 'react';
 import clsx from 'clsx';
 
@@ -21,14 +22,61 @@ interface AppDialogProps {
  * استُخرج من النمط المتطابق المتكرر فى عشرات المودالات بالمشروع.
  * لا يحمل أى تصميم داخلى أو منطق عمل — فقط الغلاف والسلوك المشترك؛ كل محتوى
  * المودال (الرأس، الفورم، الأزرار) يبقى كما هو تمامًا داخل الصفحة المستدعية.
+ *
+ * سلوك الوصولية/الاستخدام المضاف هنا مرة واحدة، فيستفيد منه كل مودالات
+ * التطبيق تلقائيًا بدون تعديل أى صفحة:
+ *  1) الإغلاق بمفتاح Escape (نفس دالة onClose الحالية — لو مش ممررة، الضغط
+ *     على Escape لا يفعل شيئًا، وده مقصود أثناء تنفيذ عملية).
+ *  2) قفل تمرير الصفحة الخلفية أثناء فتح المودال (يمنع "تمرير الخلفية"
+ *     المزعج على الموبايل خلف الـ bottom sheet).
+ *  3) إعادة التركيز للعنصر الذى فتح المودال بعد إغلاقه (مهم لمستخدمى
+ *     لوحة المفاتيح حتى لا يعود التركيز لأول الصفحة).
+ *  4) سمات role="dialog" و aria-modal للقارئات الصوتية.
  */
 export function AppDialog({ onClose, className, overlayClassName, contentRef, style, children }: AppDialogProps) {
+  // العنصر الذى كان يحمل التركيز قبل فتح المودال — نرجّع له التركيز عند الإغلاق
+  const previouslyFocused = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    previouslyFocused.current = document.activeElement as HTMLElement | null;
+    return () => {
+      const target = previouslyFocused.current;
+      // نتأكد أن العنصر لا يزال موجودًا فى الصفحة قبل إعادة التركيز له
+      if (target && typeof target.focus === 'function' && document.contains(target)) {
+        target.focus({ preventScroll: true });
+      }
+    };
+  }, []);
+
+  // الإغلاق بـ Escape — نفس سلوك الضغط على الخلفية بالضبط
+  useEffect(() => {
+    if (!onClose) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
+  // قفل تمرير الصفحة الخلفية أثناء فتح المودال. نحتفظ بالقيمة الأصلية
+  // ونرجّعها كما هى حتى لا نتعارض مع أى مودال آخر مفتوح فى نفس اللحظة.
+  useEffect(() => {
+    const original = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = original; };
+  }, []);
+
   return (
     <div className={clsx('modal-overlay', overlayClassName)} onClick={onClose}>
       <div
         ref={contentRef}
         className={clsx('modal-content', className)}
         style={style}
+        role="dialog"
+        aria-modal="true"
         onClick={(e: MouseEvent) => e.stopPropagation()}
       >
         {children}

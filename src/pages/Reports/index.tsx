@@ -772,11 +772,11 @@ export function Reports() {
                   <table className="min-w-[760px]">
                     <thead>
                       <tr>
-                        <th>اسم العميل</th>
-                        <th>تاريخ التسجيل</th>
-                        <th>مبلغ التأمين</th>
-                        <th>اسم الوكيل</th>
-                        <th>الحالة</th>
+                        <th scope="col">اسم العميل</th>
+                        <th scope="col">تاريخ التسجيل</th>
+                        <th scope="col">مبلغ التأمين</th>
+                        <th scope="col">اسم الوكيل</th>
+                        <th scope="col">الحالة</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -813,7 +813,7 @@ export function Reports() {
                     <thead>
                       <tr>
                         {detailsColumns.map((col) => (
-                          <th key={col}>{col}</th>
+                          <th scope="col" key={col}>{col}</th>
                         ))}
                       </tr>
                     </thead>

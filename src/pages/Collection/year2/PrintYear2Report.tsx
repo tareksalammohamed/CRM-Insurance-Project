@@ -56,11 +56,11 @@ export function PrintYear2Report({
       <table className="pr-detail-table">
         <thead>
           <tr>
-            <th>رقم الوثيقة</th>
-            <th>العميل</th>
-            <th>المسؤول</th>
-            <th>تاريخ التحصيل</th>
-            <th>المبلغ</th>
+            <th scope="col">رقم الوثيقة</th>
+            <th scope="col">العميل</th>
+            <th scope="col">المسؤول</th>
+            <th scope="col">تاريخ التحصيل</th>
+            <th scope="col">المبلغ</th>
           </tr>
         </thead>
         <tbody>

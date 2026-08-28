@@ -167,11 +167,11 @@ export function Commissions() {
             <table>
               <thead>
                 <tr>
-                  <th>اسم العميل</th>
-                  <th>رقم الوثيقة</th>
-                  <th>نوع العمولة</th>
-                  <th>قيمة العمولة</th>
-                  <th>تستحق يوم</th>
+                  <th scope="col">اسم العميل</th>
+                  <th scope="col">رقم الوثيقة</th>
+                  <th scope="col">نوع العمولة</th>
+                  <th scope="col">قيمة العمولة</th>
+                  <th scope="col">تستحق يوم</th>
                 </tr>
               </thead>
               <tbody>

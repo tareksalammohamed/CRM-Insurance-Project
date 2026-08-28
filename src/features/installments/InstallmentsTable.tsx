@@ -158,12 +158,12 @@ export function InstallmentsTable({
         <table>
           <thead>
             <tr>
-              <th>رقم القسط</th>
-              <th>تاريخ الاستحقاق</th>
-              <th>المبلغ</th>
-              <th>الحالة</th>
-              <th>تاريخ السداد</th>
-              <th>إجراء</th>
+              <th scope="col">رقم القسط</th>
+              <th scope="col">تاريخ الاستحقاق</th>
+              <th scope="col">المبلغ</th>
+              <th scope="col">الحالة</th>
+              <th scope="col">تاريخ السداد</th>
+              <th scope="col">إجراء</th>
             </tr>
           </thead>
           <tbody>

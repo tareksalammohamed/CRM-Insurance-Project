@@ -19,7 +19,8 @@ interface PageHeaderProps {
 export function PageHeader({ title, subtitle, titleSuffix, action }: PageHeaderProps) {
   const titleBlock = (
     <div className="page-header-copy flex flex-wrap items-baseline gap-x-2 gap-y-0.5 min-w-0">
-      <h2 className="page-header-title truncate">{title}</h2>
+      {/* h1 واحد لكل صفحة + مستوى السلم الطباعى المعتمد (type-h1) */}
+      <h1 className="page-header-title type-h1 truncate">{title}</h1>
       {titleSuffix && (
         <span className="text-sm md:text-base font-medium text-secondary-500">{titleSuffix}</span>
       )}
@@ -29,9 +30,9 @@ export function PageHeader({ title, subtitle, titleSuffix, action }: PageHeaderP
   if (!action) {
     return (
       <div className="page-header-single">
-        <span className="page-header-eyebrow">مساحة العمل</span>
+        <span className="page-header-eyebrow type-eyebrow">مساحة العمل</span>
         {titleBlock}
-        {subtitle && <p className="page-header-subtitle">{subtitle}</p>}
+        {subtitle && <p className="page-header-subtitle type-body">{subtitle}</p>}
       </div>
     );
   }
@@ -39,9 +40,9 @@ export function PageHeader({ title, subtitle, titleSuffix, action }: PageHeaderP
   return (
     <div className="page-header">
       <div className="page-header-single">
-        <span className="page-header-eyebrow">مساحة العمل</span>
+        <span className="page-header-eyebrow type-eyebrow">مساحة العمل</span>
         {titleBlock}
-        {subtitle && <p className="page-header-subtitle">{subtitle}</p>}
+        {subtitle && <p className="page-header-subtitle type-body">{subtitle}</p>}
       </div>
       {action}
     </div>

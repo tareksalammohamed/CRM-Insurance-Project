@@ -34,7 +34,8 @@ export function DashboardHeader({
       <div className="dashboard-intro">
         <div className="dashboard-intro-copy">
           <span className="dashboard-kicker">{greeting}، {displayName}</span>
-          <h2>نظرة عامة</h2>
+          {/* عنوان الصفحة الأساسى — h1 واحد لكل شاشة (ترتيب عناوين سليم لقارئات الشاشة) */}
+          <h1>مركز القيادة</h1>
           <p>إحصائيات شهر {monthLabel}</p>
         </div>
 
@@ -47,18 +48,18 @@ export function DashboardHeader({
               type="button"
               onClick={onPreviousMonth}
               aria-label="الشهر السابق"
-              className="w-9 h-9 flex items-center justify-center rounded-lg transition-colors"
+              className="w-9 h-9 min-h-9 flex items-center justify-center rounded-lg transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
 
             <div className="min-w-[6.25rem] px-1 text-center">
-              <span className="block text-[13px] leading-tight truncate">{monthLabel}</span>
+              <span className="block text-[13px] font-bold leading-tight truncate" aria-live="polite">{monthLabel}</span>
               {!isCurrentMonth && (
                 <button
                   type="button"
                   onClick={onCurrentMonth}
-                  className="mx-auto mt-0.5 inline-flex items-center gap-1 text-[10px] font-bold hover:underline"
+                  className="mx-auto mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold hover:underline"
                 >
                   <RotateCcw className="w-2.5 h-2.5" />
                   الشهر الحالي

@@ -30,7 +30,7 @@ export function PrintableGuide() {
       <h2 className="text-lg font-bold mt-6 mb-2">{GUIDE_ROLES.title}</h2>
       <p className="text-sm mb-2">{GUIDE_ROLES.intro}</p>
       <table className="w-full text-sm border-collapse mb-3">
-        <thead><tr className="border-b"><th className="text-right py-1">المستوى</th><th className="text-right py-1">الدور</th><th className="text-right py-1">الوصف</th></tr></thead>
+        <thead><tr className="border-b"><th scope="col" className="text-right py-1">المستوى</th><th scope="col" className="text-right py-1">الدور</th><th scope="col" className="text-right py-1">الوصف</th></tr></thead>
         <tbody>
           {GUIDE_ROLES.roles.map((r) => (
             <tr key={r.level} className="border-b">

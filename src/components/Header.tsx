@@ -60,8 +60,18 @@ export function Header() {
       if (notificationRef.current && !notificationRef.current.contains(e.target as Node)) setNotificationsOpen(false);
       if (profileRef.current      && !profileRef.current.contains(e.target as Node))      setProfileOpen(false);
     };
+    // Escape يغلق أى قائمة منسدلة مفتوحة — سلوك متوقّع لمستخدمى الكيبورد
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setNotificationsOpen(false);
+      setProfileOpen(false);
+    };
     document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', h);
+      document.removeEventListener('keydown', onKey);
+    };
   }, []);
 
   // إغلاق الـ drawer والبحث عند تغيير الصفحة
@@ -219,6 +229,8 @@ export function Header() {
             <button
               onClick={() => setNotificationsOpen(!notificationsOpen)}
               data-tour-id="header-notifications"
+              aria-haspopup="menu"
+              aria-expanded={notificationsOpen}
               aria-label={unreadCount > 0 ? `الإشعارات، ${unreadCount} غير مقروءة` : 'الإشعارات'}
               className="icon-button relative"
             >
@@ -276,7 +288,7 @@ export function Header() {
 
           {/* بروفايل */}
           <div className="relative" ref={profileRef}>
-            <button onClick={() => setProfileOpen(!profileOpen)} aria-label="فتح قائمة الحساب" data-tour-id="header-profile" className="flex min-h-11 items-center gap-2 rounded-xl p-1 pl-1.5 transition-colors hover:bg-secondary-100">
+            <button onClick={() => setProfileOpen(!profileOpen)} aria-label="فتح قائمة الحساب" aria-haspopup="menu" aria-expanded={profileOpen} data-tour-id="header-profile" className="flex min-h-11 items-center gap-2 rounded-xl p-1 pl-1.5 transition-colors hover:bg-secondary-100">
               <div className="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0 overflow-hidden ring-1 ring-primary-200">
                 {user.avatar_url
                   ? <img src={user.avatar_url} alt={user.name} className="w-9 h-9 rounded-full object-cover" loading="lazy" decoding="async" />
