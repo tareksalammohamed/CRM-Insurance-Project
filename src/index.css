@@ -827,6 +827,16 @@ body {
     max-height: min(82dvh, 620px) !important;
     border-radius: 1.5rem;
   }
+  .product-picker-dialog {
+    display: flex;
+    flex-direction: column;
+    height: min(82dvh, 620px);
+    max-height: calc(100dvh - 2rem) !important;
+    overflow: hidden;
+  }
+  .product-picker-dialog > .overflow-y-auto {
+    min-height: 0;
+  }
 
   @media (min-width: 640px) {
     .team-performance-modal {

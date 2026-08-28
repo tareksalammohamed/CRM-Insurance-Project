@@ -74,7 +74,11 @@ export function ProductPicker({ value, onChange, error }: ProductPickerProps) {
       </button>
 
       {isOpen && (
-        <AppDialog onClose={() => setIsOpen(false)} className="max-w-md animate-fadeIn max-h-[85dvh] flex flex-col">
+        <AppDialog
+          onClose={() => setIsOpen(false)}
+          overlayClassName="modal-overlay-centered"
+          className="product-picker-dialog animate-fadeIn"
+        >
           {/* رأس الصندوق + مربع البحث */}
           <div className="p-4 border-b border-secondary-200 sticky top-0 bg-white z-10 space-y-3 rounded-t-2xl sm:rounded-t-2xl">
             <div className="flex items-center justify-between">
