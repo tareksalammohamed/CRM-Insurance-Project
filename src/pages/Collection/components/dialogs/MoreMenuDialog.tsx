@@ -31,6 +31,7 @@ export function MoreMenuDialog({
         </p>
       }
       onClose={onClose}
+      presentation="centered"
     >
       <button onClick={onShowCustomerDetails} className="dropdown-item w-full">
         <User className="w-4 h-4" />

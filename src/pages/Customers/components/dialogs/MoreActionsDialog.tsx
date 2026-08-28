@@ -30,6 +30,7 @@ export function MoreActionsDialog({
         <p className="text-xs text-secondary-500 mt-0.5" dir="ltr">{customer.phone || '-'}</p>
       }
       onClose={onClose}
+      presentation="centered"
     >
       <button
         onClick={() => onEdit(customer)}

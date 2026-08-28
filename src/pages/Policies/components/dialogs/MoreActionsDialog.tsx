@@ -37,6 +37,7 @@ export function MoreActionsDialog({
         <p className="text-xs text-secondary-500 font-mono mt-0.5">#{policy.policy_number}</p>
       }
       onClose={onClose}
+      presentation="centered"
     >
       <button
         onClick={() => onEdit(policy)}

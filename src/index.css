@@ -816,6 +816,18 @@ body {
     }
   }
 
+  /* قوائم الثلاث نقاط: تظهر فورًا في منتصف الشاشة بدل الارتباط بأسفل صفحة البطاقات */
+  .modal-overlay-centered {
+    align-items: center !important;
+    padding: 1rem;
+  }
+  .modal-overlay-centered .modal-content {
+    width: min(100%, 24rem);
+    margin-bottom: 0 !important;
+    max-height: min(82dvh, 620px) !important;
+    border-radius: 1.5rem;
+  }
+
   @media (min-width: 640px) {
     .team-performance-modal {
       max-height: min(90vh, 760px);
