@@ -571,8 +571,20 @@ body {
     padding-block: 0.375rem;
   }
 
+  /* ===== أهداف اللمس على الشاشات اللمسية =====
+     الحد الأدنى المعتمد 44px (توصية WCAG 2.5.5 / HIG). القياس الفعلى أثبت
+     أن أزرار كثيرة كانت بين 30px و40px على كل مقاسات الموبايل، وده معدّل
+     أخطاء لمس عالى فى تطبيق مبيعات بيُستخدم باليد الواحدة أثناء الحركة.
+
+     نستخدم (hover: none) and (pointer: coarse) بدل max-width فقط: المعيار
+     هو طريقة الإدخال مش عرض الشاشة — فالتابلت اللمسى ياخد نفس المعالجة،
+     والديسكتوب بالماوس يحتفظ بكثافته المدمجة كما هى بدون أى تغيير بصرى. */
   @media (max-width: 767px) {
-    .btn-sm { min-height: 2.375rem; }
+    .btn-sm { min-height: 2.75rem; }
+  }
+  @media (hover: none) and (pointer: coarse) {
+    .btn { min-height: 2.75rem; }
+    .btn-sm { min-height: 2.75rem; }
   }
 
   /* لون مصمت من الهوية (بدون تدرّج صاخب) + ظل خفيف يحدد الأهمية */
@@ -2313,6 +2325,37 @@ body {
     .dashboard-stats-grid > .kpi-card:nth-child(-n + 2) { min-height: 8.5rem; }
     .dashboard-stats-grid > .kpi-card:nth-child(n + 3) { min-height: 8.5rem; }
     .dashboard-kpis-grid .kpi-card { min-height: 8rem; }
+  }
+  /* ======================================================================
+     أهداف اللمس — يجب أن تبقى فى آخر الـlayer
+     ======================================================================
+     هذه القواعد تتجاوز مقاسات مُعرّفة أعلى فى نفس الـlayer (quick-action،
+     pagination-page). ترتيب المصدر هو ما يحسم عند تساوى الـspecificity،
+     فلو اتنقلت لأعلى الملف بتتلغى بصمت — وده بالضبط اللى أمسكه القياس
+     الفعلى (كانت لسه 36px بالرغم من تطابق الـmedia query).
+     لا !important: الاعتماد على الترتيب أنضف وأسهل تتبّعًا.
+     ====================================================================== */
+  @media (hover: none) and (pointer: coarse) {
+    .quick-action { width: 2.75rem; height: 2.75rem; }
+    .pagination-page { min-width: 2.75rem; height: 2.75rem; }
+    .icon-button { min-width: 2.75rem; min-height: 2.75rem; }
+
+    /* أسهم التنقل بين الشهور: القاعدة المدمجة (1.875rem = 30px) مكتوبة داخل
+       بلوك الموبايل بنفس الـspecificity، فلازم تتجاوزها من هنا بالترتيب.
+       نخصّ الأبناء المباشرين فقط عشان زر «الشهر الحالي» جوه الـdiv ياخد
+       معالجة مختلفة (عرض حسب النص لا مربّع). */
+    .dashboard-month-controls > button { width: 2.75rem; height: 2.75rem; }
+    .dashboard-month-controls > div button {
+      width: auto;
+      height: auto;
+      min-height: 2.75rem;
+      padding-inline: 0.5rem;
+    }
+
+    /* السابق/التالي فى الترقيم: النص بيتخفى تحت 360px فيتحوّل الزر لأيقونة
+       فقط، وعندها العرض = الحشو + الأيقونة = أقل من 44px. الارتفاع كان سليمًا
+       بالفعل، الناقص هو العرض — فنضمن مربّع لمس كامل بدل شريط رفيع. */
+    .pagination-bar > button { min-width: 2.75rem; }
   }
 }
 

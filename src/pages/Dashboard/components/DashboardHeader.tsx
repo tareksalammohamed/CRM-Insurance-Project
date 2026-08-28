@@ -48,7 +48,7 @@ export function DashboardHeader({
               type="button"
               onClick={onPreviousMonth}
               aria-label="الشهر السابق"
-              className="w-9 h-9 min-h-9 flex items-center justify-center rounded-lg transition-colors"
+              className="h-11 w-11 md:h-9 md:w-9 flex items-center justify-center rounded-lg transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -59,7 +59,7 @@ export function DashboardHeader({
                 <button
                   type="button"
                   onClick={onCurrentMonth}
-                  className="mx-auto mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold hover:underline"
+                  className="mx-auto inline-flex min-h-9 items-center gap-1 px-2 text-[11px] font-bold hover:underline"
                 >
                   <RotateCcw className="w-2.5 h-2.5" />
                   الشهر الحالي
@@ -72,7 +72,7 @@ export function DashboardHeader({
               onClick={onNextMonth}
               disabled={isCurrentMonth}
               aria-label="الشهر التالي"
-              className="w-9 h-9 flex items-center justify-center rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="h-11 w-11 md:h-9 md:w-9 flex items-center justify-center rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -85,7 +85,7 @@ export function DashboardHeader({
                 onClick={onRefresh}
                 disabled={refreshing}
                 aria-label={refreshing ? 'جاري تحديث البيانات' : 'تحديث البيانات'}
-                className="flex items-center gap-1.5 text-xs md:text-[13px] rounded-lg px-2.5 py-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                className="flex min-h-11 md:min-h-0 items-center gap-1.5 text-xs md:text-[13px] rounded-lg px-3 py-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
                 <span className="hidden xs:inline">{refreshing ? 'جاري التحديث…' : 'تحديث'}</span>

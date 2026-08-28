@@ -32,7 +32,7 @@ export function SearchInput({ value, onChange, placeholder }: SearchInputProps) 
           onClick={() => onChange('')}
           aria-label="مسح البحث"
           title="مسح البحث"
-          className="absolute left-1 top-1/2 -translate-y-1/2 grid h-10 w-10 place-items-center rounded-lg text-secondary-400 transition-colors hover:bg-secondary-100 hover:text-secondary-700"
+          className="absolute left-0.5 top-1/2 -translate-y-1/2 grid h-11 w-11 place-items-center rounded-lg text-secondary-400 transition-colors hover:bg-secondary-100 hover:text-secondary-700"
         >
           <X className="w-4 h-4" />
         </button>
