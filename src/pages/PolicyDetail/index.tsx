@@ -12,6 +12,7 @@ import {
 } from '../../lib/supabase';
 import {
   ChevronRight,
+  ChevronDown,
   FileText,
   Calendar,
   CreditCard,
@@ -69,6 +70,9 @@ export function PolicyDetail() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
+
+  // إظهار/إخفاء البيانات التفصيلية — عرض فقط، مفيش أى أثر على البيانات
+  const [showDetails, setShowDetails] = useState(false);
 
   // ===================================
   // تحميل بيانات الوثيقة
@@ -234,8 +238,33 @@ export function PolicyDetail() {
   // ===================================
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+      <div className="space-y-6 animate-fadeIn" role="status" aria-live="polite">
+        <span className="sr-only">جارٍ تحميل بيانات الوثيقة…</span>
+        <div className="detail-summary">
+          <div className="skeleton-bar h-3 w-20 !bg-white/20" />
+          <div className="skeleton-bar h-6 w-52 mt-2.5 !bg-white/25" />
+          <div className="detail-summary-metrics">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="skeleton-bar h-12 !rounded-xl !bg-white/15" />
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="kpi-card">
+              <div className="skeleton-bar h-3 w-16" />
+              <div className="skeleton-bar h-7 w-12 mt-3" />
+            </div>
+          ))}
+        </div>
+        <div className="card">
+          <div className="skeleton-bar h-4 w-28 mb-4" />
+          <div className="space-y-2">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="skeleton-bar h-10 !rounded-lg" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -248,162 +277,182 @@ export function PolicyDetail() {
   return (
     <div className="space-y-6 animate-fadeIn" dir="rtl">
 
-      {/* ===== رأس الصفحة ===== */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/policies')}
-            className="p-2 rounded-lg hover:bg-secondary-100 text-secondary-600"
-            title="رجوع"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-          <div>
-            <h2 className="text-xl font-bold text-secondary-900">
-              تفاصيل الوثيقة — {policy.policy_number}
-            </h2>
-            <p className="text-sm text-secondary-500 mt-0.5">
-              عرض الأقساط وسداد الوثيقة
+      {/* ===== رأس ملخّص الوثيقة =====
+          كل ما يحتاجه المستخدم للتعرّف على الوثيقة (رقمها، عميلها، نوعها،
+          حالتها) + أهم أربعة أرقام + الإجراءات، فى كتلة واحدة أعلى الصفحة
+          بدل تفريقها على ثلاث بطاقات. باقي الحقول التفصيلية انتقلت لقسم
+          قابل للطي تحتها (Progressive disclosure). */}
+      <div className="detail-summary">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <button
+              onClick={() => navigate('/policies')}
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-lime-300 hover:underline mb-1.5"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+              كل الوثائق
+            </button>
+            <span className="detail-summary-eyebrow">وثيقة تأمين</span>
+            <h2 className="detail-summary-title font-mono" dir="ltr">{policy.policy_number}</h2>
+            <p className="detail-summary-sub truncate">
+              {policy.customer?.name || '—'} · {POLICY_TYPE_LABELS[policy.policy_type]}
             </p>
+          </div>
+          <span className={clsx('badge shrink-0', getPolicyStatusBadgeClass(policy.status))}>
+            {POLICY_STATUS_LABELS[policy.status]}
+          </span>
+        </div>
+
+        <div className="detail-summary-metrics">
+          <div className="detail-summary-metric">
+            <span>قيمة القسط الصافي</span>
+            <strong>{formatCurrency(policy.premium_amount)}</strong>
+          </div>
+          <div className="detail-summary-metric">
+            <span>مبلغ التأمين</span>
+            <strong>{policy.sum_assured != null ? formatCurrency(policy.sum_assured) : '—'}</strong>
+          </div>
+          <div className="detail-summary-metric">
+            <span>تاريخ البداية</span>
+            <strong>{format(new Date(policy.start_date), 'dd/MM/yyyy')}</strong>
+          </div>
+          <div className="detail-summary-metric">
+            <span>طريقة السداد</span>
+            <strong>{PAYMENT_METHOD_LABELS[policy.payment_method]}</strong>
           </div>
         </div>
 
         {/* ===== إجراءات الوثيقة — نفس أزرار صفحة الوثائق، متاحة هنا كمان ===== */}
-        <div className="flex items-center gap-1 flex-wrap">
+        <div className="detail-actions">
           <button
             onClick={() => navigate(`/policies?edit=${policy.id}`)}
-            className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-secondary-100 text-secondary-600 hover:text-secondary-900"
-            title="تعديل"
+            className="btn btn-white btn-sm"
           >
-            <Edit2 className="w-4 h-4" />
-            <span className="text-xs whitespace-nowrap">تعديل</span>
+            <Edit2 className="w-3.5 h-3.5" />
+            <span>تعديل</span>
           </button>
           {policy.status === 'cancelled' && (
             <button
               onClick={() => handleChangeStatus('active')}
               disabled={changingStatus}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-success-50 text-success-600 hover:text-success-700 disabled:opacity-50"
-              title="إعادة تفعيل"
+              className="btn btn-white btn-sm text-success-700"
             >
-              <RotateCcw className="w-4 h-4" />
-              <span className="text-xs whitespace-nowrap">إعادة تفعيل</span>
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>إعادة تفعيل</span>
             </button>
           )}
           {policy.status !== 'cancelled' && (
             <button
               onClick={() => handleChangeStatus('cancelled')}
               disabled={changingStatus}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-error-50 text-error-600 hover:text-error-700 disabled:opacity-50"
-              title="إلغاء"
+              className="btn btn-white btn-sm text-error-700"
             >
-              <XCircle className="w-4 h-4" />
-              <span className="text-xs whitespace-nowrap">إلغاء</span>
+              <XCircle className="w-3.5 h-3.5" />
+              <span>إلغاء</span>
             </button>
           )}
-          {isDeletable ? (
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-error-50 text-secondary-500 hover:text-error-600"
-              title="حذف الوثيقة"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span className="text-xs whitespace-nowrap">حذف</span>
-            </button>
-          ) : (
-            <button
-              disabled
-              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-secondary-200 cursor-not-allowed"
-              title="لا يمكن الحذف: توجد دفعات من شهور سابقة"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span className="text-xs whitespace-nowrap">حذف</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ===== بيانات الوثيقة ===== */}
-      <div className="card">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
-              <FileText className="w-5 h-5 text-primary-600" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-secondary-900">{policy.policy_number}</h3>
-              <p className="text-sm text-secondary-500">
-                {POLICY_TYPE_LABELS[policy.policy_type]}
-              </p>
-            </div>
-          </div>
-          <span className={clsx('badge', getPolicyStatusBadgeClass(policy.status))}>
-            {POLICY_STATUS_LABELS[policy.status]}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-          <div>
-            <p className="text-secondary-500 mb-1 flex items-center gap-1">
-              <User className="w-3.5 h-3.5" /> العميل
-            </p>
-            <p className="font-medium text-secondary-900">{policy.customer?.name || '—'}</p>
-          </div>
-          <div>
-            <p className="text-secondary-500 mb-1 flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5" /> تاريخ البداية
-            </p>
-            <p className="font-medium text-secondary-900">
-              {format(new Date(policy.start_date), 'dd/MM/yyyy')}
-            </p>
-          </div>
-          <div>
-            <p className="text-secondary-500 mb-1 flex items-center gap-1">
-              <CreditCard className="w-3.5 h-3.5" /> طريقة السداد
-            </p>
-            <p className="font-medium text-secondary-900">
-              {PAYMENT_METHOD_LABELS[policy.payment_method]}
-            </p>
-          </div>
-          <div>
-            <p className="text-secondary-500 mb-1 flex items-center gap-1">
-              <DollarSign className="w-3.5 h-3.5" /> قيمة القسط الصافي
-            </p>
-            <p className="font-medium text-secondary-900">
-              {formatCurrency(policy.premium_amount)}
-            </p>
-          </div>
-          <div>
-            <p className="text-secondary-500 mb-1 flex items-center gap-1">
-              <DollarSign className="w-3.5 h-3.5" /> مبلغ التأمين
-            </p>
-            <p className="font-medium text-secondary-900">
-              {policy.sum_assured != null ? formatCurrency(policy.sum_assured) : '—'}
-            </p>
-          </div>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            disabled={!isDeletable}
+            className="btn btn-white btn-sm text-error-700"
+            title={isDeletable ? 'حذف الوثيقة' : 'لا يمكن الحذف: توجد دفعات من شهور سابقة'}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>حذف</span>
+          </button>
         </div>
       </div>
 
       {/* ===== إحصائيات الأقساط ===== */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'إجمالي الأقساط', value: stats.total, color: 'text-secondary-700', bg: 'bg-secondary-100' },
-          { label: 'مسدد',           value: stats.paid,   color: 'text-success-700',   bg: 'bg-success-50' },
-          { label: 'غير مسدد',       value: stats.pending, color: 'text-secondary-600', bg: 'bg-secondary-50' },
-          { label: 'متأخر',          value: stats.overdue, color: 'text-error-700',     bg: 'bg-error-50' },
+          { label: 'إجمالي الأقساط', value: stats.total,   accent: 'border-r-secondary-400', color: '' },
+          { label: 'مسدد',            value: stats.paid,    accent: 'border-r-success-500',   color: 'text-success-600' },
+          { label: 'غير مسدد',        value: stats.pending, accent: 'border-r-warning-500',   color: 'text-warning-600' },
+          { label: 'متأخر',           value: stats.overdue, accent: 'border-r-error-500',     color: 'text-error-600' },
         ].map((s) => (
-          <div key={s.label} className={clsx('card text-center py-4', s.bg)}>
-            <p className={clsx('text-2xl font-bold', s.color)}>{s.value}</p>
-            <p className="text-xs text-secondary-500 mt-1">{s.label}</p>
+          <div key={s.label} className={clsx('kpi-card border-r-4', s.accent)}>
+            <p className="metric-label">{s.label}</p>
+            <p className={clsx('text-figure', s.color)}>{s.value}</p>
           </div>
         ))}
       </div>
 
+      {/* ===== بيانات تفصيلية — مطويّة افتراضيًا (Progressive disclosure) ===== */}
+      <div className="card !p-0">
+        <button
+          type="button"
+          onClick={() => setShowDetails((v) => !v)}
+          className="detail-section-toggle"
+          aria-expanded={showDetails}
+        >
+          <span className="detail-section-toggle-label">
+            <FileText />
+            بيانات الوثيقة التفصيلية
+          </span>
+          <ChevronDown
+            className={clsx('w-4 h-4 text-secondary-400 transition-transform', showDetails && 'rotate-180')}
+          />
+        </button>
+        {showDetails && (
+          <div className="detail-section-body">
+            <div className="detail-field-grid">
+              <div className="detail-field">
+                <span className="detail-field-label flex items-center gap-1">
+                  <User className="w-3 h-3" /> العميل
+                </span>
+                <span className="detail-field-value">{policy.customer?.name || '—'}</span>
+              </div>
+              <div className="detail-field">
+                <span className="detail-field-label flex items-center gap-1">
+                  <Calendar className="w-3 h-3" /> تاريخ البداية
+                </span>
+                <span className="detail-field-value">
+                  {format(new Date(policy.start_date), 'dd/MM/yyyy')}
+                </span>
+              </div>
+              <div className="detail-field">
+                <span className="detail-field-label flex items-center gap-1">
+                  <CreditCard className="w-3 h-3" /> طريقة السداد
+                </span>
+                <span className="detail-field-value">
+                  {PAYMENT_METHOD_LABELS[policy.payment_method]}
+                </span>
+              </div>
+              <div className="detail-field">
+                <span className="detail-field-label flex items-center gap-1">
+                  <DollarSign className="w-3 h-3" /> قيمة القسط الصافي
+                </span>
+                <span className="detail-field-value">{formatCurrency(policy.premium_amount)}</span>
+              </div>
+              <div className="detail-field">
+                <span className="detail-field-label flex items-center gap-1">
+                  <DollarSign className="w-3 h-3" /> مبلغ التأمين
+                </span>
+                <span className="detail-field-value">
+                  {policy.sum_assured != null ? formatCurrency(policy.sum_assured) : '—'}
+                </span>
+              </div>
+              <div className="detail-field">
+                <span className="detail-field-label flex items-center gap-1">
+                  <FileText className="w-3 h-3" /> نوع الوثيقة
+                </span>
+                <span className="detail-field-value">{POLICY_TYPE_LABELS[policy.policy_type]}</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* ===== جدول الأقساط الموحّد (نفس المكوّن فى صفحة التحصيل والسداد وصفحة العملاء) ===== */}
       <div className="card">
-        <h3 className="font-semibold text-secondary-900 mb-4 flex items-center gap-2">
-          <CreditCard className="w-4 h-4 text-primary-600" />
-          جدول الأقساط
-        </h3>
+        <div className="card-section-head">
+          <h3>
+            <CreditCard className="w-4 h-4 text-primary-600" />
+            جدول الأقساط
+          </h3>
+          <span className="card-section-meta">{stats.paid} / {stats.total} مسدد</span>
+        </div>
 
         <InstallmentsTable
           installments={installments}

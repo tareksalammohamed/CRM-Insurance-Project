@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import clsx from 'clsx';
 import { format } from 'date-fns';
-import { User as UserIcon } from 'lucide-react';
+import { FileText, User as UserIcon } from 'lucide-react';
 import { POLICY_TYPE_LABELS, POLICY_STATUS_LABELS, type Policy } from '../../../lib/supabase';
 import { STATUS_BADGE_CLASS, STATUS_DOT_CLASS } from '../constants';
 import { formatCurrency } from '../utils/formatCurrency';
@@ -18,15 +18,24 @@ function PolicyCardImpl({ policy, onOpenDetails, onOpenMoreMenu }: PolicyCardPro
   return (
     <div
       onClick={() => onOpenDetails(policy)}
-      className="crm-data-card policy-data-card card pressable cursor-pointer hover:shadow-md hover:border-primary-200 transition-all duration-200"
+      className="crm-data-card policy-data-card card pressable cursor-pointer"
     >
-      <div className="crm-data-card-header flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5 text-secondary-900 font-semibold truncate">
-            <UserIcon className="w-4 h-4 text-secondary-400 shrink-0" />
-            <span className="truncate">{(policy as any).customer?.name || '-'}</span>
+      <div className="crm-data-card-header flex items-start justify-between gap-2.5">
+        <div className="flex items-start gap-2.5 min-w-0">
+          <span className="data-card-avatar" aria-hidden="true">
+            <FileText className="w-4 h-4" />
+          </span>
+          <div className="min-w-0">
+            <div className="font-semibold text-secondary-900 truncate">
+              {(policy as any).customer?.name || '-'}
+            </div>
+            {/* رقم الوثيقة هو المُعرّف الأهم فى سياق الوثائق — يُقدَّم كسطر
+                هوية ثانوي بخط أحادي المسافة لسهولة المقارنة البصرية. */}
+            <p className="data-card-ident" dir="ltr">
+              <FileText />
+              <span className="truncate font-mono">{policy.policy_number}</span>
+            </p>
           </div>
-          <p className="text-xs text-secondary-500 mt-1 font-mono">#{policy.policy_number}</p>
         </div>
         <span className={clsx('badge shrink-0 gap-1.5', STATUS_BADGE_CLASS[policy.status] || 'badge-secondary')}>
           <span className={clsx('w-1.5 h-1.5 rounded-full', STATUS_DOT_CLASS[policy.status] || 'bg-secondary-400')} />
@@ -34,26 +43,29 @@ function PolicyCardImpl({ policy, onOpenDetails, onOpenMoreMenu }: PolicyCardPro
         </span>
       </div>
 
-      <div className="crm-data-card-metrics grid grid-cols-2 gap-x-3 gap-y-2.5 mt-4 text-sm">
+      <div className="crm-data-card-metrics grid grid-cols-2 gap-x-2 gap-y-2 text-sm">
         <div>
-          <p className="text-secondary-400 text-xs">نوع الوثيقة</p>
-          <p className="text-secondary-800 font-medium truncate">{POLICY_TYPE_LABELS[policy.policy_type]}</p>
+          <p>نوع الوثيقة</p>
+          <p className="truncate">{POLICY_TYPE_LABELS[policy.policy_type]}</p>
         </div>
         <div>
-          <p className="text-secondary-400 text-xs">مبلغ التأمين</p>
-          <p className="text-secondary-800 font-medium">{policy.sum_assured ? formatCurrency(policy.sum_assured) : '-'}</p>
+          <p>مبلغ التأمين</p>
+          <p className="text-figure">{policy.sum_assured ? formatCurrency(policy.sum_assured) : '-'}</p>
         </div>
         <div>
-          <p className="text-secondary-400 text-xs">قيمة القسط الصافي</p>
-          <p className="text-secondary-800 font-medium">{formatCurrency(policy.premium_amount)}</p>
+          <p>قيمة القسط الصافي</p>
+          <p className="text-figure">{formatCurrency(policy.premium_amount)}</p>
         </div>
         <div>
-          <p className="text-secondary-400 text-xs">تاريخ البداية</p>
-          <p className="text-secondary-800 font-medium">{format(new Date(policy.start_date), 'dd/MM/yyyy')}</p>
+          <p>تاريخ البداية</p>
+          <p className="text-figure">{format(new Date(policy.start_date), 'dd/MM/yyyy')}</p>
         </div>
         <div className="col-span-2">
-          <p className="text-secondary-400 text-xs">اسم الوكيل</p>
-          <p className="text-secondary-800 font-medium truncate">{(policy as any).owner?.name || '-'}</p>
+          <p>اسم الوكيل</p>
+          <p className="truncate flex items-center gap-1.5">
+            <UserIcon className="w-3.5 h-3.5 text-secondary-400 shrink-0" />
+            {(policy as any).owner?.name || '-'}
+          </p>
         </div>
       </div>
 

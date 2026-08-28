@@ -1,4 +1,4 @@
-import { Eye, MoreVertical } from 'lucide-react';
+import { Eye, MoreVertical, Phone } from 'lucide-react';
 import { type ActionMenuAnchor } from '../../../components/ui/AppBottomSheet';
 import type { CustomerWithRelations } from '../types';
 
@@ -10,7 +10,7 @@ interface CustomerActionsProps {
 
 export function CustomerActions({ customer, onViewDetails, onOpenMoreMenu }: CustomerActionsProps) {
   return (
-    <div className="flex items-center gap-2 mt-4 pt-3 border-t border-secondary-100">
+    <div className="data-card-actions">
       <button
         onClick={(e) => { e.stopPropagation(); onViewDetails(customer); }}
         className="btn btn-secondary btn-sm flex-1"
@@ -19,13 +19,29 @@ export function CustomerActions({ customer, onViewDetails, onOpenMoreMenu }: Cus
         <span>التفاصيل</span>
       </button>
 
+      {/* اتصال مباشر — الإجراء الأكثر تكرارًا للوكيل من القائمة نفسها،
+          فى متناول الإبهام على الموبايل بدون فتح تفاصيل العميل.
+          مجرد رابط tel: على نفس رقم الهاتف المعروض، بدون منطق جديد. */}
+      {customer.phone && (
+        <a
+          href={`tel:${customer.phone}`}
+          onClick={(e) => e.stopPropagation()}
+          className="quick-action"
+          aria-label={`الاتصال بـ ${customer.name}`}
+          title="اتصال"
+        >
+          <Phone className="w-4 h-4" />
+        </a>
+      )}
+
       <button
         onClick={(e) => {
           e.stopPropagation();
           const rect = e.currentTarget.getBoundingClientRect();
           onOpenMoreMenu(customer, { top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom });
         }}
-        className="btn btn-secondary btn-sm touch-target"
+        className="quick-action"
+        aria-label={`إجراءات أخرى لـ ${customer.name}`}
         title="المزيد"
       >
         <MoreVertical className="w-4 h-4" />

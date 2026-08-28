@@ -7,21 +7,53 @@ interface DashboardChartsProps {
   chartData: { production: number; collection: number };
 }
 
+// ألوان الرسم مشتقّة من هوية التطبيق (أخضر عميق / تيل) بدل الأزرق العام،
+// عشان الرسوم تبقى امتداد بصري للهوية مش عنصر غريب عنها.
+const PRODUCTION_COLOR = '#087f5b';
+const COLLECTION_COLOR = '#0f5b59';
+
+// تنسيق موحّد لكل Tooltip فى اللوحة — RTL + نفس حدود وظلال الكروت.
+const TOOLTIP_STYLE = {
+  direction: 'rtl' as const,
+  borderRadius: '0.75rem',
+  border: '1px solid #cddcd4',
+  boxShadow: '0 8px 24px -8px rgb(13 41 37 / 0.16)',
+  fontSize: '0.75rem',
+  fontWeight: 600,
+  padding: '0.5rem 0.625rem',
+};
+
+const TOOLTIP_ITEM_STYLE = { color: '#0d2925', fontWeight: 700 };
+
 export function DashboardCharts({ totalPolicies, policyStatusData, chartData }: DashboardChartsProps) {
+  const combined = chartData.production + chartData.collection;
+  const productionShare = combined > 0 ? Math.round((chartData.production / combined) * 100) : 0;
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="card">
-        <h3 className="font-semibold text-secondary-900 mb-4">حالة الوثائق</h3>
-        <div className="h-48 relative">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
+      <div className="card chart-panel">
+        <div className="chart-panel-head">
+          <div className="min-w-0">
+            <h3 className="chart-panel-title">حالة الوثائق</h3>
+            <p className="chart-panel-note">توزيع المحفظة حسب الحالة</p>
+          </div>
+          <div className="chart-panel-total">
+            <span>الإجمالي</span>
+            <strong>{totalPolicies || 0}</strong>
+          </div>
+        </div>
+
+        <div className="chart-canvas h-40 md:h-44">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={policyStatusData}
                 cx="50%"
                 cy="50%"
-                innerRadius={50}
-                outerRadius={70}
-                paddingAngle={5}
+                innerRadius={48}
+                outerRadius={66}
+                paddingAngle={3}
+                strokeWidth={0}
                 dataKey="value"
               >
                 {policyStatusData.map((entry, index) => (
@@ -30,86 +62,84 @@ export function DashboardCharts({ totalPolicies, policyStatusData, chartData }: 
               </Pie>
               <Tooltip
                 formatter={(value: any, name: any) => [value, name]}
-                contentStyle={{
-                  direction: 'rtl',
-                  borderRadius: '8px',
-                  border: '1px solid #e2e8f0'
-                }}
+                contentStyle={TOOLTIP_STYLE}
+                itemStyle={TOOLTIP_ITEM_STYLE}
               />
             </PieChart>
           </ResponsiveContainer>
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-xl font-bold text-secondary-900">
-              {totalPolicies || 0}
-            </span>
-            <span className="text-[10px] text-secondary-400">إجمالي</span>
+          <div className="chart-center">
+            <span className="chart-center-value">{totalPolicies || 0}</span>
+            <span className="chart-center-label">وثيقة</span>
           </div>
         </div>
-        <div className="flex justify-center gap-4 mt-2">
+
+        <div className="chart-legend">
           {policyStatusData.map((entry) => (
-            <div key={entry.name} className="flex items-center gap-1">
-              <div
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: entry.color }}
-              />
-              <span className="text-xs text-secondary-600">{entry.name}</span>
+            <div key={entry.name} className="chart-legend-item">
+              <span className="chart-legend-dot" style={{ backgroundColor: entry.color }} />
+              <span className="chart-legend-name">{entry.name}</span>
+              <span className="chart-legend-value">{entry.value}</span>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="card">
-        <h3 className="font-semibold text-secondary-900 mb-4">الإنتاج والتحصيل هذا الشهر</h3>
-
-        <div className="flex items-center justify-center gap-2 mb-3">
-          <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: '#22c55e' }} />
-          <span className="text-sm font-medium text-secondary-700">
-            الإنتاج الجديد: {formatCurrency(chartData.production)}
-          </span>
+      <div className="card chart-panel">
+        <div className="chart-panel-head">
+          <div className="min-w-0">
+            <h3 className="chart-panel-title">الإنتاج والتحصيل</h3>
+            <p className="chart-panel-note">مقارنة مصادر التحصيل هذا الشهر</p>
+          </div>
+          <div className="chart-panel-total">
+            <span>الإجمالي</span>
+            <strong>{formatCurrency(combined)}</strong>
+          </div>
         </div>
 
-        <div className="h-56 relative">
+        <div className="chart-canvas h-40 md:h-44">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={[
-                  { name: 'الإنتاج الجديد', value: chartData.production, color: '#22c55e' },
-                  { name: 'التحصيل الدوري', value: chartData.collection, color: '#3b82f6' }
+                  { name: 'الإنتاج الجديد', value: chartData.production, color: PRODUCTION_COLOR },
+                  { name: 'التحصيل الدوري', value: chartData.collection, color: COLLECTION_COLOR }
                 ]}
                 dataKey="value"
                 nameKey="name"
                 cx="50%"
                 cy="50%"
-                innerRadius={55}
-                outerRadius={85}
-                paddingAngle={2}
+                innerRadius={48}
+                outerRadius={66}
+                paddingAngle={3}
+                strokeWidth={0}
               >
-                <Cell fill="#22c55e" />
-                <Cell fill="#3b82f6" />
+                <Cell fill={PRODUCTION_COLOR} />
+                <Cell fill={COLLECTION_COLOR} />
               </Pie>
               <Tooltip
                 formatter={(value: any) => formatCurrency(value)}
-                contentStyle={{
-                  direction: 'rtl',
-                  borderRadius: '8px',
-                  border: '1px solid #e2e8f0'
-                }}
+                contentStyle={TOOLTIP_STYLE}
+                itemStyle={TOOLTIP_ITEM_STYLE}
               />
             </PieChart>
           </ResponsiveContainer>
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-lg font-bold text-secondary-900">
-              {formatCurrency(chartData.production + chartData.collection)}
-            </span>
-            <span className="text-[10px] text-secondary-400">الإجمالي</span>
+          <div className="chart-center">
+            <span className="chart-center-value">{productionShare}%</span>
+            <span className="chart-center-label">إنتاج جديد</span>
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-2 mt-3">
-          <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: '#3b82f6' }} />
-          <span className="text-sm font-medium text-secondary-700">
-            التحصيل الدوري: {formatCurrency(chartData.collection)}
-          </span>
+        <div className="chart-legend">
+          <div className="chart-legend-item">
+            <span className="chart-legend-dot" style={{ backgroundColor: PRODUCTION_COLOR }} />
+            <span className="chart-legend-name">الإنتاج الجديد</span>
+            <span className="chart-legend-value">{formatCurrency(chartData.production)}</span>
+          </div>
+          <div className="chart-legend-item">
+            <span className="chart-legend-dot" style={{ backgroundColor: COLLECTION_COLOR }} />
+            <span className="chart-legend-name">التحصيل الدوري</span>
+            <span className="chart-legend-value">{formatCurrency(chartData.collection)}</span>
+          </div>
         </div>
       </div>
     </div>

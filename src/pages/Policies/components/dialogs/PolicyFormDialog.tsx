@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import clsx from 'clsx';
-import { X, ChevronDown, Phone } from 'lucide-react';
+import { X, ChevronDown, Phone, AlertCircle, FileText, Wallet, StickyNote } from 'lucide-react';
 import type { UseFormRegister, UseFormHandleSubmit, UseFormSetValue, FieldErrors } from 'react-hook-form';
 import { POLICY_TYPE_LABELS, PAYMENT_METHOD_LABELS, type Policy } from '../../../../lib/supabase';
 import type { PolicyFormData } from '../../types';
@@ -51,206 +51,249 @@ export function PolicyFormDialog({
       <div
         className="modal-content modal-form-shell max-w-2xl animate-fadeIn"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
       >
-        <div className="modal-form-header flex items-center justify-between p-6 border-b border-secondary-200">
-          <h3 className="text-lg font-semibold text-secondary-900">
-            {editingPolicy ? 'تعديل الوثيقة' : 'إصدار وثيقة جديدة'}
-          </h3>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-secondary-100"
-          >
-            <X className="w-5 h-5 text-secondary-600" />
+        <div className="modal-form-header flex items-center justify-between gap-3 p-4 md:p-5 border-b border-secondary-200">
+          <div className="min-w-0">
+            <h3 className="text-[15px] md:text-base font-extrabold text-secondary-900 tracking-tight">
+              {editingPolicy ? 'تعديل الوثيقة' : 'إصدار وثيقة جديدة'}
+            </h3>
+            <p className="text-[11px] font-semibold text-secondary-400 mt-0.5">
+              الحقول المعلَّمة بـ * مطلوبة
+            </p>
+          </div>
+          <button onClick={onClose} className="icon-button shrink-0" aria-label="إغلاق">
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="modal-form-scroll p-6 space-y-4">
+        <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="modal-form-scroll p-4 md:p-5 space-y-4">
           {!editingPolicy && <ExtractPolicyDataButton formRef={formRef} setValue={setValue} />}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="form-group">
-              <label className="input-label">رقم الوثيقة *</label>
-              <input
-                {...register('policy_number')}
-                className={clsx('input-field', errors.policy_number && 'border-error-500')}
-                placeholder="أدخل رقم الوثيقة"
-              />
-              {errors.policy_number && (
-                <p className="text-sm text-error-600 mt-1">{errors.policy_number.message}</p>
-              )}
+          {/* ===== مجموعة: هوية الوثيقة ===== */}
+          <div className="form-section">
+            <div className="form-section-head">
+              <p className="form-section-title">
+                <FileText />
+                هوية الوثيقة
+              </p>
+              <p className="form-section-note">رقم الوثيقة والعميل التابعة له ونوعها وتاريخ بدايتها</p>
             </div>
 
-            <div className="form-group">
-              <label className="input-label">العميل *</label>
-              <input type="hidden" {...register('customer_id')} />
-              <button
-                type="button"
-                disabled={!!presetCustomerId}
-                onClick={onOpenCustomerPicker}
-                className={clsx(
-                  'input-field flex items-center justify-between gap-2 text-right',
-                  errors.customer_id && 'border-error-500',
-                  presetCustomerId && 'bg-secondary-50 text-secondary-600 cursor-not-allowed'
+            <div className="form-grid">
+              <div className="form-group">
+                <label className="input-label" htmlFor="pf-number">رقم الوثيقة *</label>
+                <input
+                  id="pf-number"
+                  {...register('policy_number')}
+                  dir="ltr"
+                  aria-invalid={!!errors.policy_number}
+                  className={clsx('input-field font-mono', errors.policy_number && 'border-error-500')}
+                  placeholder="أدخل رقم الوثيقة"
+                />
+                {errors.policy_number && (
+                  <p className="input-error" role="alert">
+                    <AlertCircle />
+                    {errors.policy_number.message}
+                  </p>
                 )}
-              >
-                {selectedCustomer ? (
-                  <span className="min-w-0 flex-1 flex flex-col items-start">
-                    <span className="truncate font-medium text-secondary-900">{selectedCustomer.name}</span>
-                    {selectedCustomer.phone && (
-                      <span className="text-xs text-secondary-500 flex items-center gap-1">
-                        <Phone className="w-3 h-3" />
-                        {selectedCustomer.phone}
-                      </span>
-                    )}
-                  </span>
-                ) : (
-                  <span className="text-secondary-400">اختر العميل</span>
-                )}
-                {!presetCustomerId && (
-                  <ChevronDown className="w-4 h-4 text-secondary-400 shrink-0" />
-                )}
-              </button>
-              {presetCustomerId && (
-                <p className="text-xs text-secondary-400 mt-1">
-                  تم تحديد العميل من صفحة العملاء — الوثيقة ستكون تابعة لنفس وكيله تلقائياً
-                </p>
-              )}
-              {errors.customer_id && (
-                <p className="text-sm text-error-600 mt-1">{errors.customer_id.message}</p>
-              )}
-            </div>
-          </div>
+              </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="form-group">
-              <label className="input-label">نوع الوثيقة *</label>
-              <select
-                {...register('policy_type')}
-                className="input-field"
-              >
-                {Object.entries(POLICY_TYPE_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="input-label">تاريخ البداية *</label>
-              <input
-                {...register('start_date')}
-                type="date"
-                className={clsx('input-field', errors.start_date && 'border-error-500')}
-              />
-              {errors.start_date && (
-                <p className="text-sm text-error-600 mt-1">{errors.start_date.message}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="form-group">
-              <label className="input-label">طريقة السداد *</label>
-              {customerDefaultsLocked ? (
-                <>
-                  <input type="hidden" {...register('payment_method')} />
-                  <div className="input-field bg-secondary-50 text-secondary-600 cursor-not-allowed">
-                    {PAYMENT_METHOD_LABELS[selectedCustomer!.payment_method as keyof typeof PAYMENT_METHOD_LABELS]}
-                  </div>
-                  <p className="text-xs text-secondary-400 mt-1">تم تعبئتها تلقائياً من بيانات طلب التأمين الخاصة بالعميل</p>
-                </>
-              ) : (
-                <select
-                  {...register('payment_method')}
-                  className="input-field"
+              <div className="form-group">
+                <label className="input-label">العميل *</label>
+                <input type="hidden" {...register('customer_id')} />
+                <button
+                  type="button"
+                  disabled={!!presetCustomerId}
+                  onClick={onOpenCustomerPicker}
+                  aria-invalid={!!errors.customer_id}
+                  className={clsx(
+                    'input-field flex items-center justify-between gap-2 text-right',
+                    errors.customer_id && 'border-error-500',
+                    presetCustomerId && 'bg-secondary-50 text-secondary-600 cursor-not-allowed'
+                  )}
                 >
-                  {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                  {selectedCustomer ? (
+                    <span className="min-w-0 flex-1 flex flex-col items-start">
+                      <span className="truncate font-bold text-secondary-900 text-[13px]">
+                        {selectedCustomer.name}
+                      </span>
+                      {selectedCustomer.phone && (
+                        <span className="text-[11px] font-semibold text-secondary-500 flex items-center gap-1" dir="ltr">
+                          <Phone className="w-3 h-3" />
+                          {selectedCustomer.phone}
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="text-secondary-400">اختر العميل</span>
+                  )}
+                  {!presetCustomerId && (
+                    <ChevronDown className="w-4 h-4 text-secondary-400 shrink-0" />
+                  )}
+                </button>
+                {presetCustomerId && (
+                  <span className="input-hint">
+                    تم تحديد العميل من صفحة العملاء — الوثيقة ستكون تابعة لنفس وكيله تلقائياً
+                  </span>
+                )}
+                {errors.customer_id && (
+                  <p className="input-error" role="alert">
+                    <AlertCircle />
+                    {errors.customer_id.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label className="input-label" htmlFor="pf-type">نوع الوثيقة *</label>
+                <select id="pf-type" {...register('policy_type')} className="input-field">
+                  {Object.entries(POLICY_TYPE_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>{label}</option>
                   ))}
                 </select>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label className="input-label">قيمة القسط الصافي *</label>
-              <div className="relative">
-                <input
-                  {...register('premium_amount', { valueAsNumber: true })}
-                  type="number"
-                  min="0"
-                  className={clsx('input-field pl-16', errors.premium_amount && 'border-error-500')}
-                  placeholder="أدخل قيمة القسط الصافي"
-                />
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400 text-sm">
-                  جنيه
-                </span>
               </div>
-              {errors.premium_amount && (
-                <p className="text-sm text-error-600 mt-1">{errors.premium_amount.message}</p>
-              )}
+
+              <div className="form-group">
+                <label className="input-label" htmlFor="pf-start">تاريخ البداية *</label>
+                <input
+                  id="pf-start"
+                  {...register('start_date')}
+                  type="date"
+                  aria-invalid={!!errors.start_date}
+                  className={clsx('input-field', errors.start_date && 'border-error-500')}
+                />
+                {errors.start_date && (
+                  <p className="input-error" role="alert">
+                    <AlertCircle />
+                    {errors.start_date.message}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="input-label">
-              مبلغ التأمين {!editingPolicy && '*'}
-            </label>
-            {customerDefaultsLocked ? (
-              <>
-                <input type="hidden" {...register('sum_assured', { valueAsNumber: true })} />
-                <div className="relative">
-                  <div className="input-field pl-16 bg-secondary-50 text-secondary-600 cursor-not-allowed">
-                    {selectedCustomer!.insurance_amount}
-                  </div>
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400 text-sm">
-                    جنيه
-                  </span>
-                </div>
-                <p className="text-xs text-secondary-400 mt-1">تم تعبئته تلقائياً من بيانات طلب التأمين الخاصة بالعميل</p>
-              </>
-            ) : (
-              <>
+          {/* ===== مجموعة: القيم المالية ===== */}
+          <div className="form-section">
+            <div className="form-section-head">
+              <p className="form-section-title">
+                <Wallet />
+                القيم المالية
+              </p>
+              <p className="form-section-note">القسط الصافي ومبلغ التأمين وطريقة السداد</p>
+            </div>
+
+            <div className="form-grid">
+              <div className="form-group">
+                <label className="input-label" htmlFor="pf-paymethod">طريقة السداد *</label>
+                {customerDefaultsLocked ? (
+                  <>
+                    <input type="hidden" {...register('payment_method')} />
+                    <div className="input-field bg-secondary-50 text-secondary-600 cursor-not-allowed">
+                      {PAYMENT_METHOD_LABELS[selectedCustomer!.payment_method as keyof typeof PAYMENT_METHOD_LABELS]}
+                    </div>
+                    <span className="input-hint">تم تعبئتها تلقائياً من بيانات طلب التأمين الخاصة بالعميل</span>
+                  </>
+                ) : (
+                  <select id="pf-paymethod" {...register('payment_method')} className="input-field">
+                    {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label className="input-label" htmlFor="pf-premium">قيمة القسط الصافي *</label>
                 <div className="relative">
                   <input
-                    {...register('sum_assured', { valueAsNumber: true })}
+                    id="pf-premium"
+                    {...register('premium_amount', { valueAsNumber: true })}
                     type="number"
                     min="0"
-                    className={clsx('input-field pl-16', errors.sum_assured && 'border-error-500')}
-                    placeholder="أدخل مبلغ التأمين"
+                    inputMode="numeric"
+                    aria-invalid={!!errors.premium_amount}
+                    className={clsx('input-field pl-14', errors.premium_amount && 'border-error-500')}
+                    placeholder="أدخل قيمة القسط الصافي"
                   />
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-400 text-sm">
-                    جنيه
-                  </span>
+                  <span className="input-suffix">جنيه</span>
                 </div>
-                {errors.sum_assured && (
-                  <p className="text-sm text-error-600 mt-1">{errors.sum_assured.message}</p>
+                {errors.premium_amount && (
+                  <p className="input-error" role="alert">
+                    <AlertCircle />
+                    {errors.premium_amount.message}
+                  </p>
                 )}
-              </>
-            )}
+              </div>
+
+              <div className="form-group form-col-full">
+                <label className="input-label" htmlFor="pf-sum">
+                  مبلغ التأمين {!editingPolicy && '*'}
+                </label>
+                {customerDefaultsLocked ? (
+                  <>
+                    <input type="hidden" {...register('sum_assured', { valueAsNumber: true })} />
+                    <div className="relative">
+                      <div className="input-field pl-14 bg-secondary-50 text-secondary-600 cursor-not-allowed">
+                        {selectedCustomer!.insurance_amount}
+                      </div>
+                      <span className="input-suffix">جنيه</span>
+                    </div>
+                    <span className="input-hint">تم تعبئته تلقائياً من بيانات طلب التأمين الخاصة بالعميل</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="relative">
+                      <input
+                        id="pf-sum"
+                        {...register('sum_assured', { valueAsNumber: true })}
+                        type="number"
+                        min="0"
+                        inputMode="numeric"
+                        aria-invalid={!!errors.sum_assured}
+                        className={clsx('input-field pl-14', errors.sum_assured && 'border-error-500')}
+                        placeholder="أدخل مبلغ التأمين"
+                      />
+                      <span className="input-suffix">جنيه</span>
+                    </div>
+                    {errors.sum_assured && (
+                      <p className="input-error" role="alert">
+                        <AlertCircle />
+                        {errors.sum_assured.message}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
           </div>
 
-          <div className="form-group">
-            <label className="input-label">ملاحظات</label>
-            <textarea
-              {...register('notes')}
-              className="input-field min-h-[80px] resize-none"
-              placeholder="أدخل ملاحظات (اختياري)"
-            />
+          {/* ===== مجموعة: ملاحظات ===== */}
+          <div className="form-section">
+            <div className="form-section-head">
+              <p className="form-section-title">
+                <StickyNote />
+                ملاحظات
+              </p>
+            </div>
+            <div className="form-group">
+              <label className="input-label sr-only" htmlFor="pf-notes">ملاحظات</label>
+              <textarea
+                id="pf-notes"
+                {...register('notes')}
+                className="input-field min-h-[80px] resize-none"
+                placeholder="أدخل ملاحظات (اختياري)"
+              />
+            </div>
           </div>
 
-          <div className="modal-actions flex justify-end gap-3 pt-4 border-t border-secondary-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn btn-secondary"
-            >
+          <div className="modal-actions flex justify-end gap-2.5 pt-3.5 border-t border-secondary-200">
+            <button type="button" onClick={onClose} className="btn btn-secondary">
               إلغاء
             </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="btn btn-primary"
-            >
-              {saving ? 'جاري الحفظ...' : editingPolicy ? 'حفظ التعديلات' : 'إصدار الوثيقة'}
+            <button type="submit" disabled={saving} className="btn btn-primary">
+              {saving ? 'جاري الحفظ…' : editingPolicy ? 'حفظ التعديلات' : 'إصدار الوثيقة'}
             </button>
           </div>
         </form>

@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
-import { ChevronRight, ChevronLeft, RefreshCw } from 'lucide-react';
+import { ChevronRight, ChevronLeft, RefreshCw, RotateCcw } from 'lucide-react';
 
 interface DashboardHeaderProps {
   selectedMonth: Date;
@@ -27,43 +27,41 @@ export function DashboardHeader({
 }: DashboardHeaderProps) {
   const greeting = new Date().getHours() < 12 ? 'صباح الخير' : 'مساء الخير';
   const displayName = userName?.trim() || 'بك';
+  const monthLabel = format(selectedMonth, 'MMMM yyyy', { locale: ar });
 
   return (
     <div className="dashboard-header">
       <div className="dashboard-intro">
         <div className="dashboard-intro-copy">
           <span className="dashboard-kicker">{greeting}، {displayName}</span>
-          <h2 className="text-2xl md:text-3xl font-black text-secondary-900">نظرة عامة</h2>
-          <p className="text-sm text-secondary-500 mt-1">
-            إحصائيات شهر {format(selectedMonth, 'MMMM yyyy', { locale: ar })}
-          </p>
+          <h2>نظرة عامة</h2>
+          <p>إحصائيات شهر {monthLabel}</p>
         </div>
 
         <div className="dashboard-toolbar dashboard-toolbar-inline">
           {/* اختيار الشهر: أسهم للتنقل شهر لشهر + رجوع سريع للشهر الحالي لو
               المستخدم مش واقف عليه أصلاً. الشهر التالي مقفول عند الوصول
               للشهر الحقيقي الحالي (مفيش بيانات مستقبلية لعرضها). */}
-          <div className="dashboard-month-controls flex items-center gap-1">
+          <div className="dashboard-month-controls flex items-center gap-0.5">
             <button
               type="button"
               onClick={onPreviousMonth}
               aria-label="الشهر السابق"
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-secondary-500 hover:bg-secondary-100 transition-colors"
+              className="w-9 h-9 flex items-center justify-center rounded-lg transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
 
-            <div className="min-w-[110px] text-center">
-              <span className="text-sm font-semibold text-secondary-800">
-                {format(selectedMonth, 'MMMM yyyy', { locale: ar })}
-              </span>
+            <div className="min-w-[6.25rem] px-1 text-center">
+              <span className="block text-[13px] leading-tight truncate">{monthLabel}</span>
               {!isCurrentMonth && (
                 <button
                   type="button"
                   onClick={onCurrentMonth}
-                  className="block mx-auto text-[11px] text-primary-600 hover:underline mt-0.5"
+                  className="mx-auto mt-0.5 inline-flex items-center gap-1 text-[10px] font-bold hover:underline"
                 >
-                  الرجوع للشهر الحالي
+                  <RotateCcw className="w-2.5 h-2.5" />
+                  الشهر الحالي
                 </button>
               )}
             </div>
@@ -73,26 +71,27 @@ export function DashboardHeader({
               onClick={onNextMonth}
               disabled={isCurrentMonth}
               aria-label="الشهر التالي"
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-secondary-500 hover:bg-secondary-100 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
+              className="w-9 h-9 flex items-center justify-center rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
           </div>
 
           {onRefresh && (
-            <div className="dashboard-refresh-control flex flex-col items-end gap-1">
+            <div className="dashboard-refresh-control flex flex-col items-end gap-0.5">
               <button
                 type="button"
                 onClick={onRefresh}
                 disabled={refreshing}
-                className="flex items-center gap-1.5 text-xs md:text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg px-3 py-1.5 transition-colors"
+                aria-label={refreshing ? 'جاري تحديث البيانات' : 'تحديث البيانات'}
+                className="flex items-center gap-1.5 text-xs md:text-[13px] rounded-lg px-2.5 py-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-                {refreshing ? 'جاري التحديث...' : 'تحديث'}
+                <span className="hidden xs:inline">{refreshing ? 'جاري التحديث…' : 'تحديث'}</span>
               </button>
               {lastUpdated && (
-                <span className="text-[11px] text-secondary-400">
-                  آخر تحديث: {format(lastUpdated, 'hh:mm a', { locale: ar })}
+                <span className="text-[10px] whitespace-nowrap">
+                  {format(lastUpdated, 'hh:mm a', { locale: ar })}
                 </span>
               )}
             </div>

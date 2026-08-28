@@ -10,7 +10,7 @@ interface PolicyActionsProps {
 
 export function PolicyActions({ policy, onViewDetails, onOpenMoreMenu }: PolicyActionsProps) {
   return (
-    <div className="flex items-center gap-2 mt-4 pt-3 border-t border-secondary-100">
+    <div className="data-card-actions">
       <button
         onClick={(e) => { e.stopPropagation(); onViewDetails(policy); }}
         className="btn btn-secondary btn-sm flex-1"
@@ -25,7 +25,8 @@ export function PolicyActions({ policy, onViewDetails, onOpenMoreMenu }: PolicyA
           const rect = e.currentTarget.getBoundingClientRect();
           onOpenMoreMenu(policy, { top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom });
         }}
-        className="btn btn-secondary btn-sm touch-target"
+        className="quick-action"
+        aria-label={`إجراءات أخرى للوثيقة ${policy.policy_number}`}
         title="المزيد"
       >
         <MoreVertical className="w-4 h-4" />

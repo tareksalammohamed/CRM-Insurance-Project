@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { format } from 'date-fns';
-import { X, Phone, User as UserIcon, FileText, ChevronDown, ShieldPlus, CreditCard, Edit2, Printer } from 'lucide-react';
+import { X, Phone, User as UserIcon, FileText, ChevronDown, ShieldPlus, CreditCard, Edit2, Printer, Inbox } from 'lucide-react';
 import { MARITAL_STATUS_LABELS, PAYMENT_METHOD_LABELS, POLICY_STATUS_LABELS, POLICY_TYPE_LABELS } from '../../../../lib/supabase';
 import type { PolicyInstallmentSummary } from '../../../../features/installments/installmentsService';
 import type { CustomerPolicySummary, CustomerWithRelations } from '../../types';
@@ -35,98 +35,121 @@ export function CustomerDetailsDialog({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
-        className="modal-content max-w-lg animate-fadeIn max-h-[92dvh] overflow-y-auto"
+        className="modal-content modal-form-shell max-w-lg animate-fadeIn"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`تفاصيل العميل ${customer.name}`}
       >
-        <div className="flex items-center justify-between p-6 border-b border-secondary-200 sticky top-0 bg-white z-10">
-          <div className="min-w-0">
-            <h3 className="text-lg font-semibold text-secondary-900 truncate">{customer.name}</h3>
-            <p className="text-xs text-secondary-500 mt-0.5">تفاصيل العميل</p>
+        <div className="modal-form-header flex items-center justify-between gap-3 p-4 md:p-5 border-b border-secondary-200 bg-white">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="data-card-avatar" aria-hidden="true">
+              <UserIcon className="w-4 h-4" />
+            </span>
+            <div className="min-w-0">
+              <h3 className="text-[15px] font-extrabold text-secondary-900 truncate tracking-tight">
+                {customer.name}
+              </h3>
+              <p className="text-[11px] font-semibold text-secondary-400 mt-0.5">تفاصيل العميل</p>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-secondary-100 shrink-0"
-          >
-            <X className="w-5 h-5 text-secondary-600" />
+          <button onClick={onClose} className="icon-button shrink-0" aria-label="إغلاق">
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="modal-form-scroll p-4 md:p-5 space-y-5">
           {/* ===== البيانات الأساسية فقط: رقم الهاتف، الوكيل المسؤول، عدد الوثائق ===== */}
-          <div className="grid grid-cols-3 gap-3 text-sm">
-            <div className="bg-secondary-50 rounded-xl p-3">
-              <p className="text-secondary-400 text-xs mb-1 flex items-center gap-1">
+          <div className="detail-field-grid !grid-cols-3">
+            <div className="detail-field">
+              <span className="detail-field-label flex items-center gap-1">
                 <Phone className="w-3 h-3" /> رقم الهاتف
-              </p>
-              <p className="text-secondary-800 font-medium truncate" dir="ltr">{customer.phone || '-'}</p>
+              </span>
+              <span className="detail-field-value truncate" dir="ltr">{customer.phone || '-'}</span>
             </div>
-            <div className="bg-secondary-50 rounded-xl p-3">
-              <p className="text-secondary-400 text-xs mb-1 flex items-center gap-1">
+            <div className="detail-field">
+              <span className="detail-field-label flex items-center gap-1">
                 <UserIcon className="w-3 h-3" /> الوكيل المسؤول
-              </p>
-              <p className="text-secondary-800 font-medium truncate">{customer.owner?.name || '-'}</p>
+              </span>
+              <span className="detail-field-value truncate">{customer.owner?.name || '-'}</span>
             </div>
-            <div className="bg-secondary-50 rounded-xl p-3">
-              <p className="text-secondary-400 text-xs mb-1 flex items-center gap-1">
+            <div className="detail-field">
+              <span className="detail-field-label flex items-center gap-1">
                 <FileText className="w-3 h-3" /> عدد الوثائق
-              </p>
-              <p className="text-secondary-800 font-medium">{sortedPolicies.length}</p>
+              </span>
+              <span className="detail-field-value text-figure">{sortedPolicies.length}</span>
             </div>
           </div>
 
+          {/* اتصال سريع — الإجراء الأكثر تكرارًا، بارز فى متناول الإبهام */}
+          {customer.phone && (
+            <a href={`tel:${customer.phone}`} className="btn btn-outline btn-sm w-full">
+              <Phone className="w-4 h-4" />
+              <span>الاتصال بالعميل</span>
+            </a>
+          )}
+
           {/* ===== بيانات إضافية (اختيارية) — نفس البيانات محفوظة وقابلة للتعديل، فقط غير معروضة افتراضياً ===== */}
-          <div>
+          <div className="surface-sunken !p-0">
             <button
               onClick={onToggleExtraInfo}
-              className="flex items-center gap-1.5 text-xs font-medium text-secondary-500 hover:text-secondary-700"
+              className="detail-section-toggle"
+              aria-expanded={showExtraInfo}
             >
-              <ChevronDown className={clsx('w-3.5 h-3.5 transition-transform', showExtraInfo && 'rotate-180')} />
-              <span>{showExtraInfo ? 'إخفاء البيانات الإضافية' : 'عرض بيانات إضافية'}</span>
+              <span className="detail-section-toggle-label">
+                <UserIcon />
+                بيانات إضافية
+              </span>
+              <ChevronDown
+                className={clsx('w-4 h-4 text-secondary-400 transition-transform shrink-0', showExtraInfo && 'rotate-180')}
+              />
             </button>
 
             {showExtraInfo && (
-              <div className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm mt-3 animate-fadeIn">
-                <div>
-                  <p className="text-secondary-400 text-xs mb-1">الرقم القومي</p>
-                  <p className="text-secondary-800 font-medium" dir="ltr">{customer.national_id || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-secondary-400 text-xs mb-1">العنوان</p>
-                  <p className="text-secondary-800 font-medium">{customer.address || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-secondary-400 text-xs mb-1">تاريخ الميلاد</p>
-                  <p className="text-secondary-800 font-medium">
-                    {customer.birth_date ? format(new Date(customer.birth_date), 'dd/MM/yyyy') : '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-secondary-400 text-xs mb-1">المهنة</p>
-                  <p className="text-secondary-800 font-medium">{customer.occupation || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-secondary-400 text-xs mb-1">الحالة الاجتماعية</p>
-                  <p className="text-secondary-800 font-medium">
-                    {customer.marital_status ? MARITAL_STATUS_LABELS[customer.marital_status] : '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-secondary-400 text-xs mb-1">مبلغ التأمين (طلب التأمين)</p>
-                  <p className="text-secondary-800 font-medium">
-                    {customer.insurance_amount != null ? formatCurrency(customer.insurance_amount) : '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-secondary-400 text-xs mb-1">طريقة السداد (طلب التأمين)</p>
-                  <p className="text-secondary-800 font-medium">
-                    {customer.payment_method ? PAYMENT_METHOD_LABELS[customer.payment_method] : '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-secondary-400 text-xs mb-1">العربون</p>
-                  <p className="text-secondary-800 font-medium">
-                    {customer.deposit_amount != null ? formatCurrency(customer.deposit_amount) : '-'}
-                  </p>
+              <div className="detail-section-body animate-fadeIn">
+                <div className="detail-field-grid !grid-cols-2">
+                  <div className="detail-field !bg-white">
+                    <span className="detail-field-label">الرقم القومي</span>
+                    <span className="detail-field-value" dir="ltr">{customer.national_id || '-'}</span>
+                  </div>
+                  <div className="detail-field !bg-white">
+                    <span className="detail-field-label">العنوان</span>
+                    <span className="detail-field-value">{customer.address || '-'}</span>
+                  </div>
+                  <div className="detail-field !bg-white">
+                    <span className="detail-field-label">تاريخ الميلاد</span>
+                    <span className="detail-field-value">
+                      {customer.birth_date ? format(new Date(customer.birth_date), 'dd/MM/yyyy') : '-'}
+                    </span>
+                  </div>
+                  <div className="detail-field !bg-white">
+                    <span className="detail-field-label">المهنة</span>
+                    <span className="detail-field-value">{customer.occupation || '-'}</span>
+                  </div>
+                  <div className="detail-field !bg-white">
+                    <span className="detail-field-label">الحالة الاجتماعية</span>
+                    <span className="detail-field-value">
+                      {customer.marital_status ? MARITAL_STATUS_LABELS[customer.marital_status] : '-'}
+                    </span>
+                  </div>
+                  <div className="detail-field !bg-white">
+                    <span className="detail-field-label">مبلغ التأمين (طلب التأمين)</span>
+                    <span className="detail-field-value">
+                      {customer.insurance_amount != null ? formatCurrency(customer.insurance_amount) : '-'}
+                    </span>
+                  </div>
+                  <div className="detail-field !bg-white">
+                    <span className="detail-field-label">طريقة السداد (طلب التأمين)</span>
+                    <span className="detail-field-value">
+                      {customer.payment_method ? PAYMENT_METHOD_LABELS[customer.payment_method] : '-'}
+                    </span>
+                  </div>
+                  <div className="detail-field !bg-white">
+                    <span className="detail-field-label">العربون</span>
+                    <span className="detail-field-value">
+                      {customer.deposit_amount != null ? formatCurrency(customer.deposit_amount) : '-'}
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
@@ -134,35 +157,40 @@ export function CustomerDetailsDialog({
 
           {/* ===== الوثائق: بطاقة مستقلة لكل وثيقة ===== */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold text-secondary-900">
-                الوثائق ({sortedPolicies.length})
-              </h4>
-              <button
-                onClick={() => onIssueNewPolicy(customer)}
-                className="btn btn-outline btn-sm"
-              >
+            <div className="card-section-head">
+              <span className="card-section-title">
+                <FileText className="w-4 h-4 text-primary-600" />
+                الوثائق
+                <span className="card-section-meta">({sortedPolicies.length})</span>
+              </span>
+              <button onClick={() => onIssueNewPolicy(customer)} className="btn btn-outline btn-sm shrink-0">
                 <ShieldPlus className="w-3.5 h-3.5" />
-                <span>إصدار وثيقة جديدة</span>
+                <span>وثيقة جديدة</span>
               </button>
             </div>
 
             {sortedPolicies.length === 0 ? (
-              <p className="text-sm text-secondary-400 text-center py-6 bg-secondary-50 rounded-lg">
-                لا توجد وثائق لهذا العميل بعد
-              </p>
+              <div className="surface-sunken">
+                <div className="empty-state">
+                  <span className="empty-state-icon">
+                    <Inbox className="w-6 h-6" />
+                  </span>
+                  <p className="empty-state-title">لا توجد وثائق لهذا العميل بعد</p>
+                  <p className="empty-state-desc">يمكنك إصدار أول وثيقة من الزر أعلى القائمة</p>
+                </div>
+              </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {sortedPolicies.map((policy) => {
                   const summary = policySummaries[policy.id];
                   return (
-                    <div key={policy.id} className="rounded-xl border border-secondary-200 p-4">
-                      <div className="flex items-start justify-between gap-3">
+                    <div key={policy.id} className="surface-sunken p-3">
+                      <div className="flex items-start justify-between gap-2.5">
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-secondary-900 font-mono" dir="ltr">
-                            #{policy.policy_number}
+                          <p className="text-[13px] font-extrabold text-secondary-900 font-mono truncate" dir="ltr">
+                            {policy.policy_number}
                           </p>
-                          <p className="text-xs text-secondary-500 mt-0.5">
+                          <p className="text-[11px] font-semibold text-secondary-500 mt-0.5">
                             {POLICY_TYPE_LABELS[policy.policy_type]}
                           </p>
                         </div>
@@ -172,27 +200,29 @@ export function CustomerDetailsDialog({
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2 mt-3 text-xs">
-                        <div>
-                          <p className="text-secondary-400 mb-0.5">مبلغ التأمين</p>
-                          <p className="font-medium text-secondary-800">
+                      <div className="grid grid-cols-3 gap-2 mt-2.5">
+                        <div className="min-w-0">
+                          <p className="detail-field-label">مبلغ التأمين</p>
+                          <p className="detail-field-value text-figure truncate">
                             {policy.sum_assured != null ? formatCurrency(policy.sum_assured) : '—'}
                           </p>
                         </div>
-                        <div>
-                          <p className="text-secondary-400 mb-0.5">قيمة القسط الصافي</p>
-                          <p className="font-medium text-secondary-800">{formatCurrency(policy.premium_amount)}</p>
+                        <div className="min-w-0">
+                          <p className="detail-field-label">القسط الصافي</p>
+                          <p className="detail-field-value text-figure truncate">
+                            {formatCurrency(policy.premium_amount)}
+                          </p>
                         </div>
-                        <div>
-                          <p className="text-secondary-400 mb-0.5">تاريخ الإصدار</p>
-                          <p className="font-medium text-secondary-800">
+                        <div className="min-w-0">
+                          <p className="detail-field-label">تاريخ الإصدار</p>
+                          <p className="detail-field-value text-figure truncate">
                             {format(new Date(policy.start_date), 'dd/MM/yyyy')}
                           </p>
                         </div>
                       </div>
 
                       {summary && (
-                        <div className="flex items-center gap-2 mt-3 text-xs">
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
                           <span className="badge badge-success">مسدد {summary.paid}</span>
                           <span className="badge badge-secondary">مستحق {summary.pending}</span>
                           <span className="badge badge-error">متأخر {summary.overdue}</span>
@@ -201,7 +231,7 @@ export function CustomerDetailsDialog({
 
                       <button
                         onClick={() => onOpenPolicyDetails(policy)}
-                        className="btn btn-secondary btn-sm w-full mt-3"
+                        className="btn btn-secondary btn-sm w-full mt-2.5"
                       >
                         <CreditCard className="w-3.5 h-3.5" />
                         <span>عرض التفاصيل</span>
@@ -212,23 +242,17 @@ export function CustomerDetailsDialog({
               </div>
             )}
           </div>
+        </div>
 
-          <div className="flex gap-3 pt-2 border-t border-secondary-200">
-            <button
-              onClick={() => onEdit(customer)}
-              className="btn btn-secondary flex-1"
-            >
-              <Edit2 className="w-4 h-4" />
-              <span>تعديل البيانات</span>
-            </button>
-            <button
-              onClick={() => onPrint(customer)}
-              className="btn btn-secondary flex-1"
-            >
-              <Printer className="w-4 h-4" />
-              <span>طباعة</span>
-            </button>
-          </div>
+        <div className="modal-actions flex items-center gap-2.5 p-4 md:p-5">
+          <button onClick={() => onEdit(customer)} className="btn btn-primary flex-1">
+            <Edit2 className="w-4 h-4" />
+            <span>تعديل البيانات</span>
+          </button>
+          <button onClick={() => onPrint(customer)} className="btn btn-secondary flex-1">
+            <Printer className="w-4 h-4" />
+            <span>طباعة</span>
+          </button>
         </div>
 
         <div className="safe-area-bottom" />

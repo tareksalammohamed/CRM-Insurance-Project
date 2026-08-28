@@ -37,14 +37,14 @@ function DrillDownCard({
 
   return (
     <div className={`kpi-card ${accent}`}>
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-xs md:text-sm font-bold text-secondary-900 leading-5">{label}</p>
-        <span className="kpi-icon-tile flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs md:text-[13px] font-extrabold text-secondary-900 leading-5 min-w-0">{label}</p>
+        <span className="kpi-icon-tile flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
           <Icon className={iconClassName} />
         </span>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="mt-2.5 mb-2 grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={() => onNavigate('paid', subtype)}
@@ -68,11 +68,11 @@ function DrillDownCard({
       <button
         type="button"
         onClick={() => onNavigate('month', subtype)}
-        className="mt-2 flex w-full items-center justify-between border-t border-secondary-100 pt-2 text-right"
+        className="mt-auto flex w-full items-center justify-between gap-2 border-t border-secondary-100 pt-2 text-right"
         aria-label={`عرض إجمالي المستحق من ${label}`}
       >
-        <span className="text-[11px] font-semibold text-secondary-500">إجمالي المستحق</span>
-        <span className="text-xs font-bold text-secondary-800">{formatCurrency(totalDue)}</span>
+        <span className="text-[11px] font-bold text-secondary-500 shrink-0">إجمالي المستحق</span>
+        <span className="text-xs font-extrabold text-secondary-800 text-figure truncate">{formatCurrency(totalDue)}</span>
       </button>
 
       <span className="sr-only">شهر {selectedMonth.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' })}</span>
