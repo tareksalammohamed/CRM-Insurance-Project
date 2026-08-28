@@ -50,10 +50,35 @@ const PriceCalculator = lazy(() => import('./pages/PriceCalculator').then(m => (
 const DailyReports   = lazy(() => import('./pages/DailyReports').then(m => ({ default: m.DailyReports })));
 const HelpCenterPage = lazy(() => import('./features/help/HelpCenterPage'));
 
+/**
+ * هيكل تحميل عام لصفحات الـlazy loading — يحاكى شكل الصفحة الحقيقى
+ * (رأس + شبكة مؤشرات + قائمة) بدل الـspinner المجرد، فالتطبيق يبان أسرع
+ * وأقل "قفزة" بصرية لحظة ظهور المحتوى.
+ */
 function LoadingSpinner() {
   return (
-    <div className="flex items-center justify-center min-h-[400px]">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+    <div className="space-y-5" role="status" aria-label="جارٍ تحميل الصفحة">
+      <div className="space-y-2">
+        <div className="h-3 w-24 skeleton-bar" />
+        <div className="h-7 w-52 skeleton-bar" />
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="kpi-card">
+            <div className="flex items-start justify-between gap-3">
+              <div className="h-3 w-16 skeleton-bar" />
+              <div className="h-10 w-10 skeleton-bar !rounded-xl" />
+            </div>
+            <div className="h-7 w-20 skeleton-bar mt-3" />
+          </div>
+        ))}
+      </div>
+      <div className="card space-y-3">
+        <div className="h-4 w-32 skeleton-bar" />
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-11 w-full skeleton-bar" />
+        ))}
+      </div>
     </div>
   );
 }
@@ -87,8 +112,9 @@ function AppLayout() {
 
   if (loading || (user && checkingLock)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-secondary-50">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+      <div className="min-h-screen min-h-[100dvh] flex flex-col items-center justify-center gap-4 bg-secondary-50" role="status" aria-label="جارٍ التحميل">
+        <div className="animate-spin rounded-full h-9 w-9 border-2 border-secondary-200 border-t-primary-600" />
+        <p className="text-xs font-bold text-secondary-500">جارٍ التحميل...</p>
       </div>
     );
   }
@@ -118,8 +144,11 @@ function AppLayout() {
         sidebarCollapsed ? 'md:mr-20' : 'md:mr-64',
         // ===== Mobile: padding top للـ header + bottom للـ bottom nav =====
         'pt-14 md:pt-16',
-        'pb-20 md:pb-8',        // pb-20 = مكان الـ bottom nav (64px + 16px)
-        'app-main px-3 md:px-5 lg:px-8'
+        // مساحة أسفل الصفحة تكفى Bottom Navigation + المنطقة الآمنة للأجهزة
+        // ذات الـhome indicator، حتى لا يُحجب آخر عنصر فى أى صفحة
+        'pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-10',
+        // padding أفقي مدمج على 320px ويتوسّع تدريجيًا
+        'app-main px-3 sm:px-4 md:px-6 lg:px-8'
       )}>
         <div key={location.pathname} className="app-content max-w-7xl mx-auto mt-4 md:mt-6 animate-pageEnter">
           <ErrorBoundary boundaryName={location.pathname}>

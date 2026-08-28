@@ -55,8 +55,8 @@ export function Sidebar() {
       ============================================= */}
       <aside
         className={clsx(
-          'app-sidebar fixed top-0 right-0 h-full bg-white/95 backdrop-blur-md border-l border-secondary-100 z-40',
-          'transition-all duration-300 flex flex-col shadow-[0_10px_40px_rgb(15_23_42_/_0.05)]',
+          'app-sidebar fixed top-0 right-0 h-full z-40',
+          'transition-all duration-300 flex flex-col',
           'hidden md:flex',
           sidebarCollapsed ? 'w-20' : 'w-64'
         )}
@@ -64,27 +64,28 @@ export function Sidebar() {
         <div
           data-tour-id="sidebar-brand"
           className={clsx(
-          'sidebar-brand flex items-center h-16 px-3 border-b border-secondary-100 flex-shrink-0',
+          'sidebar-brand flex items-center h-16 px-3 flex-shrink-0',
           sidebarCollapsed ? 'justify-center' : 'justify-between gap-2'
         )}>
           {!sidebarCollapsed ? (
             <div className="flex items-center gap-2.5 min-w-0">
-              <BrandMark className="w-10 h-10" />
-              <span className="font-bold text-base text-secondary-900 leading-tight truncate">
+              <BrandMark className="w-9 h-9" />
+              <span className="font-extrabold text-[15px] text-secondary-900 leading-tight truncate tracking-tighter">
                 {branding.company_name}
               </span>
             </div>
           ) : (
-            <BrandMark className="w-10 h-10" />
+            <BrandMark className="w-9 h-9" />
           )}
 
           {!sidebarCollapsed && (
             <button
               onClick={toggleSidebar}
-              className="p-2 rounded-lg hover:bg-secondary-100 active:bg-secondary-200 transition-colors flex-shrink-0"
+              className="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-secondary-100 active:bg-secondary-200 transition-colors flex-shrink-0"
               title="طي القائمة"
+              aria-label="طي القائمة"
             >
-              <ChevronRight className="w-5 h-5 text-secondary-500" />
+              <ChevronRight className="w-[18px] h-[18px] text-secondary-400" />
             </button>
           )}
         </div>
@@ -97,40 +98,39 @@ export function Sidebar() {
         {sidebarCollapsed && (
           <button
             onClick={toggleSidebar}
-            className="mx-auto mt-3 p-2 rounded-lg hover:bg-secondary-100 active:bg-secondary-200 transition-colors"
+            className="mx-auto mt-3 flex items-center justify-center w-9 h-9 rounded-lg hover:bg-secondary-100 active:bg-secondary-200 transition-colors"
             title="توسيع القائمة"
+            aria-label="توسيع القائمة"
           >
-            <ChevronLeft className="w-5 h-5 text-secondary-500" />
+            <ChevronLeft className="w-[18px] h-[18px] text-secondary-400" />
           </button>
         )}
 
         <Link
           to="/profile"
           className={clsx(
-            'pressable mx-3 mt-3 mb-1 flex items-center gap-3 rounded-xl border border-transparent',
-            'hover:bg-secondary-50 hover:border-secondary-100 transition-colors duration-150',
-            sidebarCollapsed ? 'justify-center p-2' : 'p-2.5'
+            'pressable mx-3 mt-3 flex items-center gap-2.5 rounded-xl border border-secondary-200 bg-secondary-50',
+            'hover:bg-primary-50 hover:border-primary-200 transition-colors duration-150',
+            sidebarCollapsed ? 'justify-center p-2 border-transparent bg-transparent' : 'p-2.5'
           )}
           title="الانتقال للملف الشخصي"
         >
-          <div className="w-10 h-10 rounded-full bg-primary-100 ring-2 ring-white shadow-sm flex items-center justify-center flex-shrink-0">
+          <div className="w-9 h-9 rounded-full bg-primary-100 ring-1 ring-primary-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
             {user.avatar_url
-              ? <img src={user.avatar_url} alt={user.name} className="w-10 h-10 rounded-full object-cover" loading="lazy" decoding="async" />
-              : <span className="text-primary-700 font-semibold">{user.name.charAt(0)}</span>
+              ? <img src={user.avatar_url} alt={user.name} className="w-9 h-9 rounded-full object-cover" loading="lazy" decoding="async" />
+              : <span className="text-primary-700 font-bold text-sm">{user.name.charAt(0)}</span>
             }
           </div>
           {!sidebarCollapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-secondary-900 truncate">{user.name}</p>
-              <p className="text-xs text-secondary-500 truncate">{ROLE_LABELS[user.role]}</p>
+              <p className="text-[13px] font-bold text-secondary-900 truncate leading-tight">{user.name}</p>
+              <p className="text-[11px] font-semibold text-secondary-500 truncate mt-0.5">{ROLE_LABELS[user.role]}</p>
             </div>
           )}
         </Link>
 
-        <div className="mx-3 border-t border-secondary-100" />
-
         {/* روابط التنقل — مقسّمة إلى أقسام قابلة للطي/الفتح */}
-        <div data-tour-id="sidebar-nav" className="flex-1 overflow-y-auto py-3 px-2.5 scrollbar-thin">
+        <div data-tour-id="sidebar-nav" className="flex-1 overflow-y-auto py-3 px-2.5 mt-1 scrollbar-thin">
           {sidebarCollapsed ? (
             // فى وضع الطي (أيقونات فقط) نعرض كل الصفحات فى قائمة واحدة مسطحة
             <nav className="space-y-1">
@@ -143,11 +143,12 @@ export function Sidebar() {
                     to={item.path}
                     className={clsx(
                       'sidebar-collapsed-nav-row flex items-center justify-center h-11 px-0 rounded-xl transition-all duration-200',
-                      active ? 'sidebar-collapsed-nav-row-active bg-primary-50 text-primary-700' : 'text-secondary-600 hover:bg-secondary-50'
+                      active ? 'sidebar-collapsed-nav-row-active text-primary-700' : 'text-secondary-500 hover:bg-secondary-50'
                     )}
                     title={item.label}
+                    aria-current={active ? 'page' : undefined}
                   >
-                    <Icon strokeWidth={active ? 2.25 : 1.9} className={clsx('w-[18px] h-[18px] flex-shrink-0', active ? 'text-primary-600' : 'text-secondary-400')} />
+                    <Icon strokeWidth={active ? 2.2 : 1.8} className={clsx('w-[19px] h-[19px] flex-shrink-0', active ? 'text-primary-600' : 'text-secondary-400')} />
                   </Link>
                 );
               })}
@@ -171,11 +172,12 @@ export function Sidebar() {
           )}
         </div>
 
-        <div className="border-t border-secondary-100 p-3">
+        <div className="border-t border-secondary-200 p-2.5">
           <button
             onClick={signOut}
+            title="تسجيل الخروج"
             className={clsx(
-              'flex items-center h-11 gap-3 w-full px-3 rounded-xl text-sm font-medium',
+              'flex items-center h-11 gap-2.5 w-full px-3 rounded-xl text-[13px] font-bold',
               'text-error-600 hover:bg-error-50 active:bg-error-100 transition-colors duration-200',
               sidebarCollapsed && 'justify-center px-0'
             )}
@@ -189,8 +191,11 @@ export function Sidebar() {
       {/* =============================================
           MOBILE BOTTOM NAVIGATION  (أصغر من md) — يعتمد على الدرجة الوظيفية
       ============================================= */}
-      <nav className="mobile-bottom-nav md:hidden fixed bottom-0 right-0 left-0 z-40 bg-white/95 backdrop-blur-xl border-t border-secondary-100 shadow-[0_-8px_24px_rgb(15_23_42_/_0.06)] safe-area-bottom">
-        <div className="flex items-stretch justify-around px-0.5 py-1">
+      <nav
+        aria-label="التنقل السريع"
+        className="mobile-bottom-nav md:hidden fixed bottom-0 right-0 left-0 z-40 safe-area-bottom"
+      >
+        <div className="flex items-stretch justify-around px-0.5 pb-1">
           {bottomNavItems.map((item) => {
             const Icon = item.icon;
             const active = isPathActive(location.pathname, item.path);
@@ -199,16 +204,16 @@ export function Sidebar() {
                 key={item.path}
                 to={item.path}
                 className={clsx(
-                  'mobile-nav-item pressable flex flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 rounded-xl flex-1 min-w-0',
-                  'transition-colors duration-200 touch-target',
-                  active ? 'is-active text-primary-600' : 'text-secondary-600'
+                  'mobile-nav-item pressable flex flex-col items-center justify-center gap-1 px-0.5 pt-2 pb-1 rounded-xl flex-1 min-w-0',
+                  'transition-colors duration-200',
+                  active && 'is-active'
                 )}
                 aria-current={active ? 'page' : undefined}
               >
-                <div className={clsx('p-1.5 rounded-xl transition-all duration-200', active ? 'bg-primary-100' : '')}>
-                  <Icon strokeWidth={active ? 2.25 : 1.9} className={clsx('w-5 h-5', active && 'text-primary-600')} />
+                <div className="flex items-center justify-center h-7 px-2.5 rounded-lg transition-all duration-200">
+                  <Icon strokeWidth={active ? 2.2 : 1.8} className="w-[21px] h-[21px]" />
                 </div>
-                <span className={clsx('text-[10px] font-semibold leading-none truncate max-w-full', active ? 'text-primary-600' : 'text-secondary-600')}>
+                <span className="text-[10px] font-bold leading-none truncate max-w-full">
                   {item.label}
                 </span>
               </Link>
@@ -218,16 +223,17 @@ export function Sidebar() {
           {/* زر المزيد — يفتح Drawer بكل صفحات التطبيق منظمة داخل الأقسام الأربعة */}
           <button
             onClick={openMobileMenu}
+            aria-label="المزيد من الصفحات"
             className={clsx(
-              'mobile-nav-item pressable flex flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 rounded-xl flex-1 min-w-0',
-              'transition-colors duration-200 touch-target',
-              isMoreActive ? 'is-active text-primary-600' : 'text-secondary-600'
+              'mobile-nav-item pressable flex flex-col items-center justify-center gap-1 px-0.5 pt-2 pb-1 rounded-xl flex-1 min-w-0',
+              'transition-colors duration-200',
+              isMoreActive && 'is-active'
             )}
           >
-            <div className={clsx('p-1.5 rounded-xl transition-all duration-200', isMoreActive ? 'bg-primary-100' : '')}>
-              <Menu className={clsx('w-5 h-5', isMoreActive && 'text-primary-600')} />
+            <div className="flex items-center justify-center h-7 px-2.5 rounded-lg transition-all duration-200">
+              <Menu strokeWidth={isMoreActive ? 2.2 : 1.8} className="w-[21px] h-[21px]" />
             </div>
-            <span className={clsx('text-[10px] font-semibold leading-none truncate max-w-full', isMoreActive ? 'text-primary-600' : 'text-secondary-600')}>
+            <span className="text-[10px] font-bold leading-none truncate max-w-full">
               المزيد
             </span>
           </button>
@@ -240,25 +246,27 @@ export function Sidebar() {
       ============================================= */}
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex" onClick={closeMobileMenu}>
-          <div className="absolute inset-0 bg-secondary-900/45 backdrop-blur-[3px] animate-fadeIn" />
+          <div className="absolute inset-0 bg-secondary-900/45 backdrop-blur-[2px] animate-fadeIn" />
           <div
-            className="relative w-[84vw] max-w-96 min-w-[270px] h-full bg-white flex flex-col shadow-2xl animate-slideIn ml-auto mr-0 rounded-l-[2rem] overflow-hidden"
+            className="relative w-[86vw] max-w-96 min-w-[270px] h-full bg-white flex flex-col shadow-overlay animate-slideIn ml-auto mr-0 rounded-l-3xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative flex items-center justify-between gap-2 px-4 h-20 bg-primary-800 flex-shrink-0 overflow-hidden">
+            {/* رأس الدرج بلون الهوية العميق — يثبّت شعار الشركة واسمها */}
+            <div className="relative flex items-center justify-between gap-2 px-4 h-[4.5rem] bg-primary-900 flex-shrink-0 overflow-hidden">
               <div
-                className="absolute inset-0 opacity-40 pointer-events-none"
-                style={{ backgroundImage: 'radial-gradient(circle at 15% -20%, rgb(255 255 255 / 0.25), transparent 55%)' }}
+                className="absolute inset-0 pointer-events-none"
+                style={{ backgroundImage: 'radial-gradient(circle at 100% 0%, rgb(197 237 88 / 0.16), transparent 55%)' }}
               />
               <div className="relative flex items-center gap-2.5 min-w-0">
                 {branding.company_logo_url
-                  ? <img src={branding.company_logo_url} alt={branding.company_name} className="w-10 h-10 rounded-xl object-contain bg-white/15 ring-1 ring-white/25 p-1 flex-shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                  : <div className="w-10 h-10 rounded-xl bg-white/15 ring-1 ring-white/25 flex items-center justify-center flex-shrink-0"><BrandMark className="w-7 h-7" /></div>}
-                <span className="text-white font-bold text-sm leading-snug truncate">{branding.company_name}</span>
+                  ? <img src={branding.company_logo_url} alt={branding.company_name} className="w-10 h-10 rounded-xl object-contain bg-white/12 ring-1 ring-white/20 p-1 flex-shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  : <div className="w-10 h-10 rounded-xl bg-white/12 ring-1 ring-white/20 flex items-center justify-center flex-shrink-0"><BrandMark className="w-6 h-6" /></div>}
+                <span className="text-white font-extrabold text-[13px] leading-snug truncate tracking-tighter">{branding.company_name}</span>
               </div>
               <button
                 onClick={closeMobileMenu}
-                className="relative touch-target flex items-center justify-center !min-h-9 !min-w-9 rounded-full bg-white/15 hover:bg-white/25 active:bg-white/30 transition-colors flex-shrink-0"
+                aria-label="إغلاق القائمة"
+                className="relative flex items-center justify-center w-10 h-10 rounded-full bg-white/12 hover:bg-white/20 active:bg-white/28 transition-colors flex-shrink-0"
               >
                 <X className="w-5 h-5 text-white" />
               </button>
@@ -271,23 +279,21 @@ export function Sidebar() {
             <Link
               to="/profile"
               onClick={closeMobileMenu}
-              className="pressable mx-4 mt-3 mb-1 flex items-center gap-3 p-3 rounded-2xl bg-surface-wash border border-primary-100/60 shadow-soft hover:shadow-card active:scale-[0.99] transition-all touch-target"
+              className="pressable mx-4 mt-3 flex items-center gap-3 p-2.5 rounded-2xl bg-secondary-50 border border-secondary-200 hover:bg-primary-50 hover:border-primary-200 active:scale-[0.99] transition-all"
             >
-              <div className="w-11 h-11 rounded-full bg-primary-100 ring-2 ring-white shadow-sm flex items-center justify-center flex-shrink-0">
+              <div className="w-11 h-11 rounded-full bg-primary-100 ring-1 ring-primary-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
                 {user.avatar_url
                   ? <img src={user.avatar_url} alt={user.name} className="w-11 h-11 rounded-full object-cover" loading="lazy" decoding="async" />
                   : <span className="text-primary-700 font-bold">{user.name.charAt(0)}</span>}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-secondary-900 text-sm truncate">{user.name}</p>
-                <span className="badge badge-primary mt-0.5">{ROLE_LABELS[user.role]}</span>
+                <p className="font-bold text-secondary-900 text-sm truncate">{user.name}</p>
+                <span className="badge badge-primary mt-1">{ROLE_LABELS[user.role]}</span>
               </div>
               <ChevronLeft className="w-4 h-4 text-secondary-300 flex-shrink-0" />
             </Link>
 
-            <div className="mx-4 border-t border-secondary-100 mt-2" />
-
-            <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-1 scrollbar-thin">
+            <nav className="flex-1 overflow-y-auto py-3 px-3 mt-1 space-y-1 scrollbar-thin">
               {navLayout.map((entry) =>
                 entry.kind === 'group' ? (
                   <NavGroupSection
@@ -304,10 +310,10 @@ export function Sidebar() {
               )}
             </nav>
 
-            <div className="border-t border-secondary-100 p-3 flex-shrink-0">
+            <div className="border-t border-secondary-200 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex-shrink-0">
               <button
                 onClick={() => { closeMobileMenu(); signOut(); }}
-                className="pressable flex items-center h-12 gap-3 w-full px-2.5 rounded-xl text-sm font-semibold text-error-600 hover:bg-error-50 active:bg-error-100 transition-colors touch-target"
+                className="pressable flex items-center h-12 gap-3 w-full px-2.5 rounded-xl text-[13px] font-bold text-error-600 hover:bg-error-50 active:bg-error-100 transition-colors"
               >
                 <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-error-50 flex-shrink-0">
                   <LogOut className="w-4 h-4" />
@@ -338,14 +344,14 @@ function NavGroupSection({
   const GroupIcon = group.icon;
 
   return (
-    <div className="pb-2">
+    <div className="pb-1.5">
       <button
         onClick={onToggle}
-        className="sidebar-group-toggle flex items-center justify-between w-full h-8 px-2 rounded-lg text-secondary-400 hover:text-primary-700 transition-colors duration-150"
+        className="sidebar-group-toggle flex items-center justify-between w-full h-8 px-2.5 rounded-lg transition-colors duration-150"
         aria-expanded={expanded}
       >
-        <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide">
-          <GroupIcon strokeWidth={2} className="w-3.5 h-3.5" />
+        <span className="flex items-center gap-1.5 text-[10px] font-extrabold tracking-wider">
+          <GroupIcon strokeWidth={2.2} className="w-3.5 h-3.5" />
           {group.label}
         </span>
         <ChevronDown className={clsx('w-3.5 h-3.5 transition-transform duration-200', expanded ? 'rotate-0' : '-rotate-90')} />
@@ -353,7 +359,7 @@ function NavGroupSection({
 
       <div className={clsx('grid transition-all duration-200 ease-in-out', expanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
         <div className="overflow-hidden">
-          <div className="space-y-0.5 pt-1 pb-1">
+          <div className="space-y-0.5 pt-1">
             {group.items.map((item) => (
               <NavLinkRow key={item.path} item={item} pathname={pathname} onNavigate={onNavigate} />
             ))}
@@ -383,28 +389,29 @@ function NavLinkRow({
       to={item.path}
       onClick={onNavigate}
         className={clsx(
-          'sidebar-nav-row pressable relative flex items-center h-12 gap-3 pr-2.5 pl-3 rounded-xl text-sm transition-all duration-200 touch-target',
+          'sidebar-nav-row pressable relative flex items-center h-11 gap-2.5 pr-2 pl-2.5 rounded-xl text-[13px] transition-all duration-200',
           active
-            ? 'sidebar-nav-row-active bg-gradient-to-l from-primary-50 to-primary-50/40 text-primary-700 font-semibold'
-            : 'text-secondary-600 font-medium hover:bg-secondary-50 hover:text-secondary-900'
+            ? 'sidebar-nav-row-active font-bold'
+            : 'text-secondary-600 font-semibold hover:bg-secondary-50 hover:text-secondary-900'
         )}
         aria-current={active ? 'page' : undefined}
       >
+      {/* مؤشر جانبي للعنصر النشط — تمييز لا يعتمد على اللون وحده */}
       {active && (
-        <span className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-primary-600" />
+        <span className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-primary-600" aria-hidden="true" />
       )}
       <span
         className={clsx(
           'flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 transition-colors',
-          active ? 'bg-primary-600 text-white shadow-sm' : 'bg-secondary-100/80 text-secondary-400'
+          active ? 'bg-primary-600 text-white' : 'bg-secondary-100 text-secondary-500'
         )}
       >
-        <Icon strokeWidth={active ? 2.25 : 1.9} className="w-4 h-4" />
+        <Icon strokeWidth={active ? 2.2 : 1.8} className="w-[17px] h-[17px]" />
       </span>
       <span className="flex items-baseline gap-1.5 min-w-0 truncate">
         <span className="truncate">{item.label}</span>
         {item.subLabel && (
-          <span className="text-[11px] font-normal text-secondary-400 truncate">{item.subLabel}</span>
+          <span className="text-[10px] font-semibold text-secondary-400 truncate">{item.subLabel}</span>
         )}
       </span>
     </Link>

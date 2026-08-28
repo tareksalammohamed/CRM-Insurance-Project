@@ -28,8 +28,11 @@ export function Header() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications,     setNotifications]     = useState<Notification[]>([]);
   const [unreadCount,       setUnreadCount]       = useState(0);
-  const [profileOpen,       setProfileOpen]       = useState(false);
+  const [profileOpen,       setProfileOpen]        = useState(false);
   const [pushSettingsSaving, setPushSettingsSaving] = useState(false);
+  // يستخدم فقط لإضافة كلاس بصري (ظل/خلفية أوضح) عند التمرير — بدون أى تأثير
+  // على البيانات أو المنطق
+  const [scrolled,          setScrolled]           = useState(false);
 
   const notificationRef = useRef<HTMLDivElement>(null);
   const profileRef      = useRef<HTMLDivElement>(null);
@@ -63,6 +66,15 @@ export function Header() {
 
   // إغلاق الـ drawer والبحث عند تغيير الصفحة
   useEffect(() => { closeMobileMenu(); setSearchOpen(false); }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // حالة بصرية فقط: الهيدر يصبح مصمتًا بظل خفيف بعد بداية التمرير حتى لا
+  // يتشوّش نص الصفحة خلف الخلفية الشفافة
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 4);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const fetchNotifications = async () => {
     if (!user) return;
@@ -146,41 +158,56 @@ export function Header() {
     <>
       {/* ===========================  HEADER BAR  =========================== */}
       <header className={clsx(
-        'app-header fixed top-0 left-0 right-0 h-14 md:h-16 bg-white/95 backdrop-blur-md border-b border-secondary-100 shadow-[0_1px_0_rgb(15_23_42_/_0.02),0_6px_20px_rgb(15_23_42_/_0.03)] z-30',
-        'flex items-center justify-between px-3 md:px-4 transition-all duration-300',
+        'app-header fixed top-0 left-0 right-0 h-14 md:h-16 z-30',
+        'flex items-center gap-2 px-2 md:px-4 transition-all duration-300',
         'print:hidden',
+        scrolled && 'is-scrolled',
         sidebarCollapsed ? 'md:mr-20' : 'md:mr-64'
       )}>
-        {/* يسار */}
-        <div className="flex items-center gap-2 min-w-0">
+        {/* ===== يمين (بداية السطر فى RTL): القائمة ثم عنوان الصفحة =====
+            الأولوية على الموبايل: زر القائمة ← عنوان الصفحة ← أدوات (بحث/إشعارات) */}
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
           <button onClick={toggleMobileMenu} aria-label="فتح القائمة" className="icon-button md:hidden flex-shrink-0">
-            <Menu className="w-5 h-5 text-secondary-600" />
+            <Menu className="w-[22px] h-[22px]" />
           </button>
-          <BrandMark className="w-5 h-5 md:hidden" />
-          <div className="min-w-0 flex items-center gap-2">
-            <h1 className="text-sm md:text-lg font-semibold text-secondary-900 truncate">{getPageTitle()}</h1>
-            <span className="hidden md:inline-flex items-center rounded-full bg-primary-50 px-2 py-1 text-[10px] font-bold text-primary-700 ring-1 ring-primary-100">لوحة التشغيل</span>
+          <BrandMark className="w-6 h-6 md:hidden flex-shrink-0" />
+          <div className="min-w-0 flex items-baseline gap-2">
+            <h1 className="truncate">{getPageTitle()}</h1>
+            <span className="hidden lg:inline-flex items-center rounded-full bg-primary-50 px-2 py-0.5 text-[10px] font-bold text-primary-700">
+              لوحة التشغيل
+            </span>
           </div>
         </div>
 
-        {/* يمين */}
-        <div className="flex items-center gap-1 md:gap-2">
+        {/* ===== يسار: الأدوات ===== */}
+        <div className="flex items-center gap-0.5 md:gap-1.5 flex-shrink-0">
 
           {/* سلكتور الفرع — يظهر بس للمستخدمين اللي عندهم أكتر من فرع */}
           <BranchSelector />
 
-          {/* بحث */}
+          {/* بحث — على الديسكتوب حقل مدمج؛ وعلى الموبايل يفتح شريط بحث
+              بعرض الشاشة كاملة (مساحة كتابة مريحة بدل حقل ضيق) */}
           {searchOpen ? (
-            <form onSubmit={handleSearch} className="flex items-center gap-1.5">
-              <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="بحث عن عميل..." className="input-field w-32 sm:w-52 md:w-64 text-sm py-1.5" autoFocus />
-              <button type="button" onClick={() => setSearchOpen(false)} aria-label="إغلاق البحث" className="icon-button !min-h-9 !min-w-9">
-                <X className="w-4 h-4 text-secondary-600" />
+            <form
+              onSubmit={handleSearch}
+              className={clsx(
+                'flex items-center gap-1.5',
+                'absolute inset-x-2 top-1/2 -translate-y-1/2 z-10 bg-white rounded-xl',
+                'md:static md:inset-auto md:translate-y-0 md:bg-transparent'
+              )}
+            >
+              <div className="relative flex-1 md:w-64 md:flex-none">
+                <Search className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary-400" />
+                <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="بحث عن عميل..." className="input-field !min-h-10 pr-9 text-sm" autoFocus />
+              </div>
+              <button type="button" onClick={() => setSearchOpen(false)} aria-label="إغلاق البحث" className="icon-button flex-shrink-0">
+                <X className="w-5 h-5" />
               </button>
             </form>
           ) : (
             <button data-tour-id="header-search" onClick={() => setSearchOpen(true)} aria-label="البحث" className="icon-button">
-              <Search className="w-5 h-5 text-secondary-600" />
+              <Search className="w-[22px] h-[22px]" />
             </button>
           )}
 
@@ -189,35 +216,56 @@ export function Header() {
 
           {/* إشعارات */}
           <div className="relative" ref={notificationRef}>
-            <button onClick={() => setNotificationsOpen(!notificationsOpen)} data-tour-id="header-notifications" className="icon-button relative">
-              <BellRing className="w-5 h-5 text-secondary-600" />
+            <button
+              onClick={() => setNotificationsOpen(!notificationsOpen)}
+              data-tour-id="header-notifications"
+              aria-label={unreadCount > 0 ? `الإشعارات، ${unreadCount} غير مقروءة` : 'الإشعارات'}
+              className="icon-button relative"
+            >
+              <BellRing className="w-[22px] h-[22px]" />
               {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -left-0.5 w-4 h-4 bg-error-500 text-white text-[10px] rounded-full flex items-center justify-center font-medium">
+                <span className="absolute top-1 left-1 min-w-[17px] h-[17px] px-1 bg-error-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
             </button>
             {notificationsOpen && (
-              <div className="dropdown-menu w-72 sm:w-80 max-h-96 overflow-hidden left-0 right-auto">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-secondary-100">
-                  <span className="font-medium text-secondary-900 text-sm">الإشعارات</span>
-                  {unreadCount > 0 && <button onClick={markAllAsRead} className="text-xs text-primary-600">تحديد الكل كمقروء</button>}
+              <div className="dropdown-menu w-[calc(100vw-1.5rem)] max-w-[22rem] sm:w-80 overflow-hidden left-0 right-auto !py-0">
+                <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-secondary-200">
+                  <span className="section-heading">الإشعارات</span>
+                  {unreadCount > 0 && (
+                    <button onClick={markAllAsRead} className="text-xs font-bold text-primary-600 hover:text-primary-700 hover:underline">
+                      تحديد الكل كمقروء
+                    </button>
+                  )}
                 </div>
-                <div className="overflow-y-auto max-h-72 scrollbar-thin">
+                <div className="overflow-y-auto max-h-[min(60dvh,20rem)] scrollbar-thin">
                   {notifications.length === 0
-                    ? <div className="px-4 py-8 text-center text-secondary-500 text-sm">لا توجد إشعارات</div>
+                    ? (
+                      <div className="empty-state !py-8">
+                        <span className="empty-state-icon !w-11 !h-11"><BellRing className="w-5 h-5" /></span>
+                        <p className="empty-state-title">لا توجد إشعارات</p>
+                        <p className="empty-state-desc">أى تحديث مهم على الوثائق أو التحصيل هيظهر هنا</p>
+                      </div>
+                    )
                     : notifications.map((n) => (
                       <button key={n.id} onClick={() => handleNotificationClick(n)}
-                        className={clsx('w-full text-right px-4 py-3 hover:bg-secondary-50 border-b border-secondary-50 last:border-0', !n.is_read && 'bg-primary-50/30')}>
-                        <div className="flex items-start gap-3">
-                          <div className={clsx('w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0', getNotifColor(n.type))}>
+                        className={clsx(
+                          'w-full text-right px-3.5 py-3 border-b border-secondary-100 last:border-0 transition-colors',
+                          'hover:bg-secondary-50',
+                          !n.is_read && 'bg-primary-50/50'
+                        )}>
+                        <div className="flex items-start gap-2.5">
+                          <div className={clsx('w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0', getNotifColor(n.type))}>
                             <BellRing className="w-4 h-4" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-secondary-900">{n.title}</p>
-                            <p className="text-xs text-secondary-600 mt-0.5 line-clamp-2">{n.message}</p>
-                            <p className="text-[10px] text-secondary-400 mt-1">{format(new Date(n.created_at), 'dd MMM, HH:mm', { locale: ar })}</p>
+                            <p className="text-sm font-bold text-secondary-900 leading-snug">{n.title}</p>
+                            <p className="text-xs text-secondary-600 mt-0.5 leading-relaxed line-clamp-2">{n.message}</p>
+                            <p className="text-[10px] font-semibold text-secondary-400 mt-1">{format(new Date(n.created_at), 'dd MMM, HH:mm', { locale: ar })}</p>
                           </div>
+                          {/* مؤشر "غير مقروء" — لا نعتمد على اللون وحده */}
+                          {!n.is_read && <span className="mt-1.5 w-2 h-2 rounded-full bg-primary-600 flex-shrink-0" aria-label="غير مقروء" />}
                         </div>
                       </button>
                     ))}
@@ -228,19 +276,25 @@ export function Header() {
 
           {/* بروفايل */}
           <div className="relative" ref={profileRef}>
-            <button onClick={() => setProfileOpen(!profileOpen)} aria-label="فتح قائمة الحساب" data-tour-id="header-profile" className="flex min-h-11 items-center gap-1.5 rounded-xl p-1.5 transition-colors hover:bg-secondary-100">
-              <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
+            <button onClick={() => setProfileOpen(!profileOpen)} aria-label="فتح قائمة الحساب" data-tour-id="header-profile" className="flex min-h-11 items-center gap-2 rounded-xl p-1 pl-1.5 transition-colors hover:bg-secondary-100">
+              <div className="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0 overflow-hidden ring-1 ring-primary-200">
                 {user.avatar_url
-                  ? <img src={user.avatar_url} alt={user.name} className="w-8 h-8 rounded-full object-cover" loading="lazy" decoding="async" />
-                  : <span className="text-primary-700 font-semibold text-sm">{user.name.charAt(0)}</span>}
+                  ? <img src={user.avatar_url} alt={user.name} className="w-9 h-9 rounded-full object-cover" loading="lazy" decoding="async" />
+                  : <span className="text-primary-700 font-bold text-sm">{user.name.charAt(0)}</span>}
               </div>
-              <div className="hidden lg:block text-right">
-                <p className="text-sm font-medium text-secondary-900 leading-tight">{user.name}</p>
-                <p className="text-xs text-secondary-500 leading-tight">{ROLE_LABELS[user.role]}</p>
+              <div className="hidden lg:block text-right max-w-[10rem]">
+                <p className="text-[13px] font-bold text-secondary-900 leading-tight truncate">{user.name}</p>
+                <p className="text-[11px] font-semibold text-secondary-500 leading-tight truncate">{ROLE_LABELS[user.role]}</p>
               </div>
             </button>
             {profileOpen && (
-              <div className="dropdown-menu left-0 right-auto min-w-[180px]">
+              <div className="dropdown-menu left-0 right-auto min-w-[13rem]">
+                {/* بطاقة هوية المستخدم أعلى القائمة — تظهر على الموبايل حيث
+                    الاسم غير ظاهر بجوار الصورة */}
+                <div className="lg:hidden px-3.5 pt-2 pb-2.5 mb-1 border-b border-secondary-200">
+                  <p className="text-sm font-bold text-secondary-900 truncate">{user.name}</p>
+                  <p className="text-[11px] font-semibold text-secondary-500 mt-0.5 truncate">{ROLE_LABELS[user.role]}</p>
+                </div>
                 <button onClick={() => { setProfileOpen(false); navigate('/profile'); }} className="dropdown-item w-full"><CircleUserRound className="w-4 h-4" /><span>الملف الشخصي</span></button>
                 <button onClick={handlePushSettings} disabled={pushSettingsSaving} className="dropdown-item w-full disabled:opacity-60">
                   {pushSettingsSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <BellRing className="w-4 h-4" />}
