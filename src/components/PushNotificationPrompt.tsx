@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { BellRing, CheckCircle2, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useNotify } from '../lib/notify';
-import { isPushSupported, subscribeToPush } from '../lib/pushNotifications';
+import { isPushSupported, subscribeToPush, syncPushSubscription } from '../lib/pushNotifications';
 
 const DISMISS_KEY = 'crm-push-prompt-dismissed';
 
@@ -13,7 +13,22 @@ export function PushNotificationPrompt() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!user || !isPushSupported() || Notification.permission !== 'default') {
+    if (!user || !isPushSupported()) {
+      setVisible(false);
+      return;
+    }
+
+    // الإذن ممنوح بالفعل → مزامنة صامتة تتأكد أن اشتراك هذا الجهاز
+    // محفوظ فى قاعدة البيانات وباسم المستخدم الحالي (تصلح تلقائيًا:
+    // الاشتراكات المنتهية المحذوفة، تغيير المستخدم على نفس الجهاز،
+    // واختلاف مفتاح VAPID) — بدون أى نافذة أو إزعاج للمستخدم.
+    if (Notification.permission === 'granted') {
+      void syncPushSubscription(user.id);
+      setVisible(false);
+      return;
+    }
+
+    if (Notification.permission !== 'default') {
       setVisible(false);
       return;
     }
