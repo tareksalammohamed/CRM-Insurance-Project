@@ -51,6 +51,51 @@ function waitForPaint(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 }
 
+// ─── تصوير عنصر الـ DOM كصورة PNG ───
+// سبب مشكلة "الصورة البيضاء الفاضية" السابقة: عنصر العرض كان بيتخبى عن
+// المستخدم وقت التصوير بـ position: fixed; left: -99999px على العنصر نفسه —
+// و html-to-image بينسخ الـ inline styles دي كما هي على النسخة اللي بيرسمها
+// جوه صورة SVG، فكان المحتوى كله بيقع بره حدود الصورة تمامًا والناتج يطلع
+// أبيض فاضي. الحل (اتنفذ فى PrintQuote): الإخفاء بقى على "غلاف" خارجي مقاس
+// صفر، وعنصر التقرير اللي بنصوّره هنا مبقاش عليه أى إزاحة، فبيترسم فى مكانه
+// الصحيح جوه الصورة. الـ style هنا مجرد تحصين إضافي بيتطبق على النسخة فقط.
+async function captureElementAsPng(element: HTMLElement): Promise<string> {
+  const options = {
+    backgroundColor: '#ffffff',
+    pixelRatio: Math.min(3, Math.max(2, window.devicePixelRatio || 1)),
+    width: element.scrollWidth,
+    height: element.scrollHeight,
+    // تقرير العرض بيستخدم خطوط نظام (Tahoma/Segoe UI/Arial) مش خط ويب — فمش
+    // محتاجين تضمين الخطوط. ده كمان بيتفادى أخطاء CORS اللي بتظهر لما المكتبة
+    // تحاول تقرأ cssRules بتاعة ستايل خط Google Fonts (Cairo) المحمّل للتطبيق.
+    skipFonts: true,
+    // position: relative (مش static) عشان علامة الشعار المائية جوه العرض
+    // (position: absolute) تفضل متمركزة بالنسبة لصندوق العرض نفسه.
+    style: {
+      position: 'relative',
+      left: '0',
+      top: '0',
+      margin: '0',
+      transform: 'none',
+    } as Partial<CSSStyleDeclaration>,
+  };
+
+  // Safari/WebKit عنده مشكلة معروفة: أول مرة تصوير ممكن ترجع صورة ناقصة أو
+  // بيضاء (الخطوط/الصور مش بتكون اتحمّلت جوه الـ SVG لسه). الحل المعتمد فى
+  // مجتمع html-to-image هو التصوير أكتر من مرة واستخدام الناتج الأخير —
+  // التكلفة بسيطة (أجزاء من الثانية) مقابل ضمان صورة كاملة على كل المتصفحات.
+  let dataUrl = '';
+  for (let attempt = 0; attempt < 2; attempt++) {
+    dataUrl = await toPng(element, options);
+  }
+  // فحص أخير: الصورة البيضاء الفاضية بتتضغط لحجم صغير جدًا — لو الناتج
+  // قصير بشكل مريب نجرب مرة إضافية قبل ما نسلّمه.
+  if (dataUrl.length < 30000) {
+    dataUrl = await toPng(element, options);
+  }
+  return dataUrl;
+}
+
 // ─── صفحة "حاسبة الأسعار" ───────────────────────────────────
 // صفحة مستقلة بالكامل عن دورة عمل النظام: لا تُنشئ عميل/وثيقة/قسط/تحصيل،
 // ولا ترسل أو تحفظ أي بيانات فى Supabase. كل الحسابات تتم محلياً داخل
@@ -144,15 +189,16 @@ export function PriceCalculator() {
       setImageLogoSrc(logoDataUrl);
       await waitForPaint();
 
+      // انتظار اكتمال تحميل خطوط الصفحة قبل التصوير — عشان النص العربي يترسم
+      // بالخط النهائي الصحيح مش بخط مؤقت (fallback) يبوّظ القياسات والمحاذاة.
+      if (document.fonts?.ready) {
+        await document.fonts.ready;
+      }
+
       const printableElement = printQuoteRef.current;
       if (!printableElement) throw new Error('printable element is unavailable');
 
-      const dataUrl = await toPng(printableElement, {
-        backgroundColor: '#ffffff',
-        pixelRatio: Math.min(3, Math.max(2, window.devicePixelRatio || 1)),
-        width: printableElement.scrollWidth,
-        height: printableElement.scrollHeight,
-      });
+      const dataUrl = await captureElementAsPng(printableElement);
 
       const link = document.createElement('a');
       link.download = `عرض-سعر-${result.variant.label}.png`;
