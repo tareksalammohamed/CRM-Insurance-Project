@@ -31,13 +31,19 @@ export type Year2EligiblePolicy = Policy & {
 
 // فورم "تسجيل تحصيل" — أول فورم فى شاشة السنة الثانية يُنقل من التحقق
 // اليدوي لـ zod (بنفس أسلوب فورمات صفحة المستخدمين)
+// zod v4: `invalid_type_error` اتشال واتوحّد فى `error` — نفس الرسالة ونفس
+// قواعد التحقق بالظبط (تحويل نص الحقل لرقم + وجوب أن يكون موجبًا).
 export const year2PaymentSchema = z.object({
-  amount: z.coerce.number({ invalid_type_error: 'برجاء إدخال مبلغ صحيح' }).positive('برجاء إدخال مبلغ صحيح'),
+  amount: z.coerce.number({ error: 'برجاء إدخال مبلغ صحيح' }).positive('برجاء إدخال مبلغ صحيح'),
   paymentDate: z.string().min(1, 'التاريخ مطلوب'),
   notes: z.string().optional(),
 });
 
-export type Year2PaymentFormData = z.infer<typeof year2PaymentSchema>;
+// مدخلات الفورم كما يقرأها react-hook-form قبل تحويل zod (حقل المبلغ يبدأ
+// كنص/غير معروف من الـinput)، بينما `Year2PaymentFormData` هى القيم بعد
+// التحقق والتحويل (amount: number) وهى المستخدمة فى منطق العمل.
+export type Year2PaymentFormInput = z.input<typeof year2PaymentSchema>;
+export type Year2PaymentFormData = z.output<typeof year2PaymentSchema>;
 
 export type PrintPeriodType = 'month' | 'quarter' | 'year';
 

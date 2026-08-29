@@ -76,9 +76,12 @@ export async function fetchYear2EligiblePolicies(
   const result = await dalRead(
     `year2:eligiblePolicies:${page}:${searchQuery.trim()}:${oneYearAgoStr}:${branchId ?? 'none'}:${quickFilter ?? 'all'}:${nowStr}`,
     async () => {
+      // `{ count: 'exact' }` لازم يتحدد على الـselect الأساسي نفسه — استدعاء
+      // select تانى على البيلدر الناتج بيقبل الأعمدة فقط وبيتجاهل خيار العدد
+      // بصمت (وهو سبب رجوع count فاضي فى المسار بدون فلتر سريع).
       let baseQuery = supabase
         .from('policies')
-        .select('*, customer:customer_id(name), owner:owner_id(name)')
+        .select('*, customer:customer_id(name), owner:owner_id(name)', { count: 'exact' })
         .lte('start_date', oneYearAgoStr);
 
       if (branchId) {
@@ -97,7 +100,6 @@ export async function fetchYear2EligiblePolicies(
         const from = (page - 1) * PAGE_SIZE;
         const to = from + PAGE_SIZE - 1;
         const { data, error, count } = await baseQuery
-          .select('*, customer:customer_id(name), owner:owner_id(name)', { count: 'exact' })
           .order('start_date', { ascending: false })
           .range(from, to);
 

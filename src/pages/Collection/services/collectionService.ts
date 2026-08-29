@@ -176,25 +176,33 @@ async function fetchInstallmentsOnline({ quickFilter, subType, ownerFilter, page
   // policy.branch_id (مسموح دايماً هنا لأن installments.policy_id مفتاح
   // أجنبي إلزامي، فكل قسط له وثيقة مؤكد — استخدام !inner دايماً بغض النظر
   // عن needsPaymentsJoin لا يُسقط أي صف كان ظاهر قبل كده)
-  let query = supabase
-    .from('installments')
-    .select(
-      needsPaymentsJoin
-        ? `*,
+  //
+  // نفس نصوص الـselect بالحرف زي ما كانت، بس مكتوبة كـ literals ثابتة لكل
+  // فرع على حدة بدل تمرير اتحاد نصوص لـ .select(): محلّل أنواع PostgREST
+  // بيحلّل النص وقت الترجمة، والاتحاد بيمنعه من استنتاج شكل الصف (وهو سبب
+  // الحاجة السابقة لتأكيد نوع غير آمن على النتيجة).
+  const installmentsTable = supabase.from('installments');
+
+  let query = needsPaymentsJoin
+    ? installmentsTable.select(
+        `*,
            policy:policy_id!inner(
              *,
              customer:customer_id(name, phone, national_id),
              owner:owner_id(name)
            ),
-           payments!inner(payment_month, is_cancelled)`
-        : `*,
+           payments!inner(payment_month, is_cancelled)`,
+        { count: 'exact' },
+      )
+    : installmentsTable.select(
+        `*,
            policy:policy_id!inner(
              *,
              customer:customer_id(name, phone, national_id),
              owner:owner_id(name)
            )`,
-      { count: 'exact' }
-    );
+        { count: 'exact' },
+      );
 
   // فلتر الفرع الحالي (BranchProvider العام) — فاضي/null يعني بدون فلترة
   // إضافية (السلوك القديم، معتمد على RLS بس)

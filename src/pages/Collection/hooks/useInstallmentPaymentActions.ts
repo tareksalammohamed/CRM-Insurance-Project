@@ -2,8 +2,7 @@ import { friendlyError } from '../../../lib/errorMessages';
 import { useNotify } from '../../../lib/notify';
 import { useCallback, useState } from 'react';
 import { format } from 'date-fns';
-import type { User } from '../../../lib/supabase';
-import type { InstallmentWithRelations } from '../types';
+import type { Installment, User } from '../../../lib/supabase';
 import { processPayment, cancelPayment } from '../services/collectionService';
 
 interface UseInstallmentPaymentActionsArgs {
@@ -25,13 +24,18 @@ export function useInstallmentPaymentActions({
 }: UseInstallmentPaymentActionsArgs) {
   const notify = useNotify();
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedInstallment, setSelectedInstallment] = useState<InstallmentWithRelations | null>(null);
+  // النوع هنا هو `Installment` الأساسي عن قصد: نفس المودالات بتُستدعى من
+  // قائمة التحصيل (قسط بعلاقات كاملة) ومن مودال سجل أقساط الوثيقة (قسط بدون
+  // علاقات، محمّل من fetchInstallmentsByPolicyId)، و`processPayment` /
+  // `cancelPayment` محتاجين حقول القسط الأساسية بس. `InstallmentWithRelations`
+  // نوع فرعي منه فبيتمرر بدون أي تحويل.
+  const [selectedInstallment, setSelectedInstallment] = useState<Installment | null>(null);
   const [paymentDateStr, setPaymentDateStr] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
   const [processingPayment, setProcessingPayment] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
 
-  const handleOpenPayment = useCallback((installment: InstallmentWithRelations) => {
+  const handleOpenPayment = useCallback((installment: Installment) => {
     setSelectedInstallment(installment);
     setPaymentDateStr(format(new Date(), 'yyyy-MM-dd'));
     setShowPaymentModal(true);
@@ -63,7 +67,7 @@ export function useInstallmentPaymentActions({
     }
   };
 
-  const handleOpenCancel = useCallback((installment: InstallmentWithRelations) => {
+  const handleOpenCancel = useCallback((installment: Installment) => {
     setSelectedInstallment(installment);
     setCancelReason('');
     setShowCancelModal(true);

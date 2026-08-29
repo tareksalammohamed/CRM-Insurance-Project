@@ -10,11 +10,19 @@ export type PushSubscriptionResult =
   | { status: 'needs-install' }
   | { status: 'error'; message: string };
 
-function urlBase64ToUint8Array(value: string): Uint8Array {
+// `applicationServerKey` لازم يكون `BufferSource` مدعوم بـ ArrayBuffer حقيقي
+// (مش SharedArrayBuffer)، فبنبني الـ ArrayBuffer صراحةً بالحجم المطلوب وبنكتب
+// فيه البايتات — نفس النتيجة الثنائية بالظبط، مع نوع صحيح بدون أي تأكيد نوع
+// غير آمن.
+function urlBase64ToUint8Array(value: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (value.length % 4)) % 4);
   const base64 = `${value.replace(/-/g, '+').replace(/_/g, '/')}${padding}`;
   const rawData = window.atob(base64);
-  return Uint8Array.from(rawData, (character) => character.charCodeAt(0));
+  const bytes = new Uint8Array(new ArrayBuffer(rawData.length));
+  for (let index = 0; index < rawData.length; index += 1) {
+    bytes[index] = rawData.charCodeAt(index);
+  }
+  return bytes;
 }
 
 function isIosDevice(): boolean {

@@ -61,9 +61,13 @@ export async function payInstallment(installment: Installment, userId: string, p
 // الدفعة، وتتأكد إن القسط لسه قابل للسداد (منع سداد مزدوج)، وتسجّل النشاط،
 // كل ده جوه معاملة واحدة، وبمفتاح idempotency (p_operation_id) بيمنع تكرار
 // نفس العملية لو اتنفذت أكتر من مرة (زي إعادة محاولة بعد انقطاع الشبكة).
+// ملاحظة: `_userId` غير مستخدم داخل الدالة عن قصد — قاعدة البيانات نفسها
+// (pay_installment_op) بتستخرج المستخدم من `auth.uid()` بدل الاعتماد على قيمة
+// جايه من المتصفح، فالمعامل باقٍ فقط للحفاظ على نفس بصمة النداء المستخدمة من
+// payInstallment و offlineSync دون أي تغيير فى السلوك.
 export async function payInstallmentOnline(
   installment: Installment,
-  userId: string,
+  _userId: string,
   paymentDate: Date,
   operationId: string = crypto.randomUUID(),
 ): Promise<void> {
@@ -119,9 +123,11 @@ export async function cancelInstallmentPayment(
 // البحث عن الدفعة، ومعالجة حالة الأقساط "التاريخية" بنفس منطق trigger
 // cancel_payment())، فبقت هنا مجرد نداء واحد بدل تكرار نفس المنطق فى الفرونت
 // إند وفى قاعدة البيانات فى نفس الوقت.
+// نفس ملاحظة payInstallmentOnline: `_userId` غير مستخدم عن قصد لأن
+// cancel_installment_payment_op بتحدد المستخدم من `auth.uid()` على الخادم.
 export async function cancelInstallmentPaymentOnline(
   installment: Installment,
-  userId: string,
+  _userId: string,
   cancelReason: string,
   operationId: string = crypto.randomUUID(),
 ): Promise<{ error?: string }> {

@@ -11,7 +11,7 @@ import {
 } from '../services/aiSettingsService';
 import {
   AI_PROVIDER_LABELS, AI_PROVIDER_STATUS_LABELS,
-  type AIProviderConfig, type AIProviderKey, type AISettingsBundle,
+  type AIProviderConfig, type AISettingsBundle,
 } from '../types';
 
 const STATUS_META: Record<string, { bg: string; text: string; icon: typeof CheckCircle2 }> = {

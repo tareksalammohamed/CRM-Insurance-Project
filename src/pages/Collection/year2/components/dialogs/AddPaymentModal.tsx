@@ -2,16 +2,18 @@ import { X, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import clsx from 'clsx';
 import type { UseFormRegister, UseFormHandleSubmit, FieldErrors } from 'react-hook-form';
-import type { Year2EligiblePolicy, Year2PaymentFormData } from '../../types';
+import type { Year2EligiblePolicy, Year2PaymentFormInput, Year2PaymentFormData } from '../../types';
 import { useDialogBehavior } from '../../../../../hooks/useDialogBehavior';
 import { DialogPortal } from '../../../../../components/ui/DialogPortal';
 
+// التسجيل/الأخطاء بتشتغل على مدخلات الفورم الخام (Input)، بينما onSubmit
+// بياخد القيم بعد تحويل zod (Data) — نفس الفصل الموجود فى useForm بالشاشة الأب.
 interface AddPaymentModalProps {
   policy: Year2EligiblePolicy;
   saving: boolean;
-  register: UseFormRegister<Year2PaymentFormData>;
-  handleSubmit: UseFormHandleSubmit<Year2PaymentFormData>;
-  errors: FieldErrors<Year2PaymentFormData>;
+  register: UseFormRegister<Year2PaymentFormInput>;
+  handleSubmit: UseFormHandleSubmit<Year2PaymentFormInput, Year2PaymentFormData>;
+  errors: FieldErrors<Year2PaymentFormInput>;
   onSubmit: (data: Year2PaymentFormData) => void;
   onClose: () => void;
 }

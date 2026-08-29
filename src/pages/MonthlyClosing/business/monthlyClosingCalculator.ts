@@ -51,11 +51,15 @@ export interface MonthlyClosingSummary {
 // users.manager_id/users.role العامين. لو من غير branchId (أو branchRoles
 // فاضية — أي استدعاء قديم لسه ما اتحدّثش)، السلوك بيرجع تلقائيًا لبالظبط
 // نفس المنطق الأصلي (توافق كامل مع الخلف).
+// ملاحظة: `_branchId` غير مستخدم داخل الحساب عن قصد — سياق الفرع بالكامل
+// جاي فعليًا من `branchRoles` (خريطة user_branch_roles للفرع المطلوب، تُبنى
+// فى طبقة الاستدعاء)، والمعامل باقٍ فى البصمة للتوثيق وللحفاظ على نفس نداء
+// الشاشة الحالي دون أي تغيير فى النتيجة.
 export function buildMonthlyClosingSummary(
   user: CurrentUserRef,
   usersData: BasicUser[],
   payments: PaymentRow[],
-  branchId?: string | null,
+  _branchId?: string | null,
   branchRoles?: Map<string, BranchRoleInfo>,
 ): MonthlyClosingSummary {
   const usersMap = new Map<string, BasicUser>(usersData.map((u) => [u.id, u]));

@@ -14,6 +14,12 @@ const STATUS_OPTIONS: { value: SubscriptionStatus; label: string }[] = [
 
 const toDateInput = (d: string | null) => (d ? d.slice(0, 10) : '');
 
+// `row.status` قد تكون null لصفوف الاشتراك "غير المهيأة" (وكيل بلا اشتراك
+// مباشر ولا مسؤول أعلى له اشتراك). المودال بيُفتح أصلاً للصفوف المباشرة فقط
+// (راجع SubscriptionsAdminPage)، لكن النوع لسه يسمح بـ null، فبنبدأ من حالة
+// افتراضية واضحة بدل تمرير null لـ useState وكسر نوع الـselect.
+const DEFAULT_STATUS: SubscriptionStatus = 'pending_payment';
+
 export function ManualSubscriptionModal({
   row, durations, onClose, onDone,
 }: {
@@ -22,7 +28,7 @@ export function ManualSubscriptionModal({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [status, setStatus] = useState<SubscriptionStatus>(row.status);
+  const [status, setStatus] = useState<SubscriptionStatus>(row.status ?? DEFAULT_STATUS);
   const [durationId, setDurationId] = useState(row.duration_id || '');
   const [periodStart, setPeriodStart] = useState(toDateInput(row.current_period_start));
   const [periodEnd, setPeriodEnd] = useState(toDateInput(row.current_period_end));

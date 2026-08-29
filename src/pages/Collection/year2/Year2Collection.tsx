@@ -12,7 +12,8 @@ import { Pagination } from '../../../components/ui/Pagination';
 
 import clsx from 'clsx';
 import type {
-  Year2EligiblePolicy, Year2Payment, Year2ReportRow, PrintPeriodType, Year2QuickFilter, Year2PaymentFormData,
+  Year2EligiblePolicy, Year2Payment, Year2ReportRow, PrintPeriodType, Year2QuickFilter,
+  Year2PaymentFormInput, Year2PaymentFormData,
 } from './types';
 import { YEAR2_QUICK_FILTERS, year2PaymentSchema } from './types';
 import {
@@ -54,10 +55,16 @@ export function Year2Collection({ branchId = null }: Year2CollectionProps) {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  // react-hook-form بياخد نوع المدخلات الخام أولاً ثم نوع القيم بعد تحويل
+  // zod — حقل المبلغ بيوصل كنص من الـinput وبيتحوّل لرقم داخل الـschema، فلازم
+  // النوعين يكونا مفصولين (Input / Data) عشان `handleSubmit` يسلّم رقمًا فعليًا
+  // لمنطق العمل بدون أي تأكيد نوع.
   const {
     register: registerPayment, handleSubmit: handlePaymentSubmit, reset: resetPaymentForm,
     formState: { errors: paymentErrors },
-  } = useForm<Year2PaymentFormData>({ resolver: zodResolver(year2PaymentSchema) });
+  } = useForm<Year2PaymentFormInput, unknown, Year2PaymentFormData>({
+    resolver: zodResolver(year2PaymentSchema),
+  });
 
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Year2Payment | null>(null);

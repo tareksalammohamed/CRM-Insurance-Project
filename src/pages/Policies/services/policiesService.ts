@@ -346,7 +346,10 @@ export async function countPaidInstallments(policyId: string): Promise<number> {
 // جوه معاملة واحدة، ومحمية بمفتاح idempotency. بنمرر p_expected_updated_at
 // كـ NULL عمداً للحفاظ على نفس السلوك الحالي بالضبط (بدون فحص تعارض تعديل
 // متزامن لم يكن موجوداً من قبل).
-export async function updatePolicy(policyId: string, data: PolicyFormData, oldData: Policy): Promise<void> {
+// `_oldData` غير مستخدم هنا عن قصد: القيم القديمة بتُقرأ وتُسجَّل داخل
+// update_policy_op على الخادم نفسه (مصدر واحد لسجل النشاط)، والمعامل باقٍ فى
+// البصمة لأن شاشة الوثائق بتقارن القديم بالجديد قبل النداء وبتمرره كسياق.
+export async function updatePolicy(policyId: string, data: PolicyFormData, _oldData: Policy): Promise<void> {
   const { isEditingPolicy, ...policyData } = data;
   const { data: result, error } = await supabase.rpc('update_policy_op', {
     p_operation_id: crypto.randomUUID(),

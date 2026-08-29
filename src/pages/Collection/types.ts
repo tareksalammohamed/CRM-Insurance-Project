@@ -18,11 +18,20 @@ export type SubType = 'all' | 'new' | 'periodic';
 // الهيكل الإداري (لو كان رئيس مجموعة مثلاً، بيتجاب معاه كل وكلائه تلقائياً).
 export type OwnerFilter = 'all' | string;
 
+// الوثيقة المرتبطة بالقسط كما تُحمَّل فعلاً فى قائمة التحصيل — بيانات العميل
+// والوكيل بتتجاب مع الاستعلام نفسه (customer:customer_id / owner:owner_id).
+export type CollectionPolicy = Policy & {
+  customer: { name: string; phone?: string; national_id?: string };
+  owner: { name: string };
+};
+
+// `policy` إلزامية هنا (مش اختيارية) لأن استعلام قائمة التحصيل بيستخدم
+// `policy:policy_id!inner(...)`، و`installments.policy_id` مفتاح أجنبي إلزامي
+// — فكل صف بيرجع من الاستعلام ده له وثيقة مؤكدة. الاختيارية السابقة كانت
+// بتجبر كل مكوّنات العرض على فحوص `?.` لحالة مستحيلة، وبتخفي فى نفس الوقت
+// إن الأقساط المحمّلة من مسارات تانية (بدون علاقات) نوعها مختلف فعلاً.
 export type InstallmentWithRelations = Installment & {
-  policy?: Policy & {
-    customer: { name: string; phone?: string; national_id?: string };
-    owner: { name: string };
-  };
+  policy: CollectionPolicy;
 };
 
 export const QUICK_FILTERS: { id: QuickFilter; label: string }[] = [
