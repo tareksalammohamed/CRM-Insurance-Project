@@ -103,7 +103,7 @@ export function DataImport() {
         setAiNotice(aiUsed ? 'لم يطابق الملف نموذج الاستيراد حرفياً، فتم استخدام الذكاء الاصطناعي لمطابقة الأعمدة تلقائياً. راجع الصفوف أدناه قبل الاستيراد.' : null);
         setStage('parsed');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setHeaderError(friendlyError(err, 'تعذر قراءة الملف. تأكد أنه ملف صحيح غير تالف'));
     } finally {
       setParsing(false);

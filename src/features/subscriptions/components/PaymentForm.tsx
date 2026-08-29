@@ -94,7 +94,7 @@ export function PaymentForm({
   const toggleSubordinate = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   };
@@ -155,7 +155,7 @@ export function PaymentForm({
       setReceiptPreview(null);
       setReferenceNumber('');
       onSubmitted();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error submitting subscription payment:', err);
       setMessage({ type: 'error', text: friendlyError(err, 'حدث خطأ أثناء إرسال الطلب') });
     } finally {

@@ -28,7 +28,16 @@ export default tseslint.config(
       // (build) الحالي ميتكسرش فجأة، لكن هتظهر في الطرفية كل مرة تشغّلوا
       // lint، فتقدروا تتابعوا وتقللوا العدد تدريجياً بدل ما يفضل يزيد بصمت.
       '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-vars': 'warn',
+      // اصطلاح قياسي: المتغيرات/المعاملات المقصود عدم استخدامها تبدأ بـ "_"
+      // (توثيق مقصود فى التوقيع)، وignoreRestSiblings يسمح بنمط الحذف عبر
+      // destructuring: `const { omitted, ...rest } = obj` — النمطان مقصودان
+      // وليسا أخطاء فعلية، والتحذير يظل يعمل على أى متغير غير مستخدم حقيقي.
+      '@typescript-eslint/no-unused-vars': ['warn', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+        ignoreRestSiblings: true,
+      }],
       'react-hooks/exhaustive-deps': 'warn',
     },
   }

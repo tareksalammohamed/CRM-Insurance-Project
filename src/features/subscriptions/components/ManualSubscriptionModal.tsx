@@ -48,7 +48,7 @@ export function ManualSubscriptionModal({
         trial_end_date: trialEnd || null
       });
       onDone();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(friendlyError(err, 'حدث خطأ أثناء الحفظ'));
     } finally {
       setSaving(false);

@@ -1,4 +1,4 @@
-import { friendlyError } from '../../../lib/errorMessages';
+import { friendlyError, getErrorCode } from '../../../lib/errorMessages';
 import { useNotify } from '../../../lib/notify';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -160,9 +160,9 @@ export function useCustomerActions({
       handleCloseModal();
       loadCustomers();
       loadStats();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error saving customer:', error);
-      if (error.code === '23505') {
+      if (getErrorCode(error) === '23505') {
         notify.error('الرقم القومي مسجل مسبقاً');
       } else {
         notify.error('حدث خطأ أثناء الحفظ');
@@ -297,7 +297,7 @@ export function useCustomerActions({
       setShowPayModal(false);
       setSelectedInstallment(null);
       await reloadOpenPolicyInstallments();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error processing payment:', error);
       notify.error(friendlyError(error, 'حدث خطأ أثناء تسجيل السداد، حاول مرة أخرى'));
     } finally {

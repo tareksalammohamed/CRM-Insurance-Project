@@ -125,7 +125,7 @@ export function Settings() {
       });
 
       setBackupResult({ type: 'success', text: `تم تنزيل الملف "${fileName}" بنجاح (${totalRows} صف).` });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating backup:', error);
       setBackupResult({ type: 'error', text: friendlyError(error, 'حدث خطأ أثناء إنشاء النسخة الاحتياطية') });
     } finally {

@@ -174,7 +174,7 @@ export function useProfile() {
 
       // Reset file input
       if (fileInputRef.current) fileInputRef.current.value = '';
-    } catch (error: any) {
+    } catch (error: unknown) {
       // التفاصيل التقنية الكاملة (بما فيها أخطاء RLS) تتسجل هنا للمطور فقط،
       // ولا تُعرض أبداً للمستخدم النهائي — راجع src/lib/errorMessages.ts
       console.error('Error uploading avatar:', error);

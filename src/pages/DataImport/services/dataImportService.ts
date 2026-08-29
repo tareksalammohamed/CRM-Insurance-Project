@@ -358,13 +358,13 @@ function parseFlexibleDate(value: any): Date | null {
   if (!str) return null;
 
   // yyyy-mm-dd أو yyyy/mm/dd
-  let m = str.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+  let m = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
   if (m) {
     const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
     return isNaN(d.getTime()) ? null : d;
   }
   // dd-mm-yyyy أو dd/mm/yyyy
-  m = str.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+  m = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
   if (m) {
     const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
     return isNaN(d.getTime()) ? null : d;
@@ -659,7 +659,7 @@ export async function importRows(
         };
         results.push(result);
         onRowDone(result, ++done, total);
-      } catch (err: any) {
+      } catch (err: unknown) {
         const result: RowResult = {
           rowNumber: row.rowNumber,
           customerName: payload.p_customer_name,

@@ -211,7 +211,7 @@ export function Users() {
 
       closeModal();
       loadUsers();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error saving user:', err);
       notify.error(`حدث خطأ: ${friendlyError(err)}`);
     } finally {
@@ -228,7 +228,7 @@ export function Users() {
       await changeUserPassword(editingUser, data);
       notify.success(`تم تغيير كلمة مرور "${editingUser.name}" بنجاح`);
       closePwdModal();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error changing password:', err);
       notify.error(`حدث خطأ: ${friendlyError(err)}`);
     } finally {
@@ -259,7 +259,7 @@ export function Users() {
       await softDeleteUser(deletingUser);
       setDeletingUser(null);
       await Promise.all([loadUsers(), loadAllUsers()]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deleting user:', err);
       notify.error(`حدث خطأ أثناء حذف المستخدم: ${friendlyError(err, 'تعذر حذف المستخدم')}`);
     } finally {

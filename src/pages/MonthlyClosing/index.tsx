@@ -157,11 +157,11 @@ export function MonthlyClosing() {
 
   // ── toggle / close / open ──────────────────────────────
   const toggleSupervisor = (id: string) =>
-    setExpandedSupervisors(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setExpandedSupervisors(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const toggleGroup = (id: string) =>
-    setExpandedGroups(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setExpandedGroups(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const toggleAgent = (id: string) =>
-    setExpandedAgents(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setExpandedAgents(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const handleConfirmAction = async () => {
     if (!user || !canClose) return;

@@ -59,7 +59,7 @@ export function useInstallmentPaymentActions({
       if (showPolicyModal && selectedPolicyId) {
         loadPolicyInstallments(selectedPolicyId);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error processing payment:', error);
       notify.error(friendlyError(error, 'حدث خطأ أثناء تسجيل السداد'));
     } finally {

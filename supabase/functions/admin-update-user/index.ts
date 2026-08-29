@@ -126,8 +126,8 @@ Deno.serve(async (req: Request) => {
     if (password) updatePayload.password = password;
     if (email) updatePayload.email = email;
 
-    // تحديث المستخدم عبر Admin API
-    const { data: updatedUser, error: updateError } = await adminClient.auth.admin.updateUserById(
+    // تحديث المستخدم عبر Admin API — لا نحتاج بيانات المستخدم المرجعة، فقط الخطأ
+    const { error: updateError } = await adminClient.auth.admin.updateUserById(
       user_id,
       updatePayload
     );

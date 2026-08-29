@@ -1,4 +1,4 @@
-import { friendlyError } from '../../../lib/errorMessages';
+import { friendlyError, getErrorCode } from '../../../lib/errorMessages';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2, Plus, Trash2, Pencil, Check, X as XIcon, Star } from 'lucide-react';
 import clsx from 'clsx';
@@ -97,8 +97,8 @@ export function UserBranchRolesSection({ userId }: { userId: string }) {
       setShowAdd(false);
       setNewBranchId(''); setNewManagerId(''); setNewRole(ADD_ROLE_OPTIONS[0]);
       await load();
-    } catch (err: any) {
-      setError(err?.code === '23505' ? 'هذا المستخدم لديه بالفعل وضع فى هذا الفرع' : friendlyError(err, 'حدث خطأ أثناء الإضافة'));
+    } catch (err: unknown) {
+      setError(getErrorCode(err) === '23505' ? 'هذا المستخدم لديه بالفعل وضع فى هذا الفرع' : friendlyError(err, 'حدث خطأ أثناء الإضافة'));
     } finally {
       setSaving(false);
     }

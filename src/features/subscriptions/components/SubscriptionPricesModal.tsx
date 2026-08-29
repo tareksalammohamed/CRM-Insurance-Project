@@ -63,7 +63,7 @@ export function SubscriptionPricesModal({
         await updatePlanPrice(p.id, { price: Number(values[p.id]) });
       }
       onDone();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(friendlyError(err, 'حدث خطأ أثناء حفظ الأسعار'));
     } finally {
       setSaving(false);

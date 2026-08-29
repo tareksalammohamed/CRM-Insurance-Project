@@ -5,6 +5,7 @@ import { supabase, User, WEBAUTHN_FUNCTIONS_URL } from '../lib/supabase';
 import { clearAllDataCache } from '../lib/dataCache';
 import { clearAllQueueItems } from '../lib/offlineQueue';
 import { dalRead } from '../lib/dataAccessLayer';
+import { getErrorName } from '../lib/errorMessages';
 
 interface AuthContextType {
   session: Session | null;
@@ -193,7 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let attestationResponse;
       try {
         attestationResponse = await startRegistration({ optionsJSON: options });
-      } catch (startErr: any) {
+      } catch (startErr: unknown) {
         console.error('startRegistration failed. options was:', options, startErr);
         return { error: new Error('تعذر إنشاء بيانات البصمة على هذا الجهاز') };
       }
@@ -217,8 +218,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       return { error: null };
-    } catch (err: any) {
-      if (err?.name === 'NotAllowedError') {
+    } catch (err: unknown) {
+      if (getErrorName(err) === 'NotAllowedError') {
         return { error: new Error('تم إلغاء العملية أو رفض الإذن') };
       }
       console.error('[registerPasskey/OTHER]', err);
@@ -244,8 +245,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let assertionResponse;
       try {
         assertionResponse = await startAuthentication({ optionsJSON: options });
-      } catch (startErr: any) {
-        if (startErr?.name === 'NotAllowedError') {
+      } catch (startErr: unknown) {
+        if (getErrorName(startErr) === 'NotAllowedError') {
           return { error: new Error('تم إلغاء العملية أو رفض الإذن') };
         }
         console.error('[signInWithPasskey/START]', startErr);
@@ -276,8 +277,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       return { error: null };
-    } catch (err: any) {
-      if (err?.name === 'NotAllowedError') {
+    } catch (err: unknown) {
+      if (getErrorName(err) === 'NotAllowedError') {
         return { error: new Error('تم إلغاء العملية أو رفض الإذن') };
       }
       console.error('[signInWithPasskey/OTHER]', err);

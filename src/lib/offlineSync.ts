@@ -13,6 +13,7 @@ import { payInstallmentOnline, cancelInstallmentPaymentOnline } from '../feature
 import { createCustomerOnline } from '../pages/Customers/services/customersService';
 import { createPolicyOnline } from '../pages/Policies/services/policiesService';
 import type { Installment } from './supabase';
+import { getErrorMessage } from './errorMessages';
 import type { CustomerFormData } from '../pages/Customers/types';
 import type { PolicyFormData } from '../pages/Policies/types';
 
@@ -176,9 +177,9 @@ async function executeQueuedItem(item: OfflineQueueItem): Promise<QueueItemOutco
       }
     }
     return 'retry';
-  } catch (err: any) {
+  } catch (err: unknown) {
     // فشل غير متوقع (شبكة/سيرفر) — تفضل العملية فى الطابور للمحاولة القادمة
-    await markQueueAttemptFailed(item.operationId, err?.message || String(err));
+    await markQueueAttemptFailed(item.operationId, getErrorMessage(err) || String(err));
     return 'retry';
   }
 }

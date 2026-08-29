@@ -8,6 +8,25 @@
 interface ErrorLike {
   message?: string;
   code?: string;
+  name?: string;
+}
+
+// ============================================================================
+// قارئات آمنة لخصائص الخطأ — تستقبل `unknown` (نوع catch القياسي) وترجع
+// القيمة لو موجودة، بدل تكرار `catch (err: any)` فى كل شاشة. لا تغيير فى
+// أي سلوك: نفس القراءات الاختيارية القديمة بالضبط لكن بنوع آمن.
+// ============================================================================
+export function getErrorCode(error: unknown): string | undefined {
+  return (error as ErrorLike | null | undefined)?.code;
+}
+
+export function getErrorMessage(error: unknown): string {
+  const message = (error as ErrorLike | null | undefined)?.message;
+  return typeof message === 'string' ? message : '';
+}
+
+export function getErrorName(error: unknown): string | undefined {
+  return (error as ErrorLike | null | undefined)?.name;
 }
 
 // كل قاعدة هنا: جزء من رسالة الخطأ الأصلية (بالإنجليزي، زي ما بترجعها

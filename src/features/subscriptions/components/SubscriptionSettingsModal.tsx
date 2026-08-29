@@ -56,7 +56,7 @@ export function SubscriptionSettingsModal({
         vodafone_cash_number: vodafoneNumber.trim() || null,
       });
       onDone();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(friendlyError(err, 'حدث خطأ أثناء حفظ الإعدادات'));
     } finally {
       setSaving(false);

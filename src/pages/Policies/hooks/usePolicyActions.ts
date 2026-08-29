@@ -12,6 +12,7 @@ import {
 import { computeDefaultPolicyStartDate } from '../business/policyDateDefaults';
 import { buildPolicyPrintHtml } from '../services/policyHelpers';
 import { useNotify } from '../../../lib/notify';
+import { getErrorCode, getErrorMessage } from '../../../lib/errorMessages';
 
 type SetSearchParams = ReturnType<typeof useSearchParams>[1];
 
@@ -238,12 +239,13 @@ export function usePolicyActions({
       handleCloseModal();
       loadPolicies();
       loadStats();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error saving policy:', error);
-      const msg: string = error?.message || '';
-      if (error.code === '23505' && msg.includes('policy_number')) {
+      const msg = getErrorMessage(error);
+      const code = getErrorCode(error);
+      if (code === '23505' && msg.includes('policy_number')) {
         notify.error('رقم الوثيقة مسجل مسبقاً');
-      } else if (error.code === '23505') {
+      } else if (code === '23505') {
         notify.error('حدث تعارض في البيانات أثناء الحفظ، برجاء المحاولة مرة أخرى');
       } else {
         notify.error(msg || 'حدث خطأ أثناء الحفظ');

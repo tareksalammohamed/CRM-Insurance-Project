@@ -62,7 +62,7 @@ export function PaymentReviewModal({
     try {
       await approvePayment(payment.id);
       onDone();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(friendlyError(err, 'حدث خطأ أثناء الاعتماد'));
     } finally {
       setBusy(false);
@@ -79,7 +79,7 @@ export function PaymentReviewModal({
     try {
       await rejectPayment(payment.id, rejectReason.trim());
       onDone();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(friendlyError(err, 'حدث خطأ أثناء الرفض'));
     } finally {
       setBusy(false);
@@ -94,7 +94,7 @@ export function PaymentReviewModal({
     try {
       await deletePaymentRequest(payment.id);
       onDone();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(friendlyError(err, 'حدث خطأ أثناء الحذف'));
     } finally {
       setBusy(false);

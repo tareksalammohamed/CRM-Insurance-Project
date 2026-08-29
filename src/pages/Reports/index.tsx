@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useBranchContext } from '../../lib/branchContext';
@@ -83,9 +83,16 @@ export function Reports() {
   // مؤشر تحديث بسيط بدل ما تختفي الشاشة بالكامل فى كل مرة
   const isInitialLoading = loading && data === null;
 
+  // نمط "latest ref": الـ effect يعيد التحميل عند تغير بيانات الفلاتر فقط (نفس
+  // السلوك السابق تمامًا)، ويستدعي دائمًا أحدث نسخة من loadReport عبر ref
+  // بدل إدراج الدالة نفسها فى الـ deps (هويتها تتغير كل render فكانت ستسبب
+  // إعادة تحميل فى كل render) — بدون أى eslint-disable.
+  const loadReportRef = useRef<() => void>(() => {});
+  loadReportRef.current = () => { void loadReport(); };
+
   useEffect(() => {
     if (user) {
-      loadReport();
+      loadReportRef.current();
     }
   }, [user, reportType, dateRange, selectedMonth, selectedQuarter, quarterYear, selectedYear, selectedUserId, currentBranchId, activityTargets, customerRequestFilter]);
 

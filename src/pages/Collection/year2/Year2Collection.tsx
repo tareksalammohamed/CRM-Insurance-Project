@@ -149,7 +149,7 @@ export function Year2Collection({ branchId = null }: Year2CollectionProps) {
       setShowAddModal(false);
       loadPolicies();
       if (showHistoryModal) openHistory(selectedPolicy);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
       notify.error(friendlyError(error, 'حدث خطأ أثناء تسجيل التحصيل'));
     } finally {
