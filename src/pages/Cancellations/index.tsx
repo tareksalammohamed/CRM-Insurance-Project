@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useReconnectRefetch } from '../../hooks/useReconnectRefetch';
@@ -37,15 +37,9 @@ export function Cancellations() {
   const [sortKey, setSortKey] = useState<SortKey>('cancelledDate');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
-  useEffect(() => {
-    if (user) {
-      loadData();
-    }
-  }, [user, currentBranchId]);
-
-  useReconnectRefetch(() => { if (user) loadData(); });
-
-  const loadData = async () => {
+  // نفس الـdeps اللي كانت معلنة يدويًا على الـeffect (user / currentBranchId)
+  // بقت deps للـuseCallback — مرة التحميل وتوقيتها متطابقين تمامًا.
+  const loadData = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
@@ -56,7 +50,15 @@ export function Cancellations() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, currentBranchId]);
+
+  useEffect(() => {
+    if (user) {
+      loadData();
+    }
+  }, [user, loadData]);
+
+  useReconnectRefetch(() => { if (user) loadData(); });
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {

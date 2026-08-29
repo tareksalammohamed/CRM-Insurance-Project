@@ -38,7 +38,6 @@ export function CustomerPickerModal({ isOpen, onClose, onSelect }: CustomerPicke
     if (!isOpen) return;
     const timer = setTimeout(() => runSearch(searchTerm), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, isOpen]);
 
   const runSearch = async (term: string) => {

@@ -41,74 +41,9 @@ export function useOrgStructure() {
   loadingRef.current    = loadingIds;
   branchIdRef.current   = currentBranchId;
 
-  useEffect(() => { if (user && canView) loadRoster(); }, [user, canView, currentBranchId]);
+  // ملحوظة: loadRoster والـeffect اللي بيستدعيه اتنقلوا تحت تعريف
+  // ensureProduction (لأن loadRoster بيناديها) — نفس مرة وتوقيت التحميل.
 
-  useReconnectRefetch(() => { if (user && canView) loadRoster(); });
-
-  const loadRoster = async () => {
-    setLoading(true);
-    try {
-      // نطاق المستخدم (نفسه + كل من تحته) فى سياق الفرع الحالي (المرحلة 3):
-      // get_user_subtree_branch_aware بتمشي فى user_branch_roles الخاصة
-      // بالفرع ده بس لو currentBranchId موجود، وإلا بترجع لسلوك get_user_subtree
-      // الأصلي العابر للفروع.
-      const ids = await fetchUserSubtreeIdsBranchAware('orgstructure', user!.id, currentBranchId);
-
-      const result = await dalRead(
-        `orgstructure:roster:${user!.id}:${[...ids].sort().join(',')}`,
-        async () => {
-          const { data: usersData, error: usersError } = await supabase
-            .from('users')
-            .select('id, name, role, manager_id, is_active, avatar_url, target')
-            .is('deleted_at', null)
-            .in('id', ids);
-          if (usersError) throw usersError;
-
-          return (usersData || []).map((u: any) => ({ ...u, target: u.target || 0 })) as RosterUser[];
-        },
-        { emptyValue: [] as RosterUser[] },
-      );
-
-      // نطبّق "الفرع" فوق role/manager_id العامين: أي مستخدم عنده صف مطابق
-      // فى user_branch_roles لنفس الفرع، بياخد role/manager_id بتوع الفرع ده
-      // بدل قيمته العامة — فالهرم (childrenMap تحت) والإحصائيات والبحث كلها
-      // بتشتغل على سياق الفرع تلقائيًا من غير أي تعديل تاني فى الملف ده.
-      const branchRoles = await fetchBranchRoleMap(currentBranchId, ids);
-      const rosterData: RosterUser[] = result.data
-        .map((u) => {
-          const br = branchRoles.get(u.id);
-          return br ? { ...u, role: br.role, manager_id: br.manager_id } : u;
-        })
-        // الوكيل غير النشط لا يظهر في التشكيل التشغيلي أو البحث أو الإحصائيات.
-        // نُبقي المدير غير النشط في المصدر حتى لا نكسر مسار المرؤوسين النشطين.
-        .filter((u) => {
-          const isAgent = u.role === 'agent' || u.role === 'premium_agent';
-          return !isAgent || u.is_active;
-        });
-
-      const map = new Map<string, RosterUser>();
-      rosterData.forEach((u) => map.set(u.id, u));
-
-      // نمسح إنتاج الفرع القديم عند إعادة تحميل الهيكل (مثلاً بعد تبديل
-      // الفرع الحالي) — القيم بقت مرتبطة بالفرع (get_org_node_production_branch_aware)
-      // فمينفعش نفضل مستخدمين قيمة محسوبة لفرع سابق لنفس المستخدم
-      setProduction(new Map());
-      productionRef.current = new Map();
-      setLoadingIds(new Set());
-      loadingRef.current = new Set();
-
-      setRoster(map);
-      setPath([user!.id]);
-      const directChildren = Array.from(map.values())
-        .filter((u) => u.manager_id === user!.id)
-        .map((u) => u.id);
-      await ensureProduction([user!.id, ...directChildren], map);
-    } catch (err) {
-      console.error('Error loading org structure:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const childrenMap = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -171,6 +106,76 @@ export function useOrgStructure() {
       }
     }
   }, []);
+
+  const loadRoster = useCallback(async () => {
+    setLoading(true);
+    try {
+      // نطاق المستخدم (نفسه + كل من تحته) فى سياق الفرع الحالي (المرحلة 3):
+      // get_user_subtree_branch_aware بتمشي فى user_branch_roles الخاصة
+      // بالفرع ده بس لو currentBranchId موجود، وإلا بترجع لسلوك get_user_subtree
+      // الأصلي العابر للفروع.
+      const ids = await fetchUserSubtreeIdsBranchAware('orgstructure', user!.id, currentBranchId);
+
+      const result = await dalRead(
+        `orgstructure:roster:${user!.id}:${[...ids].sort().join(',')}`,
+        async () => {
+          const { data: usersData, error: usersError } = await supabase
+            .from('users')
+            .select('id, name, role, manager_id, is_active, avatar_url, target')
+            .is('deleted_at', null)
+            .in('id', ids);
+          if (usersError) throw usersError;
+
+          return (usersData || []).map((u: any) => ({ ...u, target: u.target || 0 })) as RosterUser[];
+        },
+        { emptyValue: [] as RosterUser[] },
+      );
+
+      // نطبّق "الفرع" فوق role/manager_id العامين: أي مستخدم عنده صف مطابق
+      // فى user_branch_roles لنفس الفرع، بياخد role/manager_id بتوع الفرع ده
+      // بدل قيمته العامة — فالهرم (childrenMap تحت) والإحصائيات والبحث كلها
+      // بتشتغل على سياق الفرع تلقائيًا من غير أي تعديل تاني فى الملف ده.
+      const branchRoles = await fetchBranchRoleMap(currentBranchId, ids);
+      const rosterData: RosterUser[] = result.data
+        .map((u) => {
+          const br = branchRoles.get(u.id);
+          return br ? { ...u, role: br.role, manager_id: br.manager_id } : u;
+        })
+        // الوكيل غير النشط لا يظهر في التشكيل التشغيلي أو البحث أو الإحصائيات.
+        // نُبقي المدير غير النشط في المصدر حتى لا نكسر مسار المرؤوسين النشطين.
+        .filter((u) => {
+          const isAgent = u.role === 'agent' || u.role === 'premium_agent';
+          return !isAgent || u.is_active;
+        });
+
+      const map = new Map<string, RosterUser>();
+      rosterData.forEach((u) => map.set(u.id, u));
+
+      // نمسح إنتاج الفرع القديم عند إعادة تحميل الهيكل (مثلاً بعد تبديل
+      // الفرع الحالي) — القيم بقت مرتبطة بالفرع (get_org_node_production_branch_aware)
+      // فمينفعش نفضل مستخدمين قيمة محسوبة لفرع سابق لنفس المستخدم
+      setProduction(new Map());
+      productionRef.current = new Map();
+      setLoadingIds(new Set());
+      loadingRef.current = new Set();
+
+      setRoster(map);
+      setPath([user!.id]);
+      const directChildren = Array.from(map.values())
+        .filter((u) => u.manager_id === user!.id)
+        .map((u) => u.id);
+      await ensureProduction([user!.id, ...directChildren], map);
+    } catch (err) {
+      console.error('Error loading org structure:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, currentBranchId, ensureProduction]);
+
+  useEffect(() => { if (user && canView) loadRoster(); }, [user, canView, loadRoster]);
+
+  useReconnectRefetch(() => { if (user && canView) loadRoster(); });
+
 
   // الدخول لصفحة حد معين (يبقى هو "الحالي" وتحته مرؤوسينه المباشرين)
   const navigateInto = useCallback((id: string) => {

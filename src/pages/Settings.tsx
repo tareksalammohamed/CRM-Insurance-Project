@@ -1,5 +1,5 @@
 import { friendlyError } from '../lib/errorMessages';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase, Settings as SettingsType } from '../lib/supabase';
 import { canViewSettings } from '../lib/supabase';
@@ -48,13 +48,9 @@ export function Settings() {
     resolver: zodResolver(settingsSchema)
   });
 
-  useEffect(() => {
-    if (canAccess) {
-      loadSettings();
-    }
-  }, [canAccess]);
-
-  const loadSettings = async () => {
+  // loadSettings بيعتمد على `reset` بس (من react-hook-form، مرجعها مستقر)،
+  // فالـeffect تحته بيفضل بيتنفذ مرة واحدة عند توفر الصلاحية — نفس السلوك.
+  const loadSettings = useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await supabase
@@ -75,7 +71,13 @@ export function Settings() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [reset]);
+
+  useEffect(() => {
+    if (canAccess) {
+      loadSettings();
+    }
+  }, [canAccess, loadSettings]);
 
   const onSubmit = async (data: SettingsFormData) => {
     if (!settings) return;

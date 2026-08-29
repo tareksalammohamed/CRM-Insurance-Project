@@ -1,5 +1,5 @@
 import { friendlyError } from '../../../lib/errorMessages';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { useReconnectRefetch } from '../../../hooks/useReconnectRefetch';
 import {
@@ -96,9 +96,16 @@ export function Year2Collection({ branchId = null }: Year2CollectionProps) {
 
   useReconnectRefetch(loadPolicies);
 
+  // مرجع حي لآخر قيمة بحث مُطبَّقة — للمقارنة داخل الـdebounce فقط.
+  const searchQueryRef = useRef(searchQuery);
+  searchQueryRef.current = searchQuery;
+
+  // المؤقت يعتمد على `localSearch` فقط: إضافة `searchQuery` للـdeps كانت
+  // هتعيد تشغيله لحظة تطبيق البحث (الـeffect نفسه بيعدّلها) فيتولّد مؤقت
+  // إضافي بلا داعٍ. القيمة الحالية بتتقرأ من الـref بدل الـclosure.
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (localSearch !== searchQuery) {
+      if (localSearch !== searchQueryRef.current) {
         setSearchQuery(localSearch);
         setPage(1);
       }

@@ -1,5 +1,5 @@
 import { friendlyError } from '../../../lib/errorMessages';
-import { useState, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { ROLE_LABELS, type User, type UserRole } from '../../../lib/supabase';
 import {
   Loader2, CheckCircle2, XCircle, Copy, Check, Camera, Image as ImageIcon, Users
@@ -62,10 +62,16 @@ export function PaymentForm({
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const getPrice = (role: UserRole, durId: string) =>
-    prices.find((p) => p.role === role && p.duration_id === durId)?.price || 0;
+  // useCallback بيعتمد على `prices` بس — نفس الاعتماد اللي كان معلن يدويًا فى
+  // الـuseMemo تحت، فالنتيجة المحسوبة (وبالتالي الأسعار والإجمالي) مطابقة
+  // تمامًا؛ الفرق إن الاعتمادية بقت معلنة صح بدل تحذير.
+  const getPrice = useCallback(
+    (role: UserRole, durId: string) =>
+      prices.find((p) => p.role === role && p.duration_id === durId)?.price || 0,
+    [prices],
+  );
 
-  const ownPrice = useMemo(() => getPrice(user.role, durationId), [prices, durationId, user.role]);
+  const ownPrice = useMemo(() => getPrice(user.role, durationId), [getPrice, durationId, user.role]);
 
   const subordinatesByRole = useMemo(() => {
     const groups: Record<string, PayableSubordinate[]> = {};
@@ -83,7 +89,7 @@ export function PaymentForm({
       if (sub) sum += getPrice(sub.role, durationId);
     });
     return sum;
-  }, [ownPrice, selectedIds, subordinates, durationId, prices]);
+  }, [ownPrice, selectedIds, subordinates, durationId, getPrice]);
 
   const toggleSubordinate = (id: string) => {
     setSelectedIds((prev) => {

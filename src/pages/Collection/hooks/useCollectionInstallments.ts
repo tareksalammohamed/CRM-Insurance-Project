@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { User } from '../../../lib/supabase';
 import type { QuickFilter, SubType, OwnerFilter, InstallmentWithRelations } from '../types';
 import { fetchInstallments, cancelSeverelyOverduePolicies } from '../services/collectionService';
@@ -26,7 +26,12 @@ export function useCollectionInstallments({ user, yearMode, quickFilter, subType
   const [searchQuery, setSearchQuery] = useState('');
   const [localSearch, setLocalSearch] = useState('');
 
-  const loadInstallments = async () => {
+  // مرجع حي لآخر قيمة مُطبَّقة للبحث — بيُستخدم فى الـdebounce تحت فقط
+  // للمقارنة، بدون ما يكون dependency للمؤقت نفسه.
+  const searchQueryRef = useRef(searchQuery);
+  searchQueryRef.current = searchQuery;
+
+  const loadInstallments = useCallback(async () => {
     setLoading(true);
     try {
       // فحص وإلغاء أي وثيقة فاتها 3 شهور أو أكثر على قسط غير مسدد — قبل عرض
@@ -50,17 +55,23 @@ export function useCollectionInstallments({ user, yearMode, quickFilter, subType
     } finally {
       setLoading(false);
     }
-  };
+  }, [quickFilter, subType, ownerFilter, page, searchQuery, branchId, monthStart]);
 
+  // نفس شروط التحميل بالظبط زي ما كانت: أي تغيير فى الفلاتر/الصفحة/البحث
+  // بيغيّر مرجع loadInstallments (useCallback فوق بنفس الـdeps القديمة
+  // للـeffect ده)، فالسلوك متطابق تمامًا — الفرق إن الاعتمادية بقت معلنة
+  // بشكل صحيح بدل eslint-disable.
   useEffect(() => {
     if (user && yearMode === 'year1') loadInstallments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, yearMode, quickFilter, subType, ownerFilter, page, searchQuery, branchId, monthStart]);
+  }, [user, yearMode, loadInstallments]);
 
-  // تأخير بسيط (debounce) لتقليل عدد طلبات البحث أثناء الكتابة
+  // تأخير بسيط (debounce) لتقليل عدد طلبات البحث أثناء الكتابة.
+  // المؤقت لازم يعتمد على `localSearch` فقط — إضافة `searchQuery` للـdeps
+  // كانت هتعيد تشغيل المؤقت لحظة تطبيق البحث نفسه (لأن الـeffect بيعدّلها)،
+  // فبيتولد مؤقت زيادة بلا داعٍ. القيمة الحالية للمقارنة بتتقرأ من الـref.
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (localSearch !== searchQuery) {
+      if (localSearch !== searchQueryRef.current) {
         setSearchQuery(localSearch);
         setPage(1);
       }

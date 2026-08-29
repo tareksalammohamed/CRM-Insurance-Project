@@ -1,6 +1,6 @@
 import { friendlyError } from '../../lib/errorMessages';
 import { useNotify } from '../../lib/notify';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReconnectRefetch } from '../../hooks/useReconnectRefetch';
 import { User, UserRole, ROLE_LABELS, canManageUsers, canResetOtherUserPassword } from '../../lib/supabase';
@@ -66,7 +66,12 @@ export function Users() {
 
   const canManage = user ? canManageUsers(user.role) : false;
   // الدرجات الوظيفية المسموح لهذا المستخدم إنشاؤها/إسنادها (نظام هرمي)
-  const allowedRoles = user ? getCreatableRoles(user.role) : [];
+  // useMemo لأن getCreatableRoles بترجّع مصفوفة جديدة فى كل render، وكانت
+  // بتخلّي openCreateModal (useCallback تحت) يتغيّر مع كل render بلا داعٍ.
+  const allowedRoles = useMemo(
+    () => (user ? getCreatableRoles(user.role) : []),
+    [user],
+  );
   // إعادة تعيين كلمة مرور مستخدم آخر: Super Admin فقط
   const canResetPassword = user ? canResetOtherUserPassword(user.role) : false;
 
@@ -83,35 +88,9 @@ export function Users() {
   } = useForm<PasswordFormData>({ resolver: zodResolver(passwordSchema) });
 
   // ── load ───────────────────────────────────────────────
-  useEffect(() => {
-    if (user && canManage) loadUsers();
-  }, [user, canManage, page, searchQuery, statusFilter, roleFilter, branchFilter]);
-
-  // فروع الشركة لإظهارها فى فلتر الفرع — تُحمّل مرة واحدة فقط
-  useEffect(() => {
-    if (user && canManage) fetchBranches().then(setBranches);
-  }, [user, canManage]);
-
-  useReconnectRefetch(
-    () => { if (user && canManage) loadUsers(); },
-    () => { if (user && canManage) loadAllUsers(); },
-  );
-
-  // تأخير بسيط (debounce) لتقليل عدد طلبات البحث أثناء الكتابة
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (localSearch !== searchQuery) {
-        setSearchQuery(localSearch);
-        setPage(1);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [localSearch]);
-
-  // load all users once (for manager dropdown)
-  useEffect(() => {
-    if (user && canManage) loadAllUsers();
-  }, [user, canManage]);
+  // مرجع حي لآخر قيمة بحث مُطبَّقة — للمقارنة داخل الـdebounce فقط.
+  const searchQueryRef = useRef(searchQuery);
+  searchQueryRef.current = searchQuery;
 
   const loadAllUsers = useCallback(async () => {
     setAllUsers(await fetchAllUsers());
@@ -132,6 +111,40 @@ export function Users() {
       setLoading(false);
     }
   }, [page, searchQuery, statusFilter, roleFilter, branchFilter]);
+
+  // نفس شروط التحميل زي ما كانت: كل الفلاتر والصفحة بقت deps للـuseCallback
+  // فوق، فأي تغيير فيها بيغيّر مرجع loadUsers ويعيد التحميل — سلوك متطابق.
+  useEffect(() => {
+    if (user && canManage) loadUsers();
+  }, [user, canManage, loadUsers]);
+
+  // فروع الشركة لإظهارها فى فلتر الفرع — تُحمّل مرة واحدة فقط
+  useEffect(() => {
+    if (user && canManage) fetchBranches().then(setBranches);
+  }, [user, canManage]);
+
+  useReconnectRefetch(
+    () => { if (user && canManage) loadUsers(); },
+    () => { if (user && canManage) loadAllUsers(); },
+  );
+
+  // تأخير بسيط (debounce) لتقليل عدد طلبات البحث أثناء الكتابة.
+  // المؤقت يعتمد على `localSearch` فقط — إضافة `searchQuery` كانت هتعيد
+  // تشغيله لحظة تطبيق البحث نفسه فيتولّد مؤقت زيادة بلا داعٍ.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localSearch !== searchQueryRef.current) {
+        setSearchQuery(localSearch);
+        setPage(1);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [localSearch]);
+
+  // load all users once (for manager dropdown)
+  useEffect(() => {
+    if (user && canManage) loadAllUsers();
+  }, [user, canManage, loadAllUsers]);
 
   // ── open / close modals ────────────────────────────────
   const openEditModal = useCallback((u: User) => {
@@ -236,7 +249,7 @@ export function Users() {
     } finally {
       setTogglingId(null);
     }
-  }, [canManage, loadUsers]);
+  }, [canManage, loadUsers, notify]);
 
   // ── delete (soft delete) ───────────────────────────────
   const handleConfirmDelete = async () => {

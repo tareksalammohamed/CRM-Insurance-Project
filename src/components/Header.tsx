@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { BellRing, Search, X, CircleUserRound, Settings2, LogOut, Menu, WalletCards, HelpCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -45,17 +45,6 @@ export function Header() {
   };
 
   useEffect(() => {
-    if (!user) return;
-    fetchNotifications();
-    // نشترك في INSERT (إشعار جديد) وUPDATE (تعليم كمقروء من جهاز/تبويب آخر) عشان الحالة تتزامن لحظياً بدون أي تحديث يدوي للصفحة
-    const ch = supabase.channel('notifications')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, fetchNotifications)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, fetchNotifications)
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [user]);
-
-  useEffect(() => {
     const h = (e: MouseEvent) => {
       if (notificationRef.current && !notificationRef.current.contains(e.target as Node)) setNotificationsOpen(false);
       if (profileRef.current      && !profileRef.current.contains(e.target as Node))      setProfileOpen(false);
@@ -86,7 +75,9 @@ export function Header() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const fetchNotifications = async () => {
+  // useCallback بيعتمد على `user` فقط (نفس اللي كان معلن على الـeffect تحت)،
+  // فمرجعها ثابت طول ما المستخدم ثابت — الاشتراك فى القناة ما بيتعادش بناؤه.
+  const fetchNotifications = useCallback(async () => {
     if (!user) return;
     const result = await dalRead(
       `header:notifications:${user.id}`,
@@ -106,7 +97,20 @@ export function Header() {
       setNotifications(result.data);
       setUnreadCount(result.data.filter((n) => !n.is_read).length);
     }
-  };
+  }, [user]);
+
+  // اتنقل تحت تعريف fetchNotifications عشان يقدر يعلنها كـdependency صحيحة
+  // (مرجعها مستقر بفضل useCallback فوق، فالقناة ما بتتبنى من جديد بلا داعٍ).
+  useEffect(() => {
+    if (!user) return;
+    fetchNotifications();
+    // نشترك في INSERT (إشعار جديد) وUPDATE (تعليم كمقروء من جهاز/تبويب آخر) عشان الحالة تتزامن لحظياً بدون أي تحديث يدوي للصفحة
+    const ch = supabase.channel('notifications')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, fetchNotifications)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, fetchNotifications)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user, fetchNotifications]);
 
   const markAsRead    = async (id: string) => { await supabase.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('id', id); fetchNotifications(); };
   const markAllAsRead = async () => { if (!user) return; await supabase.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('user_id', user.id).eq('is_read', false); fetchNotifications(); };

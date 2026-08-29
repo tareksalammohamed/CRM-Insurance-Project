@@ -91,8 +91,14 @@ function AppLayout() {
   const [checkingLock, setCheckingLock] = useState(true);
   useFirstRunTour();
 
+  // الاعتماد مقصود على هوية المستخدم فقط (مش كائن `user` بالكامل): البروفايل
+  // بيتعاد جلبه دوريًا فبيتغيّر مرجعه من غير تغيير حقيقي فى الهوية، ولو
+  // اعتمدنا على الكائن نفسه هنشغّل fetchLockState/initOfflineSync من جديد بلا
+  // داعٍ. استخراج القيمة فى متغير بيوضّح الاعتماد ده لـESLint بشكل صحيح.
+  const userId = user?.id ?? null;
+
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       setCheckingLock(false);
       return;
     }
@@ -100,15 +106,15 @@ function AppLayout() {
     fetchLockState()
       .then(setLockState)
       .finally(() => setCheckingLock(false));
-  }, [user?.id]);
+  }, [userId]);
 
   useEffect(() => {
-    if (user) {
-      initOfflineSync(user.id);
+    if (userId) {
+      initOfflineSync(userId);
     } else {
       stopOfflineSync();
     }
-  }, [user?.id]);
+  }, [userId]);
 
   if (loading || (user && checkingLock)) {
     return (

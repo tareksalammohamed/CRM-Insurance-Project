@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 import { CheckCircle2, XCircle, HelpCircle, type LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -79,8 +79,19 @@ export function NotifyProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  // قيمة الـcontext مُثبَّتة بـuseMemo: الدوال الثلاثة كلها useCallback مستقرة
+  // أصلاً، فالكائن ده مش هيتغيّر خلال عمر التطبيق. قبل كده كان كائن جديد
+  // بيتولّد فى كل render للـprovider، فـ`notify` اللي بترجع من useNotify()
+  // كانت مرجعية غير مستقرة — وده اللي كان بيخلّي إضافتها كـdependency فى أي
+  // useEffect/useCallback خطر حقيقي (إعادة تحميل بيانات متكررة). التثبيت هنا
+  // بيسمح بإضافتها للـdeps بشكل صحيح بدون أي طلبات مكررة.
+  const value = useMemo<NotifyContextValue>(
+    () => ({ success, error, confirm }),
+    [success, error, confirm],
+  );
+
   return (
-    <NotifyContext.Provider value={{ success, error, confirm }}>
+    <NotifyContext.Provider value={value}>
       {children}
 
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[70] flex flex-col gap-2 items-center pointer-events-none px-3">

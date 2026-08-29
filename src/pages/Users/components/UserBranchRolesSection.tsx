@@ -1,5 +1,5 @@
 import { friendlyError } from '../../../lib/errorMessages';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2, Plus, Trash2, Pencil, Check, X as XIcon, Star } from 'lucide-react';
 import clsx from 'clsx';
 import { ROLE_LABELS, type UserRole } from '../../../lib/supabase';
@@ -49,7 +49,9 @@ export function UserBranchRolesSection({ userId }: { userId: string }) {
   const [editManagerId, setEditManagerId] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const load = async () => {
+  // بيعتمد على userId ودور المُشاهد فقط — نفس اللي بيتقرا جوّاه، فالتحميل
+  // بيحصل مرة واحدة لكل مستخدم زي ما كان بالظبط.
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const [b, r] = await Promise.all([fetchBranches(), fetchUserBranchRolesForUser(userId)]);
@@ -62,9 +64,9 @@ export function UserBranchRolesSection({ userId }: { userId: string }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId, viewer?.role]);
 
-  useEffect(() => { load(); }, [userId]);
+  useEffect(() => { load(); }, [load]);
 
   // المديرين المتاحين للاختيار فى الفرع الجديد: أي مستخدم عنده أصلاً صف فى
   // نفس الفرع غير المستخدم الحالي نفسه (نفس شرط الـ constraint trigger).

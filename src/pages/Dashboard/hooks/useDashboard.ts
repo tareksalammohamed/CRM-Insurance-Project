@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { useBranchContext } from '../../../lib/branchContext';
 import { type UserRole } from '../../../lib/supabase';
@@ -55,20 +55,17 @@ export function useDashboard() {
   // فارغة = الـ Sheet مغلق
   const [sheetStack, setSheetStack] = useState<TeamMemberDetail[]>([]);
 
-  useEffect(() => {
-    if (user) loadDashboardData();
-  }, [user, currentBranchId, selectedMonth]);
+  // ملحوظة: الـeffects اللي بتستدعي loadDashboardData/loadCancellationStats
+  // اتنقلت تحت تعريفهما (بقوا useCallback بنفس الـdeps اللي كانت معلنة يدويًا
+  // هنا) — نفس مرات وتوقيت التحميل بالظبط، ونفس الفصل المقصود بين مؤشر
+  // الإلغاءات (مش مرتبط بالشهر) وباقي بيانات اللوحة.
 
   // مؤشر الإلغاءات مش مرتبط بالشهر المختار (بيعرض دايمًا آخر 12 شهر حتى
   // الآن)، فبيتحمّل مرة واحدة بس عند تغيير المستخدم/الفرع، مش عند تغيير
   // selectedMonth، حتى لا نكرر نفس الاستعلام من غير داعي.
-  useEffect(() => {
-    if (user) loadCancellationStats();
-  }, [user, currentBranchId]);
-
   // تحميل مستقل لمؤشر "نسبة الإلغاءات" — منفصل تماماً عن loadDashboardData
   // وعن كل الحسابات الأخرى في الصفحة، فشله لا يؤثر على باقي الإحصائيات
-  const loadCancellationStats = async () => {
+  const loadCancellationStats = useCallback(async () => {
     if (!user) return;
     try {
       const result = await loadCancellationSummary({ id: user.id, name: user.name, role: user.role }, currentBranchId);
@@ -76,9 +73,9 @@ export function useDashboard() {
     } catch (error) {
       console.error('Error loading cancellation stats:', error);
     }
-  };
+  }, [user, currentBranchId]);
 
-  const loadDashboardData = async (silent = false) => {
+  const loadDashboardData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
       const now = selectedMonth;
@@ -135,7 +132,18 @@ export function useDashboard() {
     } finally {
       if (!silent) setLoading(false);
     }
-  };
+  }, [user, currentBranchId, selectedMonth]);
+
+  useEffect(() => {
+    if (user) loadDashboardData();
+  }, [user, loadDashboardData]);
+
+  // مؤشر الإلغاءات مش مرتبط بالشهر المختار (بيعرض دايمًا آخر 12 شهر حتى
+  // الآن)، فبيتحمّل مرة واحدة بس عند تغيير المستخدم/الفرع، مش عند تغيير
+  // selectedMonth — وده محفوظ هنا لأن loadCancellationStats مش بتعتمد عليه.
+  useEffect(() => {
+    if (user) loadCancellationStats();
+  }, [user, loadCancellationStats]);
 
   const policyStatusData = stats
     ? [

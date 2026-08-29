@@ -43,8 +43,15 @@ export function BranchProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [currentBranchId, setCurrentBranchIdState] = useState<string | null>(null);
 
+  // الاعتماد مقصود على (id, role) فقط بدل كائن `user` بالكامل: البروفايل
+  // بيتعاد جلبه دوريًا فبيتغيّر مرجعه من غير تغيير فعلي، ولو اعتمدنا على
+  // الكائن هنعيد جلب فروع المستخدم بلا داعٍ. `role` مضاف عشان بيتقرا فعلاً
+  // جوّا الـeffect (filterVisibleMemberships + شرط super_admin).
+  const userId = user?.id ?? null;
+  const userRole = user?.role ?? null;
+
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       setBranches([]);
       setCurrentBranchIdState(null);
       setLoading(false);
@@ -54,15 +61,15 @@ export function BranchProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     setLoading(true);
 
-    fetchMyBranches(user.id).then((allRoles) => {
+    fetchMyBranches(userId).then((allRoles) => {
       if (cancelled) return;
       // إخفاء "الفرع الرئيسي" عن أي حد غير سوبر أدمن — حتى من ضمن أوضاعه
       // الوظيفية بتاعته هو نفسه، فمش هيشوفه كخيار فى السلكتور ولا يتحسب كجزء
       // من "عنده أكتر من فرع" أصلاً.
-      const roles = filterVisibleMemberships(allRoles, user.role);
+      const roles = filterVisibleMemberships(allRoles, userRole ?? undefined);
       setBranches(roles);
 
-      if (user.role === 'super_admin') {
+      if (userRole === 'super_admin') {
         // السوبر أدمن مش موظف فعلي فى أي فرع — عضويته فى "الفرع الرئيسي"
         // مجرد placeholder تقني (backfill/RLS) مش وضع وظيفي حقيقي. لو سبناه
         // ياخد نفس مسار "وضع واحد بس" تحت، هيتقيّد بفرعه الوحيد ده وهيشوف
@@ -85,7 +92,7 @@ export function BranchProvider({ children }: { children: ReactNode }) {
         // (is_primary)، وإلا أول فرع فى القائمة.
         let saved: string | null = null;
         try {
-          saved = sessionStorage.getItem(sessionKey(user.id));
+          saved = sessionStorage.getItem(sessionKey(userId));
         } catch {
           // بيئة بدون sessionStorage (نادر) — نتجاهل ونكمل بالقيمة الافتراضية
         }
@@ -100,19 +107,19 @@ export function BranchProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [userId, userRole]);
 
   const setCurrentBranchId = useCallback((branchId: string) => {
     setCurrentBranchIdState(branchId);
-    if (user) {
+    if (userId) {
       try {
-        sessionStorage.setItem(sessionKey(user.id), branchId);
+        sessionStorage.setItem(sessionKey(userId), branchId);
       } catch {
         // تجاهل فشل الحفظ (بيئة بدون sessionStorage) — الاختيار هيفضل شغال
         // فى نفس الجلسة الحالية على الأقل عن طريق الـ state
       }
     }
-  }, [user]);
+  }, [userId]);
 
   const value = useMemo<BranchContextValue>(
     () => ({

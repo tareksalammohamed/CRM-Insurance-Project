@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReconnectRefetch } from '../../hooks/useReconnectRefetch';
 import { useBranchContext } from '../../lib/branchContext';
@@ -76,12 +76,14 @@ export function MonthlyClosing() {
   // تنفيذ تقفيل/فتح الشهر (عملية تخص النظام كله): Supervisor فما فوق فقط
   const canClose = user && canCloseMonth(user.role);
 
-  useEffect(() => { if (user && canView) loadData(); }, [user, selectedMonth, currentBranchId]);
-
-  useReconnectRefetch(() => { if (user && canView) loadData(); });
+  // ملحوظة: تعريف loadData بقى تحت (useCallback) والـeffect اللي بيستدعيه
+  // اتنقل بعده مباشرةً — نفس مرة/توقيت التحميل بالظبط، بدون تحذير.
 
   // ── load ──────────────────────────────────────────────
-  const loadData = async () => {
+  // منطق التحميل والحسابات المالية جوّاه ما اتغيّر ولا حرف — اللي اتغير هو
+  // إنه بقى useCallback بنفس الـdeps اللي كانت معلنة يدويًا على الـeffect
+  // (user / selectedMonth / currentBranchId).
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const monthStr = format(selectedMonth, 'yyyy-MM-dd');
@@ -147,7 +149,11 @@ export function MonthlyClosing() {
       setLoading(false);
       setHasLoadedOnce(true);
     }
-  };
+  }, [user, selectedMonth, currentBranchId]);
+
+  useEffect(() => { if (user && canView) loadData(); }, [user, canView, loadData]);
+
+  useReconnectRefetch(() => { if (user && canView) loadData(); });
 
   // ── toggle / close / open ──────────────────────────────
   const toggleSupervisor = (id: string) =>

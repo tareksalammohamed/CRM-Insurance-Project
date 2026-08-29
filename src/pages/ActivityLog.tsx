@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase, type ActivityLog as ActivityLogEntry, type ActionType } from '../lib/supabase';
 import { dalRead } from '../lib/dataAccessLayer';
@@ -68,26 +68,11 @@ export function ActivityLog() {
   const [actionFilter, setActionFilter] = useState<ActionType | 'all'>('all');
   const pageSize = 20;
 
-  useEffect(() => {
-    if (user) {
-      loadLogs();
-    }
-  }, [user, page, searchQuery, actionFilter]);
+  // مرجع حي لآخر قيمة بحث مُطبَّقة — للمقارنة داخل الـdebounce فقط.
+  const searchQueryRef = useRef(searchQuery);
+  searchQueryRef.current = searchQuery;
 
-  useReconnectRefetch(() => { if (user) loadLogs(); });
-
-  // تأخير بسيط (debounce) لتقليل عدد طلبات البحث أثناء الكتابة
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (localSearch !== searchQuery) {
-        setSearchQuery(localSearch);
-        setPage(1);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [localSearch]);
-
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     setLoading(true);
     try {
       const cacheKey = `activityLog:page:${page}:${searchQuery.trim()}:${actionFilter}`;
@@ -144,7 +129,31 @@ export function ActivityLog() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, searchQuery, actionFilter]);
+
+  // نفس شروط التحميل زي ما كانت: page/searchQuery/actionFilter بقت deps
+  // للـuseCallback فوق، فأي تغيير فيها بيغيّر مرجع loadLogs ويعيد التحميل —
+  // سلوك متطابق تمامًا مع القديم بدون تحذير.
+  useEffect(() => {
+    if (user) {
+      loadLogs();
+    }
+  }, [user, loadLogs]);
+
+  useReconnectRefetch(() => { if (user) loadLogs(); });
+
+  // تأخير بسيط (debounce) لتقليل عدد طلبات البحث أثناء الكتابة.
+  // المؤقت يعتمد على `localSearch` فقط — إضافة `searchQuery` كانت هتعيد
+  // تشغيله لحظة تطبيق البحث نفسه فيتولّد مؤقت زيادة بلا داعٍ.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localSearch !== searchQueryRef.current) {
+        setSearchQuery(localSearch);
+        setPage(1);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [localSearch]);
 
   const getActionConfig = (action: ActionType) => {
     return ACTION_CONFIG[action] || { label: action, icon: History, color: 'bg-secondary-100' };

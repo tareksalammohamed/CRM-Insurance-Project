@@ -1,6 +1,6 @@
 import { friendlyError } from '../../lib/errorMessages';
 import { useNotify } from '../../lib/notify';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useReconnectRefetch } from '../../hooks/useReconnectRefetch';
@@ -77,15 +77,10 @@ export function PolicyDetail() {
   // ===================================
   // تحميل بيانات الوثيقة
   // ===================================
-  useEffect(() => {
-    if (id && user) {
-      loadPolicy();
-    }
-  }, [id, user]);
-
-  useReconnectRefetch(() => { if (id && user) loadPolicy(); });
-
-  const loadPolicy = async () => {
+  // loadPolicy بقى useCallback بيعتمد على `id` و`navigate` فقط (الاتنين هما
+  // كل اللي بيتقرا جوّاه) — الـeffect تحته بيحافظ على نفس شرط (id && user)
+  // بالظبط، فمفيش أي طلب إضافي ولا تغيير فى ترتيب التنفيذ.
+  const loadPolicy = useCallback(async () => {
     setLoading(true);
     try {
       if (!id) return;
@@ -107,7 +102,15 @@ export function PolicyDetail() {
       setLoading(false);
       setLoadingInstallments(false);
     }
-  };
+  }, [id, navigate]);
+
+  useEffect(() => {
+    if (id && user) {
+      loadPolicy();
+    }
+  }, [id, user, loadPolicy]);
+
+  useReconnectRefetch(() => { if (id && user) loadPolicy(); });
 
   // ===================================
   // تحميل الأقساط
