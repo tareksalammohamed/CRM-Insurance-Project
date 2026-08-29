@@ -55,6 +55,7 @@ export function Customers() {
     deleteConfirm, setDeleteConfirm, deleting, handleDelete,
     moreMenuCustomer, setMoreMenuCustomer, handleOpenCustomerPolicies, handleIssueNewPolicy, handlePrintCustomer,
     detailsCustomer, setDetailsCustomer, showExtraInfo, setShowExtraInfo, policySummaries, handleOpenCustomerDetails,
+    handleOpenInstallmentsFilter,
     openPolicySummary, policyDetail, policyInstallments, loadingPolicyDetail,
     handleOpenPolicyDetails, handleClosePolicyDetails,
     selectedInstallment, showPayModal, setShowPayModal, paymentDateStr, setPaymentDateStr,
@@ -212,6 +213,7 @@ export function Customers() {
           onPrint={handlePrintCustomer}
           onIssueNewPolicy={handleIssueNewPolicyFromDetails}
           onOpenPolicyDetails={handleOpenPolicyDetails}
+          onOpenInstallmentsFilter={handleOpenInstallmentsFilter}
         />
       )}
 

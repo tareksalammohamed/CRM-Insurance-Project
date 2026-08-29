@@ -33,7 +33,8 @@ export function Collection() {
   const { user } = useAuth();
   const { currentBranchId } = useBranchContext();
 
-  const { initialSubType, initialQuickFilter, initialOwnerFilter, initialMonth } = useCollectionUrlParams();
+  const { initialSubType, initialQuickFilter, initialOwnerFilter, initialMonth, hasUrlNavigation } =
+    useCollectionUrlParams();
 
   // تبدأ الصفحة مباشرة بالسنة الأولى، مع بقاء القسمين مفصولين منطقياً.
   const [yearMode, setYearMode] = useState<YearMode>('year1');
@@ -70,12 +71,22 @@ export function Collection() {
     loadInstallments,
   } = useCollectionInstallments({ user, yearMode, quickFilter, subType, ownerFilter, branchId: currentBranchId, monthStart: initialMonth });
 
+  // المستخدم وصل للصفحة من نقرة على بطاقة/رقم بفلتر جاهز فى الرابط —
+  // لازم يشوف دليل واضح إن القائمة مفلترة بالفعل مع مخرج للرجوع للكل.
+  const [dismissedNavNotice, setDismissedNavNotice] = useState(false);
+  const cameFromNavigation = hasUrlNavigation && !dismissedNavNotice;
+
   // تطبيق/إعادة تعيين الفلاتر أو اختيار شريحة سريعة لازم يرجّع الصفحة لأول
   // صفحة دايماً — بيتم استدعاء الدالتين معاً هنا فى نفس الحدث حتى يتجمّعا
   // (batch) فى نفس التحديث ويحصل تحميل واحد فقط بالقيم الجديدة.
   const handleApplyFilters = () => { applyFiltersState(); setPage(1); };
-  const handleResetFilters = () => { resetFiltersState(); setPage(1); };
-  const handleQuickFilterSelect = (id: QuickFilter) => { selectQuickFilterState(id); setPage(1); };
+  const handleResetFilters = () => { resetFiltersState(); setPage(1); setDismissedNavNotice(true); };
+  const handleQuickFilterSelect = (id: QuickFilter) => {
+    selectQuickFilterState(id);
+    setPage(1);
+    // أول ما المستخدم يتدخل يدويًا فى الفلتر، مابقاش فى حالة "وصل من نقرة"
+    setDismissedNavNotice(true);
+  };
 
   const hasActiveFilters = activeFilterCount > 0 || !!searchQuery;
 
@@ -169,6 +180,7 @@ export function Collection() {
               isInitialLoading={isInitialLoading}
               totalCount={totalCount}
               loading={loading}
+              cameFromNavigation={cameFromNavigation}
             />
           </div>
 

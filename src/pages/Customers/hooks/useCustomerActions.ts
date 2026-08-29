@@ -12,6 +12,7 @@ import {
   updateCustomer, createCustomer, deleteCustomer,
 } from '../services/customersService';
 import { buildCustomerPrintHtml } from '../services/customerHelpers';
+import { buildCollectionDrillDownUrl } from '../../Dashboard/utils';
 import { fetchPolicyById } from '../../PolicyDetail/services/policyDetailService';
 import type { PolicyWithRelations } from '../../PolicyDetail/types';
 import {
@@ -212,6 +213,15 @@ export function useCustomerActions({
   // إصدار وثيقة جديدة لنفس العميل — بيفتح نموذج الوثائق الحالي مع تثبيت
   // العميل تلقائياً (owner_id هيتحدد من نفس وكيل العميل عند الحفظ، بدون
   // إمكانية اختيار وكيل مختلف)
+  // تنقّل ذكى لحالات الأقساط: أى شارة/رقم يشير لمستحق/متأخر/تم السداد
+  // بيفتح صفحة التحصيل بنفس الفلتر مُطبَقًا تلقائيًا، بنفس منطق الفلترة
+  // الموجود أصلاً (buildCollectionDrillDownUrl) بدون أى نظام فلترة جديد
+  // وبدون أى تغيير فى الاستعلامات أو قاعدة البيانات.
+  const handleOpenInstallmentsFilter = useCallback((quickFilter: 'month' | 'overdue' | 'paid') => {
+    setDetailsCustomer(null);
+    navigate(buildCollectionDrillDownUrl({ quickFilter }));
+  }, [navigate]);
+
   // ===================================
   // فتح تفاصيل العميل — تحميل ملخص سريع لأقساط جميع وثائقه دفعة واحدة
   // (استعلام واحد فقط، بدون تفاصيل الأقساط نفسها)
@@ -374,6 +384,7 @@ export function useCustomerActions({
     setShowExtraInfo,
     policySummaries,
     handleOpenCustomerDetails,
+    handleOpenInstallmentsFilter,
 
     // تفاصيل الوثيقة
     openPolicySummary,

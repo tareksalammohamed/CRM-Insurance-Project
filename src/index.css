@@ -843,21 +843,40 @@ body {
     font-weight: 600;
     line-height: 1.45;
   }
-  /* الرقم: أكبر عنصر فى البطاقة */
+  /* الرقم: أكبر عنصر فى البطاقة.
+     ----------------------------------------------------------------------
+     حجم مرن (fluid) بـclamp بدل حجم ثابت: القياس الفعلى على الموبايل أثبت
+     أن مبلغًا بحجم مليار جنيه كان يتجاوز عرض البطاقة بـ88px على شاشة 320px،
+     فيُقصّ بـtruncate ويفقد المستخدم أرقامًا (وده غير مقبول فى شاشة مالية).
+     الحد الأدنى 1.0625rem (17px) يحفظ الوضوح، والحد الأعلى 1.375rem يحفظ
+     نفس الحجم السابق على الشاشات الأوسع — فلا تتأثر البطاقات ذات الأرقام
+     القصيرة إطلاقًا، وتتقلّص تلقائيًا فقط عندما يضيق العرض فعلاً.
+     كل الأرقام tabular-nums (موروثة من body و.text-figure) فالأعمدة تبقى
+     متساوية بصريًا. */
   .kpi-card p.text-figure,
   .kpi-card > p:not(:first-child) {
     margin-top: 0.375rem;
-    font-size: 1.375rem;
+    font-size: clamp(1.0625rem, 5.6vw, 1.375rem);
     font-weight: 800;
-    line-height: 1.1;
+    line-height: 1.15;
     letter-spacing: -0.03em;
+    /* الرقم لازم يبان كامل: لا قصّ ولا تجاوز — الكسر عند الحاجة فقط */
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    hyphens: none;
   }
   @media (min-width: 768px) {
     .kpi-card { padding: 1.125rem; }
     .kpi-card p.text-figure,
-    .kpi-card > p:not(:first-child) { font-size: 1.625rem; }
+    .kpi-card > p:not(:first-child) { font-size: clamp(1.25rem, 2.1vw, 1.625rem); }
     .kpi-card > .flex > p:first-child,
     .kpi-card > div > p:first-child { font-size: 0.8125rem; }
+  }
+  @media (min-width: 1280px) {
+    .kpi-card p.text-figure,
+    .kpi-card > p:not(:first-child) { font-size: 1.625rem; }
   }
   /* ===== بلاطة KPI قيادية =====
      البطاقة الأهم فى الصف تاخد وزنًا بصريًا أعلى: سطح مائل لألوان الهوية،
@@ -870,8 +889,12 @@ body {
     box-shadow: var(--shadow-md);
   }
   .kpi-card-lead p.text-figure,
-  .kpi-card-lead > p:not(:first-child) { font-size: 1.625rem; }
+  .kpi-card-lead > p:not(:first-child) { font-size: clamp(1.1875rem, 6.4vw, 1.625rem); }
   @media (min-width: 768px) {
+    .kpi-card-lead p.text-figure,
+    .kpi-card-lead > p:not(:first-child) { font-size: clamp(1.4375rem, 2.6vw, 2rem); }
+  }
+  @media (min-width: 1280px) {
     .kpi-card-lead p.text-figure,
     .kpi-card-lead > p:not(:first-child) { font-size: 2rem; }
   }
@@ -886,6 +909,11 @@ body {
     font-weight: 600;
     line-height: 1.45;
     letter-spacing: 0;
+    /* الملاحظة السياقية غالبًا فيها مبلغ طويل ("من إجمالي ...") — تُلَف على
+       سطرين بدل ما تتجاوز البطاقة أو تتقصّ */
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
   @media (min-width: 768px) {
     .kpi-card p.kpi-note,
@@ -900,6 +928,70 @@ body {
     box-shadow: none;
   }
   .kpi-icon-tile svg { filter: none; }
+
+  /* ===== حاويات أيقونات دلالية (Semantic icon tiles) =====
+     نفس شكل حاوية الـKPI بالضبط (مسطحة + نصف قطر واحد)، لكن اللون يحمل
+     معنى ثابت فى كل التطبيق فيصير الرمز نفسه معلومة تُقرأ قبل النص:
+        success = تم السداد / مكتمل
+        warning = مستحق / يحتاج انتباه
+        danger  = متأخر / حَرِج
+        info    = معلومة أو تصنيف محايد
+        brand   = الافتراضي (هوية الشركة)
+     الحدود الشفافة الخفيفة تعطى إحساس Premium بدون ألوان جديدة خارج
+     الـpalette الحالى، ومن غير ما اللون يبقى صاخبًا أو يغطى الرقم. */
+  .kpi-icon-tile--success {
+    color: #0f766e;
+    background: #e7f6f2;
+    border: 1px solid rgb(15 118 110 / 0.14);
+  }
+  .kpi-icon-tile--warning {
+    color: #b45309;
+    background: #fdf3e3;
+    border: 1px solid rgb(180 83 9 / 0.14);
+  }
+  .kpi-icon-tile--danger {
+    color: #b91c1c;
+    background: #fdecec;
+    border: 1px solid rgb(185 28 28 / 0.14);
+  }
+  .kpi-icon-tile--info {
+    color: #0f5b59;
+    background: #e8f3f5;
+    border: 1px solid rgb(15 91 89 / 0.14);
+  }
+  .kpi-icon-tile--brand {
+    color: var(--brand-ink);
+    background: var(--brand-soft);
+    border: 1px solid rgb(8 127 91 / 0.14);
+  }
+
+  /* ===== بطاقة KPI قابلة للنقر =====
+     المستخدم لازم يعرف إن الرقم ده بيفتح شاشة مفلترة. المؤشر سهم صغير جدًا
+     فى الزاوية السفلية اليسرى (اتجاه التقدّم فى RTL) بشفافية هادئة، يقوى
+     عند الـhover/اللمس — إشارة تكفى بدون ضجيج بصري ولا نص إضافي يزاحم الرقم. */
+  .kpi-card-clickable { position: relative; }
+  .kpi-card-cue {
+    position: absolute;
+    bottom: 0.5rem;
+    left: 0.5rem;
+    width: 0.875rem;
+    height: 0.875rem;
+    color: var(--faint-ink);
+    opacity: 0.55;
+    transition: opacity var(--motion-fast) var(--ease-out),
+                transform var(--motion-fast) var(--ease-out);
+    pointer-events: none;
+  }
+  @media (hover: hover) {
+    .kpi-card-clickable:hover .kpi-card-cue {
+      opacity: 1;
+      color: var(--brand);
+      transform: translateX(-2px);
+    }
+  }
+  .kpi-card-clickable:active .kpi-card-cue { opacity: 1; color: var(--brand); }
+  /* مساحة أمان على يسار الأسفل حتى لا يلمس السهم نص الملاحظة */
+  .kpi-card-clickable > p:last-of-type { padding-left: 1.25rem; }
 
   /* ======================================================================
      10. INPUTS
@@ -1034,6 +1126,33 @@ body {
   .badge-info       { @apply bg-info-50 text-info-700 ring-info-600/20; }
   .badge-secondary  { @apply bg-secondary-100 text-secondary-700 ring-secondary-600/15; }
   .badge-primary    { background: var(--brand-soft); color: var(--brand-ink); box-shadow: inset 0 0 0 1px rgb(8 127 91 / 0.18); }
+
+  /* ===== شارة حالة قابلة للنقر (Actionable badge) =====
+     شارات حالات الأقساط (مسدد/مستحق/متأخر) بقت مداخل تنقّل لصفحة الأقساط
+     بالفلتر المقابل. لازم تبان قابلة للنقر (مؤشر + hover + هدف لمس مقبول)
+     من غير ما تفقد شكل الشارة الهادئ ولا تتحوّل لزر صاخب. */
+  .badge-actionable {
+    gap: 0.25rem;
+    padding-block: 0.3125rem;
+    padding-inline: 0.5625rem;
+    cursor: pointer;
+    transition: filter var(--motion-fast) var(--ease-out),
+                box-shadow var(--motion-fast) var(--ease-out),
+                transform var(--motion-fast) var(--ease-out);
+  }
+  @media (hover: hover) {
+    .badge-actionable:hover { filter: brightness(0.97); box-shadow: var(--shadow-xs); }
+  }
+  .badge-actionable:active { transform: scale(0.97); }
+  /* على الأجهزة اللمسية الشارة نفسها هدف لمس — نكبّر الحشو الرأسي فقط
+     (الشكل يفضل شارة، لكن اللمس يبقى مريح وآمن) */
+  @media (hover: none) and (pointer: coarse) {
+    .badge-actionable {
+      min-height: 2rem;
+      padding-block: 0.4375rem;
+      padding-inline: 0.6875rem;
+    }
+  }
 }
 
 @layer components {
@@ -1415,6 +1534,45 @@ body {
     color: var(--brand-ink);
     font-weight: 700;
   }
+  /* الشريحة النشطة لازم تكون ملحوظة من نظرة واحدة — خصوصًا لما المستخدم
+     يوصل للصفحة من نقرة على رقم/بطاقة والفلتر مُطبَّق تلقائيًا. اللون
+     المصمت (bg-primary-600 من الصفحة) + حلقة خارجية + ظل خفيف = تمييز
+     يعتمد على أكثر من إشارة بصرية واحدة (مش اللون لوحده). */
+  .collection-filter-chip-active {
+    box-shadow: 0 0 0 3px rgb(8 127 91 / 0.16), var(--shadow-sm);
+    font-weight: 800;
+  }
+  .collection-filter-chip-active:hover { background: var(--brand-strong); }
+
+  /* لافتة \"العرض مفلتر تلقائيًا\" — تظهر فقط عند الوصول من Navigation ذكى */
+  .collection-filter-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.625rem;
+    border: 1px solid rgb(8 127 91 / 0.2);
+    border-radius: var(--r-lg);
+    background: var(--brand-softer);
+    color: var(--brand-ink);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+  .collection-filter-notice p { min-width: 0; overflow-wrap: anywhere; }
+  .collection-filter-notice .btn { margin-inline-start: auto; color: var(--brand-ink); }
+  .collection-filter-notice-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    flex-shrink: 0;
+    border-radius: var(--r-sm);
+    color: var(--brand-ink);
+    background: var(--brand-soft);
+  }
+
   .collection-result-summary {
     border-top: 1px solid var(--line);
     padding-top: 0.625rem;

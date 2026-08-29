@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, CheckCircle, Percent, TrendingUp, XCircle } from 'lucide-react';
+import { BadgeCheck, CalendarClock, ChevronLeft, Percent, TimerReset, TrendingUp, XCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { DashboardStats } from '../types';
 import type { CancellationSummary } from '../../Cancellations/types';
@@ -27,6 +27,8 @@ interface KpiTileProps {
   note?: string;
   icon: LucideIcon;
   accentBorder: string;
+  /** نبرة دلالية لحاوية الأيقونة (أخضر=مسدد، برتقالى=مستحق، أحمر=متأخر) */
+  tone?: 'brand' | 'success' | 'warning' | 'danger' | 'info';
   iconClassName: string;
   valueClassName?: string;
   /** بلاطة قيادية: رقمها أكبر وإطارها أوضح — مش كل الـKPI بنفس الوزن البصرى */
@@ -46,6 +48,7 @@ function KpiTile({
   note,
   icon: Icon,
   accentBorder,
+  tone = 'brand',
   iconClassName,
   valueClassName = 'text-secondary-900',
   emphasis = false,
@@ -57,16 +60,20 @@ function KpiTile({
       type="button"
       onClick={onClick}
       aria-label={ariaLabel}
-      className={`kpi-card pressable text-right w-full cursor-pointer border-r-4 ${accentBorder}${emphasis ? ' kpi-card-lead' : ''}`}
+      className={`kpi-card kpi-card-clickable pressable text-right w-full cursor-pointer border-r-4 ${accentBorder}${emphasis ? ' kpi-card-lead' : ''}`}
     >
       <div className="flex items-start justify-between gap-2">
         <p className="metric-label min-w-0">{label}</p>
-        <span className="kpi-icon-tile flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
+        <span
+          className={`kpi-icon-tile kpi-icon-tile--${tone} flex h-9 w-9 shrink-0 items-center justify-center rounded-xl`}
+          aria-hidden="true"
+        >
           <Icon className={iconClassName} />
         </span>
       </div>
-      <p className={`text-figure ${valueClassName}`}>{value}</p>
+      <p className={`text-figure min-w-0 ${valueClassName}`}>{value}</p>
       {note && <p className="kpi-note line-clamp-2-safe">{note}</p>}
+      <ChevronLeft className="kpi-card-cue" aria-hidden="true" />
     </button>
   );
 }
@@ -88,7 +95,8 @@ export function DashboardKPIs({ stats, cancellationSummary, selectedMonth }: Das
           note={`${rateColor.label} — ${formatCurrency(stats?.paidInstallments || 0)} مسدد`}
           icon={TrendingUp}
           accentBorder={rateColor.border}
-          iconClassName={`w-4 h-4 ${rateColor.text} shrink-0`}
+          tone={rate >= 80 ? 'success' : rate >= 50 ? 'warning' : 'danger'}
+          iconClassName="w-4 h-4 shrink-0"
           valueClassName={rateColor.text}
           emphasis
           onClick={() => openCollection('month')}
@@ -99,9 +107,10 @@ export function DashboardKPIs({ stats, cancellationSummary, selectedMonth }: Das
           label="الأقساط المستحقة"
           value={formatCurrency(stats?.dueInstallments || 0)}
           note={`${stats?.dueInstallmentsCount || 0} قسط`}
-          icon={AlertCircle}
+          icon={CalendarClock}
           accentBorder="border-r-warning-500"
-          iconClassName="w-4 h-4 text-warning-500 shrink-0"
+          tone="warning"
+          iconClassName="w-4 h-4 shrink-0"
           onClick={() => openCollection('month')}
           ariaLabel="عرض الأقساط المستحقة"
         />
@@ -110,9 +119,10 @@ export function DashboardKPIs({ stats, cancellationSummary, selectedMonth }: Das
           label="الأقساط المتأخرة"
           value={formatCurrency(stats?.overdueInstallments || 0)}
           note={`${stats?.overdueInstallmentsCount || 0} قسط`}
-          icon={AlertCircle}
+          icon={TimerReset}
           accentBorder="border-r-error-500"
-          iconClassName="w-4 h-4 text-error-500 shrink-0"
+          tone="danger"
+          iconClassName="w-4 h-4 shrink-0"
           onClick={() => openCollection('overdue')}
           ariaLabel="عرض الأقساط المتأخرة"
         />
@@ -121,9 +131,10 @@ export function DashboardKPIs({ stats, cancellationSummary, selectedMonth }: Das
           label="الأقساط المسددة"
           value={formatCurrency(stats?.paidInstallments || 0)}
           note={`${stats?.paidInstallmentsCount || 0} قسط`}
-          icon={CheckCircle}
+          icon={BadgeCheck}
           accentBorder="border-r-success-500"
-          iconClassName="w-4 h-4 text-success-500 shrink-0"
+          tone="success"
+          iconClassName="w-4 h-4 shrink-0"
           valueClassName="text-success-600"
           onClick={() => openCollection('paid')}
           ariaLabel="عرض الأقساط المسددة"
@@ -136,7 +147,8 @@ export function DashboardKPIs({ stats, cancellationSummary, selectedMonth }: Das
           value={`${cancellationSummary?.cancellationRate ?? 0}%`}
           icon={Percent}
           accentBorder="border-r-error-500"
-          iconClassName="w-4 h-4 text-error-500 shrink-0"
+          tone="danger"
+          iconClassName="w-4 h-4 shrink-0"
           valueClassName="text-error-600"
           onClick={() => navigate('/cancellations')}
           ariaLabel="عرض صفحة الإلغاءات"
@@ -147,7 +159,8 @@ export function DashboardKPIs({ stats, cancellationSummary, selectedMonth }: Das
           value={formatCurrency(cancellationSummary?.cancelledValue || 0)}
           icon={XCircle}
           accentBorder="border-r-error-500"
-          iconClassName="w-4 h-4 text-error-500 shrink-0"
+          tone="danger"
+          iconClassName="w-4 h-4 shrink-0"
           valueClassName="text-error-600"
           onClick={() => navigate('/cancellations')}
           ariaLabel="عرض قيمة الإلغاءات"

@@ -8,6 +8,7 @@ import { countChartEntities, type OrgChartNode } from './orgChartBuilder';
 import { exportNodeToPdf, printNode } from './pdfExport';
 import { useNotify } from '../../lib/notify';
 import { useDialogBehavior } from '../../hooks/useDialogBehavior';
+import { DialogPortal } from '../../components/ui/DialogPortal';
 
 interface FormationPreviewModalProps {
   heads: OrgChartNode[];
@@ -130,90 +131,92 @@ export function FormationPreviewModal({ heads, branchName, asOfDate, onClose }: 
   useDialogBehavior(onClose);
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-content max-w-6xl w-full animate-fadeIn p-0 overflow-hidden flex flex-col"
-        role="dialog"
-        aria-modal="true"
-        style={{ maxHeight: '92vh' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-secondary-200 flex-shrink-0">
-          <h3 className="text-base sm:text-lg font-semibold text-secondary-900">معاينة تشكيل الجهاز الإنتاجي</h3>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleDownload}
-              disabled={!ready || busy !== null}
-              className="btn btn-primary text-xs sm:text-sm"
-            >
-              {busy === 'download' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              <span>تنزيل PDF</span>
-            </button>
-            <button
-              onClick={handlePrint}
-              disabled={!ready || busy !== null}
-              className="btn btn-secondary text-xs sm:text-sm"
-            >
-              {busy === 'print' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
-              <span>طباعة</span>
-            </button>
-            <button onClick={onClose} className="p-2 rounded-lg hover:bg-secondary-100 flex-shrink-0" title="إغلاق المعاينة">
-              <X className="w-5 h-5 text-secondary-600" />
-            </button>
-          </div>
-        </div>
-
-        {/* Body: preview area */}
-        <div ref={wrapperRef} className="flex-1 overflow-auto bg-secondary-100 p-4 sm:p-8">
-          {fitting && (
-            <div className="flex flex-col items-center justify-center gap-3 py-16">
-              <Loader2 className="w-7 h-7 text-primary-600 animate-spin" />
-              <p className="text-sm text-secondary-500">جاري تجهيز المعاينة...</p>
-            </div>
-          )}
-          <div
-            style={{
-              width: CHART_WIDTH * previewScale,
-              height: chartHeightPx ? chartHeightPx * previewScale : undefined,
-              margin: '0 auto',
-              visibility: fitting ? 'hidden' : 'visible',
-              position: fitting ? 'absolute' : 'static',
-              boxShadow: '0 4px 18px rgba(15,23,42,.18)',
-            }}
-          >
-            <div style={{ transform: `scale(${previewScale})`, transformOrigin: 'top center' }}>
-              <OrgChartTree
-                ref={chartRef}
-                heads={heads}
-                branchName={branchName}
-                asOfDateLabel={asOfDateLabel}
-                companyName={branding.company_name}
-                companyLogoUrl={branding.company_logo_url}
-                density={density}
-                widthPx={CHART_WIDTH}
-              />
+    <DialogPortal>
+      <div className="modal-overlay" onClick={onClose}>
+        <div
+          className="modal-content max-w-6xl w-full animate-fadeIn p-0 overflow-hidden flex flex-col"
+          role="dialog"
+          aria-modal="true"
+          style={{ maxHeight: '92vh' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 sm:p-5 border-b border-secondary-200 flex-shrink-0">
+            <h3 className="text-base sm:text-lg font-semibold text-secondary-900">معاينة تشكيل الجهاز الإنتاجي</h3>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleDownload}
+                disabled={!ready || busy !== null}
+                className="btn btn-primary text-xs sm:text-sm"
+              >
+                {busy === 'download' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                <span>تنزيل PDF</span>
+              </button>
+              <button
+                onClick={handlePrint}
+                disabled={!ready || busy !== null}
+                className="btn btn-secondary text-xs sm:text-sm"
+              >
+                {busy === 'print' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                <span>طباعة</span>
+              </button>
+              <button onClick={onClose} className="p-2 rounded-lg hover:bg-secondary-100 flex-shrink-0" title="إغلاق المعاينة">
+                <X className="w-5 h-5 text-secondary-600" />
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* نسخة مخفية بحجمها الطبيعي (بدون أي transform على أي عنصر أب) تُستخدم فقط
-            كمصدر للتصدير والطباعة. لو التقطنا النسخة المصغّرة أعلاه مباشرةً، فإن
-            وجود transform:scale على أحد آبائها يخلي html2canvas يحسب مواضع
-            العناصر غلط فيطلع النص والصناديق متراكبة فوق بعض في الملف الناتج. */}
-        <div style={{ position: 'fixed', top: 0, left: '-99999px', pointerEvents: 'none' }} aria-hidden="true">
-          <OrgChartTree
-            ref={exportRef}
-            heads={heads}
-            branchName={branchName}
-            asOfDateLabel={asOfDateLabel}
-            companyName={branding.company_name}
-            companyLogoUrl={branding.company_logo_url}
-            density={density}
-            widthPx={CHART_WIDTH}
-          />
+          {/* Body: preview area */}
+          <div ref={wrapperRef} className="flex-1 overflow-auto bg-secondary-100 p-4 sm:p-8">
+            {fitting && (
+              <div className="flex flex-col items-center justify-center gap-3 py-16">
+                <Loader2 className="w-7 h-7 text-primary-600 animate-spin" />
+                <p className="text-sm text-secondary-500">جاري تجهيز المعاينة...</p>
+              </div>
+            )}
+            <div
+              style={{
+                width: CHART_WIDTH * previewScale,
+                height: chartHeightPx ? chartHeightPx * previewScale : undefined,
+                margin: '0 auto',
+                visibility: fitting ? 'hidden' : 'visible',
+                position: fitting ? 'absolute' : 'static',
+                boxShadow: '0 4px 18px rgba(15,23,42,.18)',
+              }}
+            >
+              <div style={{ transform: `scale(${previewScale})`, transformOrigin: 'top center' }}>
+                <OrgChartTree
+                  ref={chartRef}
+                  heads={heads}
+                  branchName={branchName}
+                  asOfDateLabel={asOfDateLabel}
+                  companyName={branding.company_name}
+                  companyLogoUrl={branding.company_logo_url}
+                  density={density}
+                  widthPx={CHART_WIDTH}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* نسخة مخفية بحجمها الطبيعي (بدون أي transform على أي عنصر أب) تُستخدم فقط
+              كمصدر للتصدير والطباعة. لو التقطنا النسخة المصغّرة أعلاه مباشرةً، فإن
+              وجود transform:scale على أحد آبائها يخلي html2canvas يحسب مواضع
+              العناصر غلط فيطلع النص والصناديق متراكبة فوق بعض في الملف الناتج. */}
+          <div style={{ position: 'fixed', top: 0, left: '-99999px', pointerEvents: 'none' }} aria-hidden="true">
+            <OrgChartTree
+              ref={exportRef}
+              heads={heads}
+              branchName={branchName}
+              asOfDateLabel={asOfDateLabel}
+              companyName={branding.company_name}
+              companyLogoUrl={branding.company_logo_url}
+              density={density}
+              widthPx={CHART_WIDTH}
+            />
+          </div>
         </div>
       </div>
-    </div>
+    </DialogPortal>
   );
 }

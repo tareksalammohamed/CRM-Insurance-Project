@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode, MouseEvent, Ref } from 'react';
 import clsx from 'clsx';
 import { useDialogBehavior } from '../../hooks/useDialogBehavior';
+import { DialogPortal } from './DialogPortal';
 
 interface AppDialogProps {
   /** يُستدعى عند الضغط خارج صندوق المحتوى. اتركه بدون تمرير لمنع الإغلاق (مثلاً أثناء التنفيذ). */
@@ -32,6 +33,9 @@ interface AppDialogProps {
  *  3) إعادة التركيز للعنصر الذى فتح المودال بعد إغلاقه (مهم لمستخدمى
  *     لوحة المفاتيح حتى لا يعود التركيز لأول الصفحة).
  *  4) سمات role="dialog" و aria-modal للقارئات الصوتية.
+ *  5) الرندر داخل document.body عبر DialogPortal — يمنع انحباس الخلفية
+ *     (position: fixed) داخل أى عنصر أب بيحمل transform مثل أنيميشن دخول
+ *     الصفحة، وهو السبب الفعلى المقيس لظهور النوافذ خارج مجال الرؤية.
  */
 export function AppDialog({ onClose, className, overlayClassName, contentRef, style, children }: AppDialogProps) {
   // السلوك المشترك (Escape + قفل التمرير + إرجاع التركيز) فى hook واحد
@@ -39,17 +43,19 @@ export function AppDialog({ onClose, className, overlayClassName, contentRef, st
   useDialogBehavior(onClose);
 
   return (
-    <div className={clsx('modal-overlay', overlayClassName)} onClick={onClose}>
-      <div
-        ref={contentRef}
-        className={clsx('modal-content', className)}
-        style={style}
-        role="dialog"
-        aria-modal="true"
-        onClick={(e: MouseEvent) => e.stopPropagation()}
-      >
-        {children}
+    <DialogPortal>
+      <div className={clsx('modal-overlay', overlayClassName)} onClick={onClose}>
+        <div
+          ref={contentRef}
+          className={clsx('modal-content', className)}
+          style={style}
+          role="dialog"
+          aria-modal="true"
+          onClick={(e: MouseEvent) => e.stopPropagation()}
+        >
+          {children}
+        </div>
       </div>
-    </div>
+    </DialogPortal>
   );
 }

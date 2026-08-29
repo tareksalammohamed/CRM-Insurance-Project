@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { format } from 'date-fns';
 import clsx from 'clsx';
-import { User, Hash } from 'lucide-react';
+import { UserRound, Hash } from 'lucide-react';
 import type { InstallmentWithRelations } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getInstallmentDisplayInfo } from '../utils/installmentDisplay';
@@ -23,14 +23,14 @@ function CollectionCardImpl({ installment, onPay, onCancel, onMore }: Collection
       <div className="crm-data-card-header flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 text-secondary-900 font-semibold truncate">
-            <User className="w-4 h-4 text-secondary-400 shrink-0" />
+            <UserRound className="w-4 h-4 text-secondary-400 shrink-0" />
             <span className="truncate">{installment.policy.customer?.name || '-'}</span>
           </div>
           <p className="text-xs text-secondary-500 mt-1 flex items-center gap-1 font-mono" dir="ltr">
             <Hash className="w-3 h-3 shrink-0" />
             <span>{installment.policy.policy_number}</span>
             {installment.is_first && (
-              <span className="badge badge-info text-[10px]" dir="rtl">الأول</span>
+              <span className="badge badge-info text-[11px]" dir="rtl">الأول</span>
             )}
           </p>
         </div>
@@ -44,7 +44,7 @@ function CollectionCardImpl({ installment, onPay, onCancel, onMore }: Collection
         </div>
         <div>
           <p className="text-secondary-400 text-xs">قيمة القسط الصافي</p>
-          <p className="text-secondary-900 font-black tracking-tight">{formatCurrency(installment.amount)}</p>
+          <p className="text-figure text-secondary-900 font-black tracking-tight">{formatCurrency(installment.amount)}</p>
         </div>
         <div>
           <p className="text-secondary-400 text-xs">تاريخ الاستحقاق</p>

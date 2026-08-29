@@ -1,13 +1,16 @@
-import { CalendarDays, CheckCircle2, Clock3, RefreshCw } from 'lucide-react';
+import { BadgeCheck, CalendarClock, Filter, RefreshCw, TimerReset } from 'lucide-react';
 import clsx from 'clsx';
 import { QUICK_FILTERS, type QuickFilter, type SubType, type OwnerFilter } from '../types';
 import type { UserRole } from '../../../lib/supabase';
 import { AgentCombobox } from '../../Customers/components/AgentCombobox';
 
+// أيقونة كل فلتر تطابق معناه وتطابق نفس الأيقونة المستخدمة فى بطاقات
+// الـKPI ولوحة التحكم — فالمستخدم يربط بصريًا بين الرقم اللى ضغط عليه
+// والشريحة النشطة اللى وصل لها.
 const QUICK_FILTER_ICONS = {
-  month: CalendarDays,
-  overdue: Clock3,
-  paid: CheckCircle2,
+  month: CalendarClock,
+  overdue: TimerReset,
+  paid: BadgeCheck,
 } as const;
 
 interface CollectionFiltersProps {
@@ -29,6 +32,8 @@ interface CollectionFiltersProps {
   isInitialLoading: boolean;
   totalCount: number;
   loading: boolean;
+  /** وصل المستخدم للصفحة من نقرة على بطاقة/رقم بفلتر مُطبَق تلقائيًا */
+  cameFromNavigation?: boolean;
 }
 
 export function CollectionFilters({
@@ -47,27 +52,54 @@ export function CollectionFilters({
   isInitialLoading,
   totalCount,
   loading,
+  cameFromNavigation = false,
 }: CollectionFiltersProps) {
+  const activeQuickFilterLabel = QUICK_FILTERS.find((f) => f.id === quickFilter)?.label;
+
   return (
     <>
       {/* شرائح سريعة لاختيار الفلتر مباشرة بدون فتح اللوحة */}
-      <div className="collection-filter-strip flex gap-2 overflow-x-auto scrollbar-thin pb-1 -mx-1 px-1">
+      <div
+        className="collection-filter-strip flex gap-2 overflow-x-auto scrollbar-thin pb-1 -mx-1 px-1"
+        role="group"
+        aria-label="فلترة سريعة لحالة الأقساط"
+      >
         {QUICK_FILTERS.map((f) => (
           <button
             key={f.id}
             onClick={() => onQuickFilterSelect(f.id)}
+            aria-pressed={quickFilter === f.id}
             className={clsx(
               'collection-filter-chip shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-semibold border transition-all',
               quickFilter === f.id
-                ? 'bg-primary-600 border-primary-600 text-white'
+                ? 'collection-filter-chip-active bg-primary-600 border-primary-600 text-white'
                 : 'bg-white border-secondary-200 text-secondary-600 hover:border-primary-300'
             )}
           >
-            {(() => { const Icon = QUICK_FILTER_ICONS[f.id]; return <Icon className="w-3.5 h-3.5" />; })()}
+            {(() => { const Icon = QUICK_FILTER_ICONS[f.id]; return <Icon className="w-3.5 h-3.5 shrink-0" />; })()}
             {f.label}
           </button>
         ))}
       </div>
+
+      {/* وصول من نقرة على رقم/بطاقة: لازم يكون واضح فورًا للمستخدم أن
+          القائمة مفلترة بالفعل (مش قائمة كاملة)، وأن فى مخرج واحد للرجوع
+          لكل الأقساط — ده بيمنع أشهر التباسات "فين باقى البيانات؟". */}
+      {cameFromNavigation && activeQuickFilterLabel && (
+        <div className="collection-filter-notice animate-fadeIn">
+          <span className="collection-filter-notice-icon" aria-hidden="true">
+            <Filter className="w-3.5 h-3.5" />
+          </span>
+          <p className="min-w-0">
+            العرض مفلتر تلقائيًا على{' '}
+            <span className="font-extrabold">{activeQuickFilterLabel}</span>
+          </p>
+          <button type="button" onClick={onResetFilters} className="btn btn-ghost btn-sm shrink-0">
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>عرض الكل</span>
+          </button>
+        </div>
+      )}
 
       {showFilters && (
         <div className="pt-3 border-t border-secondary-200 space-y-3 animate-fadeIn">
