@@ -1,7 +1,14 @@
 import { memo } from 'react';
 import { format } from 'date-fns';
 import clsx from 'clsx';
-import { UserRound, Hash } from 'lucide-react';
+import {
+  Hash,
+  UserRound,
+  CalendarDays,
+  CheckCircle2,
+  AlertTriangle,
+  Clock3,
+} from 'lucide-react';
 import type { InstallmentWithRelations } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getInstallmentDisplayInfo } from '../utils/installmentDisplay';
@@ -15,52 +22,102 @@ interface CollectionCardProps {
   onMore: (installment: InstallmentWithRelations, anchor: ActionMenuAnchor) => void;
 }
 
+// أول حرف من اسم العميل — مرساة بصرية تسرّع المسح البصري للقائمة
+function initialOf(name: string | undefined): string {
+  const trimmed = (name || '').trim();
+  return trimmed ? trimmed.charAt(0) : '؟';
+}
+
 function CollectionCardImpl({ installment, onPay, onCancel, onMore }: CollectionCardProps) {
-  const { dueDate, isPaid, isOverdue, dayLabel, badgeClass, statusLabel } = getInstallmentDisplayInfo(installment);
+  // كل دلالات الحالة تأتى من نفس الدالة المشتركة بدون أى تغيير فى منطقها
+  const { dueDate, isPaid, isOverdue, dayLabel, statusLabel } = getInstallmentDisplayInfo(installment);
+
+  // نبرة الحالة: مسدد = أخضر، متأخر = أحمر، مستحق = عنبري
+  const tone = isPaid ? 'col-tone-paid' : isOverdue ? 'col-tone-overdue' : 'col-tone-due';
+  const StatusIcon = isPaid ? CheckCircle2 : isOverdue ? AlertTriangle : Clock3;
+
+  const customerName = installment.policy.customer?.name || '-';
 
   return (
-    <div className="crm-data-card collection-card card">
-      <div className="crm-data-card-header flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5 text-secondary-900 font-semibold truncate">
-            <UserRound className="w-4 h-4 text-secondary-400 shrink-0" />
-            <span className="truncate">{installment.policy.customer?.name || '-'}</span>
+    <div className={clsx('col-row', tone)}>
+      {/* ===== الهوية: العميل + رقم الوثيقة + حالة القسط ===== */}
+      <div className="col-row-head">
+        <span className="col-row-avatar" aria-hidden="true">
+          {initialOf(installment.policy.customer?.name)}
+        </span>
+
+        <div className="col-row-ident">
+          <span className="col-row-name" title={customerName}>
+            {customerName}
+          </span>
+          <div className="col-row-sub">
+            <span className="col-row-policy" dir="ltr">
+              <Hash aria-hidden="true" />
+              <span>{installment.policy.policy_number}</span>
+            </span>
+            {installment.is_first && <span className="col-kpi-chip">القسط الأول</span>}
           </div>
-          <p className="text-xs text-secondary-500 mt-1 flex items-center gap-1 font-mono" dir="ltr">
-            <Hash className="w-3 h-3 shrink-0" />
-            <span>{installment.policy.policy_number}</span>
-            {installment.is_first && (
-              <span className="badge badge-info text-[11px]" dir="rtl">الأول</span>
-            )}
-          </p>
         </div>
-        <span className={clsx('badge shrink-0', badgeClass)}>{statusLabel}</span>
+
+        <span className="col-badge">
+          <StatusIcon aria-hidden="true" />
+          <span>{statusLabel}</span>
+        </span>
       </div>
 
-      <div className="crm-data-card-metrics collection-card-meta grid grid-cols-2 gap-x-3 gap-y-2.5 mt-4 text-sm">
-        <div>
-          <p className="text-secondary-400 text-xs">اسم الوكيل</p>
-          <p className="text-secondary-800 font-medium truncate">{installment.policy.owner?.name || '-'}</p>
+      {/* ===== المبلغ الحاكم — أبرز رقم فى البطاقة، فى سطر مستقل ===== */}
+      <div className="col-row-amount">
+        <span className="col-row-amount-label">قيمة القسط الصافي</span>
+        <span className="col-row-amount-value">{formatCurrency(installment.amount)}</span>
+      </div>
+
+      {/* ===== تفاصيل تشغيلية ===== */}
+      <div className="col-row-grid">
+        <div className="col-cell">
+          <p className="col-cell-label">
+            <CalendarDays aria-hidden="true" />
+            <span>تاريخ الاستحقاق</span>
+          </p>
+          <p className="col-cell-value">{format(dueDate, 'dd/MM/yyyy')}</p>
         </div>
-        <div>
-          <p className="text-secondary-400 text-xs">قيمة القسط الصافي</p>
-          <p className="text-figure text-secondary-900 font-black tracking-tight">{formatCurrency(installment.amount)}</p>
-        </div>
-        <div>
-          <p className="text-secondary-400 text-xs">تاريخ الاستحقاق</p>
-          <p className="text-secondary-800 font-medium">{format(dueDate, 'dd/MM/yyyy')}</p>
-        </div>
-        <div>
-          <p className="text-secondary-400 text-xs">{isPaid ? 'تاريخ السداد' : 'الأيام'}</p>
-          <p className={clsx('font-medium', isOverdue ? 'text-error-600' : 'text-secondary-800')}>
+
+        <div className="col-cell">
+          <p className="col-cell-label">
+            <Clock3 aria-hidden="true" />
+            <span>{isPaid ? 'تاريخ السداد' : 'الأيام'}</span>
+          </p>
+          <p
+            className={clsx(
+              'col-cell-value',
+              isPaid ? 'col-cell-value--success' : isOverdue && 'col-cell-value--danger'
+            )}
+          >
             {isPaid
-              ? (installment.paid_at ? format(new Date(installment.paid_at), 'dd/MM/yyyy') : '-')
+              ? installment.paid_at
+                ? format(new Date(installment.paid_at), 'dd/MM/yyyy')
+                : '-'
               : dayLabel}
           </p>
         </div>
+
+        <div className="col-cell col-cell--wide">
+          <p className="col-cell-label">
+            <UserRound aria-hidden="true" />
+            <span>اسم الوكيل</span>
+          </p>
+          <p className="col-cell-value col-cell-value--muted">
+            {installment.policy.owner?.name || '-'}
+          </p>
+        </div>
       </div>
 
-      <CollectionActions installment={installment} isPaid={isPaid} onPay={onPay} onCancel={onCancel} onMore={onMore} />
+      <CollectionActions
+        installment={installment}
+        isPaid={isPaid}
+        onPay={onPay}
+        onCancel={onCancel}
+        onMore={onMore}
+      />
     </div>
   );
 }

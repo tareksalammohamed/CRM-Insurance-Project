@@ -2,8 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { CalendarClock, BadgeCheck, Banknote, ListChecks } from 'lucide-react';
 import type { CollectionQuickStats } from '../services/collectionService';
 import { formatCurrency } from '../utils/formatCurrency';
-import { StatsCard } from '../../../components/ui/StatsCard';
-import { StatsCardSkeleton } from '../../../components/feedback/StatsCardSkeleton';
+import { KpiTile } from './KpiTile';
 import { buildCollectionDrillDownUrl } from '../../Dashboard/utils';
 
 interface CollectionStatsProps {
@@ -11,12 +10,33 @@ interface CollectionStatsProps {
   quickStatsLoading: boolean;
 }
 
-// ===== بطاقات إحصائية سريعة (لحظية من Supabase) =====
+// هيكل تحميل مطابق لأبعاد البلاطة الحقيقية — يمنع أى \"قفزة\" فى التخطيط
+// لحظة وصول البيانات.
+function BoardSkeleton() {
+  return (
+    <>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="col-kpi col-tone-brand skeleton-shimmer">
+          <div className="col-kpi-top">
+            <div className="h-3 w-16 skeleton-bar rounded" />
+            <div className="h-8 w-8 skeleton-bar rounded-xl" />
+          </div>
+          <div className="h-6 w-20 skeleton-bar rounded" />
+          <div className="h-2.5 w-24 skeleton-bar rounded" />
+        </div>
+      ))}
+    </>
+  );
+}
+
+// ===== لوح مؤشرات التحصيل (KPI Board) =====
 //
-// كل بطاقة هنا بترجع لحالة أقساط فعلية، فبقت كلها قابلة للنقر وتفتح نفس
-// الصفحة بالفلتر المقابل مباشرة (?quickFilter=) — نفس منظومة الفلترة
-// الموجودة أصلاً (buildCollectionDrillDownUrl + useCollectionUrlParams)
-// بدون أى نظام فلترة جديد وبدون أى تغيير فى الاستعلامات أو قاعدة البيانات.
+// كل بلاطة هنا ترجع لحالة أقساط فعلية، فكلها قابلة للنقر وتفتح نفس الصفحة
+// بالفلتر المقابل مباشرة (?quickFilter=) — نفس منظومة الفلترة الموجودة أصلاً
+// (buildCollectionDrillDownUrl + useCollectionUrlParams) بدون أى نظام فلترة
+// جديد وبدون أى تغيير فى الاستعلامات أو الحسابات أو قاعدة البيانات.
+//
+// كل القيم المعروضة تأتى كما هى من quickStats — لا حساب ولا اشتقاق جديد هنا.
 export function CollectionStats({ quickStats, quickStatsLoading }: CollectionStatsProps) {
   const navigate = useNavigate();
   const openFiltered = (quickFilter: 'month' | 'overdue' | 'paid') => {
@@ -24,59 +44,69 @@ export function CollectionStats({ quickStats, quickStatsLoading }: CollectionSta
   };
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+    <div className="col-board">
       {quickStatsLoading ? (
-        <StatsCardSkeleton count={4} valueWidthClass="w-16" />
+        <BoardSkeleton />
       ) : (
         <>
-          <StatsCard
-            label="المستحق"
+          <KpiTile
+            label="المستحق هذا الشهر"
             value={formatCurrency(quickStats?.dueMonthAmount || 0)}
             icon={CalendarClock}
-            tone="warning"
-            borderClassName="border-r-4 border-r-warning-500"
-            iconClassName="w-4 h-4 shrink-0"
-            valueClassName="font-bold text-secondary-900 mt-1.5"
+            tone="due"
             onClick={() => openFiltered('month')}
             ariaLabel="عرض الأقساط المستحقة هذا الشهر"
             footer={
-              <p className="kpi-note">
-                من إجمالي {formatCurrency(quickStats?.totalDueMonthAmount || 0)}
-              </p>
+              <>
+                <span>
+                  من إجمالي{' '}
+                  <span className="col-kpi-foot-strong">
+                    {formatCurrency(quickStats?.totalDueMonthAmount || 0)}
+                  </span>
+                </span>
+                {(quickStats?.dueMonthCount ?? 0) > 0 && (
+                  <span className="col-kpi-chip">{quickStats?.dueMonthCount} قسط</span>
+                )}
+              </>
             }
           />
-          <StatsCard
+
+          <KpiTile
             label="محصَّل اليوم"
             value={formatCurrency(quickStats?.collectedTodayAmount || 0)}
             icon={BadgeCheck}
-            tone="success"
-            borderClassName="border-r-4 border-r-success-500"
-            iconClassName="w-4 h-4 shrink-0"
-            valueClassName="font-bold text-success-600 mt-1.5"
+            tone="paid"
+            valueTone="success"
             onClick={() => openFiltered('paid')}
             ariaLabel="عرض الأقساط التي تم سدادها"
+            footer={
+              <>
+                <span>حركة التحصيل اليوم</span>
+                {(quickStats?.collectedTodayCount ?? 0) > 0 && (
+                  <span className="col-kpi-chip">{quickStats?.collectedTodayCount} قسط</span>
+                )}
+              </>
+            }
           />
-          <StatsCard
-            label="إجمالي المسدد خلال الشهر الحالي"
+
+          <KpiTile
+            label="إجمالي المسدد خلال الشهر"
             value={formatCurrency(quickStats?.collectedMonthAmount || 0)}
             icon={Banknote}
-            tone="success"
-            borderClassName="border-r-4 border-r-primary-500"
-            iconClassName="w-4 h-4 shrink-0"
-            valueClassName="font-bold text-secondary-900 mt-1.5"
+            tone="brand"
             onClick={() => openFiltered('paid')}
             ariaLabel="عرض إجمالي الأقساط المسددة خلال الشهر الحالي"
+            footer={<span>مسدَّد فعليًا هذا الشهر</span>}
           />
-          <StatsCard
+
+          <KpiTile
             label="أقساط محصلة اليوم"
             value={quickStats?.collectedTodayCount ?? 0}
             icon={ListChecks}
             tone="info"
-            borderClassName="border-r-4 border-r-info-500"
-            iconClassName="w-4 h-4 shrink-0"
-            valueClassName="font-bold text-secondary-900 mt-1.5"
             onClick={() => openFiltered('paid')}
             ariaLabel="عرض عدد الأقساط المحصلة اليوم"
+            footer={<span>عدد عمليات السداد المسجَّلة</span>}
           />
         </>
       )}

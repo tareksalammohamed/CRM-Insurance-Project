@@ -7,6 +7,7 @@ export function CollectionHeader() {
   return (
     <PageHeader
       title="التحصيل والسداد"
+      titleSuffix="مركز عمليات التحصيل"
       subtitle={`متابعة الأقساط والتحصيلات — ${format(new Date(), 'MMMM yyyy', { locale: ar })}`}
     />
   );

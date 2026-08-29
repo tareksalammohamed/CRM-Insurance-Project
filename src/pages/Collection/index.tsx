@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Route, Gauge, SlidersHorizontal, ReceiptText } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useBranchContext } from '../../lib/branchContext';
 import type { InstallmentWithRelations, QuickFilter } from './types';
@@ -136,17 +137,33 @@ export function Collection() {
   const [detailsView, setDetailsView] = useState<{ installment: InstallmentWithRelations; view: 'customer' | 'policy' } | null>(null);
 
   return (
-    <div className="space-y-5 md:space-y-6 animate-fadeIn pb-2">
+    <div className="col-page space-y-4 md:space-y-5 animate-fadeIn pb-2">
 
       <CollectionHeader />
 
-      {/* زر التبديل الأصلي في أعلى الصفحة؛ حُذفت بطاقة الشرح فقط. */}
-      <section aria-label="اختيار مسار التحصيل" className="rounded-2xl border border-primary-100 bg-gradient-to-l from-primary-50 via-white to-white p-2 md:p-3">
-        <CollectionTabs yearMode={yearMode} onChange={setYearMode} />
+      {/* ===== مسار التحصيل ===== */}
+      {/* نفس زر التبديل الأصلي ونفس السلوك — الإطار بقى لوحًا معنونًا. */}
+      <section aria-label="اختيار مسار التحصيل" className="col-panel">
+        <div className="col-panel-head">
+          <h2 className="col-panel-title">
+            <Route aria-hidden="true" />
+            <span>مسار التحصيل</span>
+          </h2>
+        </div>
+        <div className="col-panel-body">
+          <CollectionTabs yearMode={yearMode} onChange={setYearMode} />
+        </div>
       </section>
 
+      {/* ===== لوح المؤشرات المالية ===== */}
       {yearMode === 'year1' && (
-        <CollectionStats quickStats={quickStats} quickStatsLoading={quickStatsLoading} />
+        <section aria-label="مؤشرات التحصيل" className="space-y-2.5">
+          <h2 className="col-panel-title px-0.5">
+            <Gauge aria-hidden="true" />
+            <span>مؤشرات التحصيل</span>
+          </h2>
+          <CollectionStats quickStats={quickStats} quickStatsLoading={quickStatsLoading} />
+        </section>
       )}
 
       {yearMode === 'year2' ? (
@@ -154,51 +171,69 @@ export function Collection() {
       ) : (
         <>
           {/* ===== البحث والفلاتر ===== */}
-          <div className="surface-toolbar">
-            <CollectionSearch
-              localSearch={localSearch}
-              onLocalSearchChange={setLocalSearch}
-              showFilters={showFilters}
-              activeFilterCount={activeFilterCount}
-              onOpenFilters={handleOpenFilters}
-            />
+          <section aria-label="البحث والفلاتر" className="col-panel">
+            <div className="col-panel-head">
+              <h2 className="col-panel-title">
+                <SlidersHorizontal aria-hidden="true" />
+                <span>البحث والتصفية</span>
+              </h2>
+              {!isInitialLoading && (
+                <span className="col-panel-meta">{totalCount} قسط</span>
+              )}
+            </div>
+            <div className="col-panel-body col-toolbar">
+              <CollectionSearch
+                localSearch={localSearch}
+                onLocalSearchChange={setLocalSearch}
+                showFilters={showFilters}
+                activeFilterCount={activeFilterCount}
+                onOpenFilters={handleOpenFilters}
+              />
 
-            <CollectionFilters
-              quickFilter={quickFilter}
-              onQuickFilterSelect={handleQuickFilterSelect}
-              showFilters={showFilters}
-              quickFilterDraft={quickFilterDraft}
-              onQuickFilterDraftChange={setQuickFilterDraft}
-              subTypeDraft={subTypeDraft}
-              onSubTypeDraftChange={setSubTypeDraft}
-              teamMembers={teamMembers}
-              ownerFilterDraft={ownerFilterDraft}
-              onOwnerFilterDraftChange={setOwnerFilterDraft}
-              currentUserId={user?.id}
-              onResetFilters={handleResetFilters}
-              onApplyFilters={handleApplyFilters}
+              <CollectionFilters
+                quickFilter={quickFilter}
+                onQuickFilterSelect={handleQuickFilterSelect}
+                showFilters={showFilters}
+                quickFilterDraft={quickFilterDraft}
+                onQuickFilterDraftChange={setQuickFilterDraft}
+                subTypeDraft={subTypeDraft}
+                onSubTypeDraftChange={setSubTypeDraft}
+                teamMembers={teamMembers}
+                ownerFilterDraft={ownerFilterDraft}
+                onOwnerFilterDraftChange={setOwnerFilterDraft}
+                currentUserId={user?.id}
+                onResetFilters={handleResetFilters}
+                onApplyFilters={handleApplyFilters}
+                isInitialLoading={isInitialLoading}
+                totalCount={totalCount}
+                loading={loading}
+                cameFromNavigation={cameFromNavigation}
+              />
+            </div>
+          </section>
+
+          {/* ===== قائمة الأقساط ===== */}
+          <section aria-label="قائمة الأقساط" className="space-y-2.5">
+            <h2 className="col-panel-title px-0.5">
+              <ReceiptText aria-hidden="true" />
+              <span>الأقساط</span>
+            </h2>
+            <CollectionList
               isInitialLoading={isInitialLoading}
-              totalCount={totalCount}
-              loading={loading}
-              cameFromNavigation={cameFromNavigation}
+              installments={installments}
+              hasActiveFilters={hasActiveFilters}
+              onResetSearchAndFilters={() => { setLocalSearch(''); handleResetFilters(); }}
+              onPay={handleOpenPayment}
+              onCancel={handleOpenCancel}
+              onMore={(installment, anchor) => {
+                setMoreMenuAnchor(anchor);
+                setMoreMenuInstallment(installment);
+              }}
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
             />
-          </div>
-
-          <CollectionList
-            isInitialLoading={isInitialLoading}
-            installments={installments}
-            hasActiveFilters={hasActiveFilters}
-            onResetSearchAndFilters={() => { setLocalSearch(''); handleResetFilters(); }}
-            onPay={handleOpenPayment}
-            onCancel={handleOpenCancel}
-            onMore={(installment, anchor) => {
-              setMoreMenuAnchor(anchor);
-              setMoreMenuInstallment(installment);
-            }}
-            page={page}
-            totalPages={totalPages}
-            onPageChange={setPage}
-          />
+          </section>
         </>
       )}
 
