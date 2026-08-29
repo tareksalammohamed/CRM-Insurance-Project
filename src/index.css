@@ -1579,6 +1579,709 @@ body {
   }
 
   /* ======================================================================
+     13-B. COLLECTION — ENTERPRISE FINANCIAL OPERATIONS CENTER
+     ----------------------------------------------------------------------
+     طبقة مرئية مقصورة على صفحة التحصيل (كل الكلاسات بسابقة .col-).
+     لا تلمس أى كلاس مشترك (kpi-card / crm-data-card / badge / btn)، فباقى
+     الصفحات لا تتأثر إطلاقًا. الهدف: كثافة معلومات عالية + سلطة بصرية
+     (Clarity / Authority / Trust) بحدود 1px وظلال خفيفة جدًا، بدون
+     glassmorphism ولا تدرّجات صاخبة ولا حركة زائدة.
+  ====================================================================== */
+
+  /* ===== 1) لوح الـKPI (Metrics Board) =====
+     الأرقام المالية تُقرأ فى صفوف متساوية الخط البصري. الشبكة تبدأ عمودين
+     على 320px (لا عمود واحد طويل يدفع القائمة تحت الشاشة، ولا 3 أعمدة
+     تضغط الأرقام)، وتتوسّع تدريجيًا. */
+  .col-board {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.625rem;
+  }
+  @media (min-width: 480px) { .col-board { gap: 0.75rem; } }
+  @media (min-width: 768px) { .col-board { gap: 0.875rem; } }
+  @media (min-width: 1024px) {
+    .col-board { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+
+  /* بلاطة KPI مؤسسية: سطح أبيض + حد 1px + شريط دلالى علوى رفيع.
+     التمييز اللونى من الشريط وحاوية الأيقونة فقط — لا خلفيات ملوّنة تُنافس
+     الرقم ولا تخفض تباين النص. */
+  .col-kpi {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-width: 0;
+    /* مساحة كافية للأرقام الطويلة + شريط الحالة أسفلها */
+    min-height: 7.25rem;
+    padding: 0.75rem;
+    padding-top: 0.8125rem;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--r-xl);
+    background: var(--surface);
+    box-shadow: var(--shadow-xs);
+    text-align: right;
+    transition: border-color var(--motion-base) var(--ease-out),
+                box-shadow var(--motion-base) var(--ease-out);
+  }
+  /* الشريط الدلالى العلوى — 3px، هادئ، يحمل معنى الحالة */
+  .col-kpi::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 3px;
+    background: var(--col-accent, var(--brand));
+    opacity: 0.9;
+  }
+  @media (min-width: 768px) {
+    .col-kpi { min-height: 8rem; padding: 1rem; padding-top: 1.0625rem; }
+  }
+
+  /* بطاقة قابلة للنقر: لازم تُعلن عن نفسها بأكثر من إشارة (مؤشر + حالة لمس
+     + حلقة تركيز) بدون أن تتحول لزر صاخب */
+  button.col-kpi { cursor: pointer; width: 100%; }
+  @media (hover: hover) {
+    button.col-kpi:hover {
+      border-color: rgb(8 127 91 / 0.28);
+      box-shadow: var(--shadow-md);
+    }
+    button.col-kpi:hover .col-kpi-cue { opacity: 1; transform: translateX(-2px); }
+  }
+  button.col-kpi:active { box-shadow: var(--shadow-xs); }
+  button.col-kpi:focus-visible {
+    outline: none;
+    border-color: var(--brand);
+    box-shadow: var(--ring-focus);
+  }
+
+  .col-kpi-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+  /* التسمية: صغيرة، عالية الوزن، تُلَف على سطرين كحد أقصى ولا تُقصّ حرفًا
+     من معناها — العناوين المالية الطويلة ("إجمالي المسدد خلال الشهر") لازم
+     تبان كاملة */
+  .col-kpi-label {
+    min-width: 0;
+    color: var(--muted-ink);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: -0.005em;
+    overflow-wrap: anywhere;
+  }
+  @media (min-width: 768px) { .col-kpi-label { font-size: 0.75rem; } }
+
+  /* حاوية الأيقونة — مسطحة، بلون دلالى خفيف، 32px على الموبايل */
+  .col-kpi-tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--r-md);
+    color: var(--col-accent-ink, var(--brand-ink));
+    background: var(--col-accent-soft, var(--brand-soft));
+    border: 1px solid var(--col-accent-line, rgb(8 127 91 / 0.14));
+  }
+  .col-kpi-tile svg { width: 1rem; height: 1rem; }
+  @media (min-width: 768px) {
+    .col-kpi-tile { width: 2.25rem; height: 2.25rem; }
+    .col-kpi-tile svg { width: 1.0625rem; height: 1.0625rem; }
+  }
+
+  /* الرقم — أكبر عنصر فى البطاقة، مرن بـclamp فلا يُقصّ ولا يتجاوز أبدًا.
+     tabular-nums يجعل الأعمدة الرأسية متساوية بصريًا. */
+  .col-kpi-value {
+    min-width: 0;
+    max-width: 100%;
+    margin-top: 0.125rem;
+    color: var(--ink);
+    font-size: clamp(1.0625rem, 5.2vw, 1.375rem);
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  @media (min-width: 768px) {
+    .col-kpi-value { font-size: clamp(1.25rem, 2.05vw, 1.625rem); }
+  }
+  @media (min-width: 1280px) { .col-kpi-value { font-size: 1.625rem; } }
+  /* نبرة الرقم حسب الدلالة (يُطبَّق فقط حيث المعنى يستدعيه) */
+  .col-kpi-value--success { color: #0f766e; }
+  .col-kpi-value--danger  { color: #b91c1c; }
+
+  /* سطر معلومة ثانوية أسفل الرقم (سياق / حالة) */
+  .col-kpi-foot {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-width: 0;
+    /* مساحة أمان حتى لا يلمس النص مؤشر النقر فى الزاوية */
+    padding-inline-start: 0;
+    padding-inline-end: 1.125rem;
+    color: var(--faint-ink);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+  .col-kpi-foot-strong { color: var(--ink-soft); font-weight: 700; }
+  /* شارة سياقية دقيقة داخل تذييل البطاقة */
+  .col-kpi-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.1875rem;
+    flex-shrink: 0;
+    padding: 0.125rem 0.375rem;
+    border-radius: var(--r-sm);
+    background: var(--surface-sunken);
+    color: var(--muted-ink);
+    font-size: 0.625rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .col-kpi-cue {
+    position: absolute;
+    bottom: 0.5rem;
+    left: 0.5rem;
+    width: 0.8125rem;
+    height: 0.8125rem;
+    color: var(--faint-ink);
+    opacity: 0.5;
+    pointer-events: none;
+    transition: opacity var(--motion-fast) var(--ease-out),
+                transform var(--motion-fast) var(--ease-out);
+  }
+
+  /* نبرات دلالية للبلاطة — تُحدَّد كمتغيرات فيتلوّن الشريط والأيقونة معًا */
+  .col-tone-due     { --col-accent: #d97706; --col-accent-ink: #b45309; --col-accent-soft: #fdf3e3; --col-accent-line: rgb(180 83 9 / 0.16); }
+  .col-tone-paid    { --col-accent: #0f766e; --col-accent-ink: #0f766e; --col-accent-soft: #e7f6f2; --col-accent-line: rgb(15 118 110 / 0.16); }
+  .col-tone-overdue { --col-accent: #dc2626; --col-accent-ink: #b91c1c; --col-accent-soft: #fdecec; --col-accent-line: rgb(185 28 28 / 0.16); }
+  .col-tone-info    { --col-accent: #0f5b59; --col-accent-ink: #0f5b59; --col-accent-soft: #e8f3f5; --col-accent-line: rgb(15 91 89 / 0.16); }
+  .col-tone-brand   { --col-accent: #087f5b; --col-accent-ink: #075b43; --col-accent-soft: #e6f5ee; --col-accent-line: rgb(8 127 91 / 0.16); }
+
+  /* ===== 2) قسم مؤسسى (Section shell) =====
+     كل منطقة وظيفية داخل الصفحة = لوح له عنوان صغير مميّز. ده اللى يخلى
+     الصفحة تُقرأ كـ\"مركز عمليات\" مش كومة بطاقات. */
+  .col-panel {
+    border: 1px solid var(--line);
+    border-radius: var(--r-2xl);
+    background: var(--surface);
+    box-shadow: var(--shadow-xs);
+    overflow: hidden;
+  }
+  .col-panel-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6875rem 0.75rem;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-sunken);
+  }
+  @media (min-width: 768px) {
+    .col-panel-head { padding: 0.75rem 1rem; }
+  }
+  .col-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 0.4375rem;
+    min-width: 0;
+    color: var(--ink);
+    font-size: 0.8125rem;
+    font-weight: 800;
+    letter-spacing: -0.015em;
+  }
+  .col-panel-title svg { width: 0.9375rem; height: 0.9375rem; flex-shrink: 0; color: var(--brand); }
+  .col-panel-meta {
+    flex-shrink: 0;
+    margin-inline-start: auto;
+    color: var(--muted-ink);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .col-panel-body { padding: 0.75rem; }
+  @media (min-width: 768px) {
+    .col-panel-body { padding: 0.875rem 1rem 1rem; }
+  }
+
+  /* ===== 3) مبدّل مسار التحصيل (Segmented control) =====
+     عنصرا التبديل متساويان بصريًا، والنشط يُميَّز بأكثر من إشارة:
+     سطح أبيض مرتفع + حد بلون الهوية + نقطة حالة — مش باللون وحده. */
+  .col-segment {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 0.375rem;
+    padding: 0.3125rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-xl);
+    background: var(--surface-sunken);
+  }
+  @media (min-width: 560px) {
+    .col-segment { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  .col-segment-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5625rem;
+    min-width: 0;
+    min-height: 3.25rem;
+    padding: 0.5rem 0.625rem;
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background: transparent;
+    color: var(--muted-ink);
+    text-align: right;
+    cursor: pointer;
+    transition: background-color var(--motion-fast) var(--ease-out),
+                border-color var(--motion-fast) var(--ease-out),
+                color var(--motion-fast) var(--ease-out),
+                box-shadow var(--motion-fast) var(--ease-out);
+  }
+  @media (hover: hover) {
+    .col-segment-btn:hover:not([aria-selected='true']) {
+      background: rgb(255 255 255 / 0.75);
+      color: var(--ink-soft);
+    }
+  }
+  .col-segment-btn:focus-visible { outline: none; box-shadow: var(--ring-focus); }
+  .col-segment-btn[aria-selected='true'] {
+    background: var(--surface);
+    border-color: rgb(8 127 91 / 0.3);
+    color: var(--ink);
+    box-shadow: var(--shadow-sm);
+  }
+  .col-segment-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2.125rem;
+    height: 2.125rem;
+    border-radius: var(--r-md);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--muted-ink);
+    transition: background-color var(--motion-fast) var(--ease-out),
+                color var(--motion-fast) var(--ease-out),
+                border-color var(--motion-fast) var(--ease-out);
+  }
+  .col-segment-icon svg { width: 1.0625rem; height: 1.0625rem; }
+  .col-segment-btn[aria-selected='true'] .col-segment-icon {
+    background: var(--brand-soft);
+    border-color: rgb(8 127 91 / 0.2);
+    color: var(--brand-ink);
+  }
+  .col-segment-text { min-width: 0; flex: 1 1 auto; }
+  .col-segment-title {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 800;
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+  }
+  .col-segment-desc {
+    display: block;
+    margin-top: 0.0625rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--faint-ink);
+    overflow-wrap: anywhere;
+  }
+  .col-segment-btn[aria-selected='true'] .col-segment-desc { color: var(--muted-ink); }
+  /* نقطة \"مفتوح الآن\" — إشارة حالة غير لونية بحتة */
+  .col-segment-dot {
+    flex-shrink: 0;
+    width: 0.4375rem;
+    height: 0.4375rem;
+    border-radius: 999px;
+    background: var(--brand);
+    box-shadow: 0 0 0 3px rgb(8 127 91 / 0.14);
+  }
+
+  /* ===== 4) تبويبات الحالة (Status tabs) =====
+     الحالة النشطة لازم تكون ملحوظة من نظرة واحدة: لون مصمت + حد + ظل خفيف
+     + عدّاد. الشريط يمرّر أفقيًا بأمان على 320px بدون overflow للصفحة. */
+  .col-statustabs {
+    display: flex;
+    gap: 0.375rem;
+    padding: 0.25rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-xl);
+    background: var(--surface-sunken);
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .col-statustabs::-webkit-scrollbar { display: none; }
+  .col-statustab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    /* ينمو لملء العرض المتاح، لكن ممنوع يتقلّص تحت عرض نصه — ده اللى يمنع
+       قصّ النص على 320px. الأساس auto (عرض المحتوى) + shrink=0، فمش محتاج
+       min-width (اللى بيلغيه حارس `.col-page *` لاحقًا بنفس الـspecificity). */
+    flex: 1 0 auto;
+    min-height: 2.75rem;
+    padding: 0.4375rem 0.75rem;
+    border: 1px solid transparent;
+    border-radius: var(--r-lg);
+    background: transparent;
+    color: var(--muted-ink);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color var(--motion-fast) var(--ease-out),
+                border-color var(--motion-fast) var(--ease-out),
+                color var(--motion-fast) var(--ease-out),
+                box-shadow var(--motion-fast) var(--ease-out);
+  }
+  .col-statustab svg { width: 0.875rem; height: 0.875rem; flex-shrink: 0; }
+  @media (hover: hover) {
+    .col-statustab:hover:not([aria-pressed='true']) {
+      background: rgb(255 255 255 / 0.8);
+      color: var(--ink-soft);
+    }
+  }
+  .col-statustab:focus-visible { outline: none; box-shadow: var(--ring-focus); }
+  /* النشط: نبرة دلالية مصمتة حسب الحالة نفسها (مستحق/متأخر/مسدد) */
+  .col-statustab[aria-pressed='true'] {
+    background: var(--surface);
+    border-color: var(--col-accent, var(--brand));
+    color: var(--col-accent-ink, var(--brand-ink));
+    font-weight: 800;
+    box-shadow: inset 0 -2px 0 0 var(--col-accent, var(--brand)), var(--shadow-xs);
+  }
+  /* عدّاد داخل التبويب */
+  .col-statustab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.375rem;
+    padding: 0 0.3125rem;
+    height: 1.1875rem;
+    border-radius: 999px;
+    background: var(--surface-sunken);
+    color: var(--muted-ink);
+    font-size: 0.625rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .col-statustab[aria-pressed='true'] .col-statustab-count {
+    background: var(--col-accent-soft, var(--brand-soft));
+    color: var(--col-accent-ink, var(--brand-ink));
+  }
+
+  /* ===== 5) بطاقة القسط (Premium installment card) =====
+     كل بطاقة = سجل مالى. الترتيب: هوية (عميل + وثيقة) ← المبلغ الحاكم ←
+     شبكة تفاصيل ← إجراءات. شريط دلالى جانبى رفيع يعطى الحالة قبل القراءة. */
+  .col-row {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--r-xl);
+    background: var(--surface);
+    box-shadow: var(--shadow-xs);
+    transition: border-color var(--motion-base) var(--ease-out),
+                box-shadow var(--motion-base) var(--ease-out);
+  }
+  /* شريط الحالة على الحافة الابتدائية (يمين فى RTL) */
+  .col-row::before {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 3px;
+    background: var(--col-accent, var(--brand));
+    opacity: 0.85;
+  }
+  @media (hover: hover) {
+    .col-row:hover {
+      border-color: rgb(8 127 91 / 0.26);
+      box-shadow: var(--shadow-md);
+    }
+  }
+
+  /* رأس البطاقة: الهوية + شارة الحالة */
+  .col-row-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    padding: 0.75rem 0.75rem 0.6875rem;
+    padding-inline-start: 0.875rem;
+    border-bottom: 1px solid var(--line);
+  }
+  @media (min-width: 768px) {
+    .col-row-head { padding: 0.875rem 1rem 0.75rem; padding-inline-start: 1.0625rem; }
+  }
+  /* الحرف الأول من اسم العميل — مرساة بصرية سريعة للمسح */
+  .col-row-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2.125rem;
+    height: 2.125rem;
+    border-radius: var(--r-md);
+    background: var(--brand-soft);
+    border: 1px solid rgb(8 127 91 / 0.14);
+    color: var(--brand-ink);
+    font-size: 0.8125rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .col-row-ident { min-width: 0; flex: 1 1 auto; }
+  .col-row-name {
+    display: block;
+    min-width: 0;
+    color: var(--ink);
+    font-size: 0.875rem;
+    font-weight: 800;
+    line-height: 1.35;
+    letter-spacing: -0.015em;
+    /* الاسم الطويل يُلَف على سطرين بدل ما يتقص — الاسم معلومة تشغيلية */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .col-row-sub {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.4375rem;
+    margin-top: 0.1875rem;
+    min-width: 0;
+  }
+  /* رقم الوثيقة — أحاديّ العرض وبـLTR، بسطح خفيف يميّزه كمُعرِّف */
+  .col-row-policy {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.1875rem;
+    max-width: 100%;
+    padding: 0.0625rem 0.375rem;
+    border-radius: var(--r-sm);
+    background: var(--surface-sunken);
+    color: var(--ink-soft);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+    overflow-wrap: anywhere;
+  }
+  .col-row-policy svg { width: 0.6875rem; height: 0.6875rem; flex-shrink: 0; opacity: 0.7; }
+
+  /* شارة الحالة — واضحة، بنبرة الحالة، ولا تُلَف */
+  .col-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+    padding: 0.25rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--col-accent-line, rgb(8 127 91 / 0.16));
+    background: var(--col-accent-soft, var(--brand-soft));
+    color: var(--col-accent-ink, var(--brand-ink));
+    font-size: 0.6875rem;
+    font-weight: 800;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+  .col-badge svg { width: 0.75rem; height: 0.75rem; flex-shrink: 0; }
+
+  /* المبلغ الحاكم — أبرز رقم فى البطاقة، فى سطر مستقل لا يزاحمه شىء */
+  .col-row-amount {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.625rem;
+    padding: 0.625rem 0.75rem;
+    padding-inline-start: 0.875rem;
+    border-bottom: 1px solid var(--line);
+    background: var(--brand-softer);
+  }
+  @media (min-width: 768px) {
+    .col-row-amount { padding: 0.6875rem 1rem; padding-inline-start: 1.0625rem; }
+  }
+  .col-row-amount-label {
+    flex-shrink: 0;
+    color: var(--muted-ink);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+  .col-row-amount-value {
+    min-width: 0;
+    text-align: end;
+    color: var(--ink);
+    font-size: clamp(1rem, 4.6vw, 1.1875rem);
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+    overflow-wrap: anywhere;
+  }
+  @media (min-width: 768px) { .col-row-amount-value { font-size: 1.1875rem; } }
+
+  /* شبكة تفاصيل: عمودان على 320px بمساحة كافية، بدون قصّ */
+  .col-row-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.4375rem;
+    padding: 0.6875rem 0.75rem;
+    padding-inline-start: 0.875rem;
+  }
+  @media (min-width: 768px) {
+    .col-row-grid { gap: 0.5rem; padding: 0.75rem 1rem; padding-inline-start: 1.0625rem; }
+  }
+  .col-cell {
+    min-width: 0;
+    padding: 0.4375rem 0.5625rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--surface-sunken);
+  }
+  .col-cell-label {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--muted-ink);
+    font-size: 0.625rem;
+    font-weight: 700;
+    line-height: 1.35;
+  }
+  .col-cell-label svg { width: 0.6875rem; height: 0.6875rem; flex-shrink: 0; opacity: 0.75; }
+  .col-cell-value {
+    margin-top: 0.125rem;
+    min-width: 0;
+    color: var(--ink);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    line-height: 1.35;
+    letter-spacing: -0.012em;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+  .col-cell-value--danger  { color: #b91c1c; }
+  .col-cell-value--success { color: #0f766e; }
+  .col-cell-value--muted   { color: var(--muted-ink); font-weight: 600; }
+  /* خلية تمتد على العرض الكامل (لأسماء الوكلاء الطويلة) */
+  .col-cell--wide { grid-column: 1 / -1; }
+
+  /* شريط الإجراءات */
+  .col-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4375rem;
+    margin-top: auto;
+    padding: 0.625rem 0.75rem 0.75rem;
+    padding-inline-start: 0.875rem;
+    border-top: 1px solid var(--line);
+  }
+  @media (min-width: 768px) {
+    .col-row-actions { padding: 0.6875rem 1rem 0.875rem; padding-inline-start: 1.0625rem; }
+  }
+
+  /* ===== 6) شريط الأدوات (Search + Filters) ===== */
+  .col-toolbar { display: flex; flex-direction: column; gap: 0.625rem; }
+  .col-toolbar-line { display: flex; gap: 0.5rem; align-items: stretch; }
+  .col-toolbar-line > *:first-child { flex: 1 1 auto; min-width: 0; }
+  /* لوحة الفلاتر المتقدمة */
+  .col-filters {
+    margin-top: 0.125rem;
+    padding: 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--surface-sunken);
+  }
+  .col-filters-grid { display: grid; grid-template-columns: 1fr; gap: 0.625rem; }
+  @media (min-width: 640px) {
+    .col-filters-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  .col-filters-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding-top: 0.6875rem;
+    border-top: 1px solid var(--line-strong);
+  }
+  .col-filters-actions > .btn { flex: 1 1 auto; }
+  @media (min-width: 480px) {
+    .col-filters-actions { justify-content: flex-end; }
+    .col-filters-actions > .btn { flex: 0 0 auto; }
+  }
+  /* سطر ملخص النتائج */
+  .col-summary {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.375rem 0.625rem;
+    padding-top: 0.625rem;
+    border-top: 1px solid var(--line);
+    color: var(--muted-ink);
+    font-size: 0.6875rem;
+    font-weight: 600;
+  }
+  .col-summary-strong {
+    color: var(--ink);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .col-summary-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    color: var(--faint-ink);
+  }
+  .col-spinner {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 999px;
+    border: 2px solid var(--line-strong);
+    border-top-color: var(--brand);
+    animation: colSpin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+
+  /* شبكة قائمة الأقساط */
+  .col-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  @media (min-width: 640px) {
+    .col-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.875rem; }
+  }
+  @media (min-width: 1280px) {
+    .col-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  /* ===== 7) حماية عامة من التجاوز الأفقى داخل الصفحة =====
+     أى عنصر داخل شجرة التحصيل لازم يقدر يتقلّص — ده اللى يمنع overflow
+     على 320px نهائيًا. */
+  .col-page, .col-page * { min-width: 0; }
+  .col-page { overflow-x: clip; }
+
+  /* ======================================================================
      14. TABLES
      Desktop: جدول بيانات حديث (رأس ثابت اللون، صفوف مريحة، hover واضح).
      Mobile: الصفحات تعرض بطاقات بدلًا منه؛ ولو ظهر جدول يبقى قابلًا
@@ -2694,6 +3397,12 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 .animate-fadeIn { animation: fadeIn 200ms var(--ease-out) both; }
+
+/* مؤشر تحديث صفحة التحصيل (.col-spinner) — keyframe مستقل حتى لا يعتمد
+   على أداة animate-spin الخاصة بـTailwind (قد تُستبعد عند عدم استخدامها) */
+@keyframes colSpin {
+  to { transform: rotate(360deg); }
+}
 
 @keyframes slideInRight {
   from { opacity: 0; transform: translateX(16px); }

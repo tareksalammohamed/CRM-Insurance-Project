@@ -17,7 +17,7 @@ export function CollectionSearch({
   onOpenFilters,
 }: CollectionSearchProps) {
   return (
-    <div className="flex flex-col sm:flex-row gap-3">
+    <div className="col-toolbar-line">
       <SearchInput
         value={localSearch}
         onChange={onLocalSearchChange}
