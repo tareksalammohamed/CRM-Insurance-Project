@@ -540,17 +540,42 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ success: false, error: "منظومة الذكاء الاصطناعي غير مفعّلة حالياً" }, 400);
     }
 
+    // جلب مزودي الـ AI المفعّلين مبكراً — نحتاجهم لقرار تخطي OCR (prefer_vision)
+    // ثم لاختيار المزود فى الخطوة 2.
+    const { data: providers } = await adminClient
+      .from("ai_providers")
+      .select("provider, api_key, account_id, default_model")
+      .eq("provider_type", "ai")
+      .eq("enabled", true)
+      .eq("status", "active")
+      .order("priority", { ascending: true });
+
+    if (!providers || providers.length === 0) {
+      return jsonResponse({ success: false, error: "لا يوجد أي مزود ذكاء اصطناعي مفعّل ومتصل حالياً" }, 400);
+    }
+
     // --------------------------------------------------------------------
     // الخطوة 1: لو الرسائل تحتوي صوراً، حاول استخراج النص منها أولاً عبر
     // أفضل مزود OCR متاح. لو نجح، نُكمل بالرسائل النصية الناتجة (أدق
     // وأرخص من إرسال الصورة نفسها). لو فشل أو لا يوجد مزود OCR، نُكمل
     // بالرسائل الأصلية (تحتوي الصور) ليتم إرسالها لمزود AI يدعم Vision.
+    //
+    // استثناء (prefer_vision): بعض الميزات — مثل استخراج بيانات المستندات
+    // المكتوبة بخط اليد — ترسل prefer_vision=true لأن الـ OCR التقليدي
+    // (OCR.Space) ضعيف جداً مع خط اليد العربي بينما نماذج الرؤية تقرأه
+    // بدقة أعلى بكثير. فى هذه الحالة نتخطى OCR ونرسل الصور مباشرة لنموذج
+    // Vision — بشرط وجود مزود مفعّل يدعم الرؤية فعلاً، وإلا نُبقي على مسار
+    // OCR كخطة بديلة حتى لا يفشل الطلب كلياً.
     // --------------------------------------------------------------------
     const needsVision = hasImageContent(messages);
+    const preferVision = body?.prefer_vision === true;
+    const hasActiveVisionProvider = (providers as AIProviderRow[]).some(
+      (p) => AI_PROVIDERS[p.provider]?.supportsVision && p.api_key && p.default_model,
+    );
     let effectiveMessages = messages;
     let ocrUsedProvider: string | null = null;
 
-    if (needsVision) {
+    if (needsVision && !(preferVision && hasActiveVisionProvider)) {
       const ocrResult = await tryOcrRewrite(adminClient, messages);
       if (ocrResult) {
         effectiveMessages = ocrResult.messages;
@@ -564,17 +589,6 @@ Deno.serve(async (req: Request) => {
     // الخطوة 2: اختيار أفضل مزود AI متاح حسب الأولوية، مع Fallback تلقائي
     // كامل بين كل المزودين المفعّلين عند فشل أي منهم.
     // --------------------------------------------------------------------
-    const { data: providers } = await adminClient
-      .from("ai_providers")
-      .select("provider, api_key, account_id, default_model")
-      .eq("provider_type", "ai")
-      .eq("enabled", true)
-      .eq("status", "active")
-      .order("priority", { ascending: true });
-
-    if (!providers || providers.length === 0) {
-      return jsonResponse({ success: false, error: "لا يوجد أي مزود ذكاء اصطناعي مفعّل ومتصل حالياً" }, 400);
-    }
 
     const errors: string[] = [];
 

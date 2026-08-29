@@ -30,6 +30,11 @@ export interface AIChatMessage {
 export interface AskAIOptions {
   maxTokens?: number;
   temperature?: number;
+  /** عند true: يتخطى الـ Gateway خطوة استخراج النص عبر OCR التقليدي ويرسل
+   * الصور مباشرة لنموذج ذكاء اصطناعي يدعم الرؤية (Vision). مهم جداً
+   * للمستندات المكتوبة بخط اليد — الـ OCR التقليدي (OCR.Space) ضعيف جداً
+   * مع خط اليد العربي بينما نماذج الرؤية تقرأه بدقة أعلى بكثير. */
+  preferVision?: boolean;
 }
 
 export interface AskAIResult {
@@ -63,6 +68,7 @@ export async function askAI(messages: AIChatMessage[], options: AskAIOptions = {
         messages,
         max_tokens: options.maxTokens ?? 512,
         temperature: options.temperature ?? 0.7,
+        ...(options.preferVision ? { prefer_vision: true } : {}),
       }),
     });
     const result = await res.json();
