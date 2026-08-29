@@ -29,9 +29,21 @@ import {
 // الطباعة الأخرى بالتطبيق (تقفيل الشهر، التقارير اليومية، التحصيل...).
 // لازم نفضل مستخدمين نفس الكلاس ده بالظبط (مش كلاس تانى خاص بيها فقط)
 // عشان الطباعة/حفظ PDF تفضل شغالة وميظهرش صفحة بيضاء.
-// forceVisible: يُستخدم مؤقتاً وقت "حفظ كصورة" لعرض هذا المكوّن فعلياً (بره
-// حدود الشاشة المرئية للمستخدم) عشان html2canvas يقدر يصوّره — نفس تماماً شكل
-// نسخة الطباعة. containerRef يمسك بعنصر الـ DOM الجذري عشان تصويره لاحقاً.
+// forceVisible: يُستخدم مؤقتاً وقت "حفظ كصورة" لعرض هذا المكوّن فعلياً
+// (مخفي عن عين المستخدم) عشان html-to-image يقدر يصوّره — نفس تماماً شكل
+// نسخة الطباعة. containerRef يمسك بعنصر التقرير نفسه عشان تصويره لاحقاً.
+//
+// ⚠️ ملحوظة مهمة جداً عن طريقة الإخفاء وقت التصوير (سبب مشكلة الصورة البيضاء):
+// كنا بنخفي التقرير بوضعه هو نفسه بعيداً عن الشاشة (position: fixed;
+// left: -99999px) — لكن html-to-image بينسخ الـ inline styles دي كما هي على
+// النسخة اللي بيرسمها داخل صورة SVG، فكان المحتوى كله بيقع خارج حدود الصورة
+// تماماً والناتج يطلع صورة بيضاء فاضية. حتى محاولة override للـ style وقت
+// التصوير مبتنفعش لأن الإزاحة بتتنقل للنسخة قبل ما الـ override يتطبق بشكل
+// موثوق على كل المتصفحات.
+// الحل المُثبت بالاختبار: نحط التقرير جوه "غلاف" خارجي مقاس صفر
+// (width:0; height:0; overflow:hidden) — الغلاف هو اللي بيخفي التقرير عن
+// المستخدم، بينما عنصر التقرير نفسه (اللي بيتصوّر) ملوش أي إزاحة عن الشاشة،
+// فبيترسم جوه الصورة فى مكانه الصحيح (0,0) بكل تنسيقاته زي الطباعة بالظبط.
 export function PrintQuote({
   result,
   forceVisible,
@@ -65,12 +77,24 @@ export function PrintQuote({
   // (نفس قياس @page margin بالأسفل) — نفس العرض اللي هيتحسب بيه التخطيط وقت
   // الطباعة الحقيقية، عشان الصورة الناتجة تطلع مطابقة تماماً لشكل الطباعة.
   const PRINT_CONTENT_WIDTH_PX = 710;
+  // هوامش بيضاء حوالين الصورة تحاكي هوامش صفحة A4 المطبوعة (10مم ≈ 38px،
+  // 11مم ≈ 42px عند 96dpi) — عشان الصورة تطلع بنفس إحساس نسخة الـ PDF بالظبط
+  // والمحتوى ميبقاش لازق فى حواف الصورة.
+  const IMAGE_PADDING_Y_PX = 38;
+  const IMAGE_PADDING_X_PX = 42;
 
-  return (
+  // عنصر التقرير نفسه — من غير أى إزاحة عن الشاشة (شرط أساسي لنجاح التصوير).
+  const report = (
     <div
       ref={containerRef}
       className={forceVisible ? 'block print-report' : 'hidden print:block print-report'}
-      style={forceVisible ? { position: 'fixed', top: 0, left: '-99999px', width: PRINT_CONTENT_WIDTH_PX, background: '#ffffff' } : undefined}
+      style={forceVisible ? {
+        // box-sizing فى التطبيق كله border-box (من Tailwind) — فبنزوّد عرض
+        // الهوامش على العرض الكلي عشان المحتوى نفسه يفضل بعرض الطباعة بالظبط.
+        width: PRINT_CONTENT_WIDTH_PX + IMAGE_PADDING_X_PX * 2,
+        padding: `${IMAGE_PADDING_Y_PX}px ${IMAGE_PADDING_X_PX}px`,
+        background: '#ffffff',
+      } : undefined}
       dir="rtl"
     >
       <style>{`
@@ -339,6 +363,29 @@ export function PrintQuote({
       <div className="pq-footer">
         هذا العرض تقديرى لأغراض التوضيح ويخضع للشروط والأحكام المعتمدة لدى {branding.company_name}.
       </div>
+    </div>
+  );
+
+  // وقت التصوير: غلاف مقاس صفر بيخفي التقرير عن المستخدم بدون ما يزيح عنصر
+  // التقرير نفسه عن نقطة الأصل — فيتصوّر صح. فى وضع الطباعة/الشاشة العادي
+  // بنرجّع التقرير مباشرة زي الأول بالظبط عشان الطباعة الحقيقية متتأثرش.
+  if (!forceVisible) return report;
+
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: 0,
+        height: 0,
+        overflow: 'hidden',
+        pointerEvents: 'none',
+        zIndex: -1,
+      }}
+    >
+      {report}
     </div>
   );
 }
