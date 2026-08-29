@@ -58,19 +58,23 @@ export function Sidebar() {
           'app-sidebar fixed top-0 right-0 h-full z-40',
           'transition-all duration-300 flex flex-col',
           'hidden md:flex',
-          sidebarCollapsed ? 'w-20' : 'w-64'
+          // العرض من متغيرات CSS (مصدر واحد): tablet مدمج → desktop زيادة بسيطة
+          // حتى يظهر اسم الشركة كاملًا بدون قص
+          sidebarCollapsed ? 'w-[var(--sidebar-w-collapsed)]' : 'w-[var(--sidebar-w)]'
         )}
       >
         <div
           data-tour-id="sidebar-brand"
           className={clsx(
-          'sidebar-brand flex items-center h-16 px-3 flex-shrink-0',
+          'sidebar-brand flex items-center min-h-16 py-2 px-3 flex-shrink-0',
           sidebarCollapsed ? 'justify-center' : 'justify-between gap-2'
         )}>
           {!sidebarCollapsed ? (
             <div className="flex items-center gap-2.5 min-w-0">
-              <BrandMark className="w-9 h-9" />
-              <span className="font-extrabold text-[15px] text-secondary-900 leading-tight truncate tracking-tighter">
+              <BrandMark className="w-9 h-9 flex-shrink-0" />
+              {/* اسم الشركة يظهر كاملًا دائمًا — يُسمح له بالالتفاف على سطرين
+                  بشكل أنيق بدل القص بالـ ellipsis */}
+              <span className="font-extrabold text-[13.5px] lg:text-[14px] text-secondary-900 leading-[1.35] tracking-tight break-words min-w-0">
                 {branding.company_name}
               </span>
             </div>
@@ -248,52 +252,52 @@ export function Sidebar() {
         <div className="md:hidden fixed inset-0 z-50 flex" onClick={closeMobileMenu}>
           <div className="absolute inset-0 bg-secondary-900/45 backdrop-blur-[2px] animate-fadeIn" />
           <div
-            className="relative w-[86vw] max-w-96 min-w-[270px] h-full bg-white flex flex-col shadow-overlay animate-slideIn ml-auto mr-0 rounded-l-3xl overflow-hidden"
+            className="relative w-[76vw] min-w-[15.5rem] max-w-[19.5rem] h-full bg-white flex flex-col shadow-overlay animate-slideIn ml-auto mr-0 rounded-l-3xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* رأس الدرج بلون الهوية العميق — يثبّت شعار الشركة واسمها */}
-            <div className="relative flex items-center justify-between gap-2 px-4 h-[4.5rem] bg-primary-900 flex-shrink-0 overflow-hidden">
+            <div className="relative flex items-center justify-between gap-2 px-3.5 min-h-[4.25rem] py-2.5 bg-primary-900 flex-shrink-0 overflow-hidden">
               <div
                 className="absolute inset-0 pointer-events-none"
                 style={{ backgroundImage: 'radial-gradient(circle at 100% 0%, rgb(197 237 88 / 0.16), transparent 55%)' }}
               />
               <div className="relative flex items-center gap-2.5 min-w-0">
                 {branding.company_logo_url
-                  ? <img src={branding.company_logo_url} alt={branding.company_name} className="w-10 h-10 rounded-xl object-contain bg-white/12 ring-1 ring-white/20 p-1 flex-shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                  : <div className="w-10 h-10 rounded-xl bg-white/12 ring-1 ring-white/20 flex items-center justify-center flex-shrink-0"><BrandMark className="w-6 h-6" /></div>}
-                <span className="text-white font-extrabold text-[13px] leading-snug truncate tracking-tighter">{branding.company_name}</span>
+                  ? <img src={branding.company_logo_url} alt={branding.company_name} className="w-9 h-9 rounded-xl object-contain bg-white/12 ring-1 ring-white/20 p-1 flex-shrink-0" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  : <div className="w-9 h-9 rounded-xl bg-white/12 ring-1 ring-white/20 flex items-center justify-center flex-shrink-0"><BrandMark className="w-[22px] h-[22px]" /></div>}
+                <span className="text-white font-extrabold text-[12.5px] leading-[1.4] tracking-tight break-words min-w-0">{branding.company_name}</span>
               </div>
               <button
                 onClick={closeMobileMenu}
                 aria-label="إغلاق القائمة"
-                className="relative flex items-center justify-center w-10 h-10 rounded-full bg-white/12 hover:bg-white/20 active:bg-white/28 transition-colors flex-shrink-0"
+                className="relative flex items-center justify-center w-9 h-9 rounded-full bg-white/12 hover:bg-white/20 active:bg-white/28 transition-colors flex-shrink-0"
               >
-                <X className="w-5 h-5 text-white" />
+                <X className="w-[18px] h-[18px] text-white" />
               </button>
             </div>
 
-            <div className="px-4 pt-3">
+            <div className="px-3 pt-2.5">
               <ConnectionStatusBadge variant="card" />
             </div>
 
             <Link
               to="/profile"
               onClick={closeMobileMenu}
-              className="pressable mx-4 mt-3 flex items-center gap-3 p-2.5 rounded-2xl bg-secondary-50 border border-secondary-200 hover:bg-primary-50 hover:border-primary-200 active:scale-[0.99] transition-all"
+              className="pressable mx-3 mt-2.5 flex items-center gap-2.5 p-2.5 rounded-2xl bg-secondary-50 border border-secondary-200 hover:bg-primary-50 hover:border-primary-200 active:scale-[0.99] transition-all"
             >
-              <div className="w-11 h-11 rounded-full bg-primary-100 ring-1 ring-primary-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <div className="w-10 h-10 rounded-full bg-primary-100 ring-1 ring-primary-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
                 {user.avatar_url
-                  ? <img src={user.avatar_url} alt={user.name} className="w-11 h-11 rounded-full object-cover" loading="lazy" decoding="async" />
-                  : <span className="text-primary-700 font-bold">{user.name.charAt(0)}</span>}
+                  ? <img src={user.avatar_url} alt={user.name} className="w-10 h-10 rounded-full object-cover" loading="lazy" decoding="async" />
+                  : <span className="text-primary-700 font-bold text-sm">{user.name.charAt(0)}</span>}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-secondary-900 text-sm truncate">{user.name}</p>
-                <span className="badge badge-primary mt-1">{ROLE_LABELS[user.role]}</span>
+                <p className="font-bold text-secondary-900 text-[13px] truncate">{user.name}</p>
+                <span className="badge badge-primary mt-0.5">{ROLE_LABELS[user.role]}</span>
               </div>
               <ChevronLeft className="w-4 h-4 text-secondary-300 flex-shrink-0" />
             </Link>
 
-            <nav className="flex-1 overflow-y-auto py-3 px-3 mt-1 space-y-1 scrollbar-thin">
+            <nav className="flex-1 overflow-y-auto py-2.5 px-2.5 mt-1 space-y-1 scrollbar-thin">
               {navLayout.map((entry) =>
                 entry.kind === 'group' ? (
                   <NavGroupSection
@@ -310,10 +314,10 @@ export function Sidebar() {
               )}
             </nav>
 
-            <div className="border-t border-secondary-200 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex-shrink-0">
+            <div className="border-t border-secondary-200 p-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] flex-shrink-0">
               <button
                 onClick={() => { closeMobileMenu(); signOut(); }}
-                className="pressable flex items-center h-12 gap-3 w-full px-2.5 rounded-xl text-[13px] font-bold text-error-600 hover:bg-error-50 active:bg-error-100 transition-colors"
+                className="pressable flex items-center h-11 gap-2.5 w-full px-2.5 rounded-xl text-[13px] font-bold text-error-600 hover:bg-error-50 active:bg-error-100 transition-colors"
               >
                 <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-error-50 flex-shrink-0">
                   <LogOut className="w-4 h-4" />

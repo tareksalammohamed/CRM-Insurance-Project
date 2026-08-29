@@ -76,12 +76,24 @@
   --header-h-md: 4rem;
   --bottom-nav-h: 4.25rem;
 
+  /* ===== عرض الـ Sidebar (مصدر واحد للحقيقة — يستخدمه Sidebar/Header/App) =====
+     Tablet (md): عرض متوسط مدمج · Desktop (lg+): زيادة بسيطة فقط حتى يظهر
+     اسم الشركة "قناة السويس لتأمينات الحياة" كاملًا بدون قص أو ellipsis */
+  --sidebar-w: 16.25rem;           /* 260px — tablet */
+  --sidebar-w-collapsed: 5rem;     /* 80px  — وضع الطي (أيقونات فقط) */
+
   color-scheme: light;
 }
 
 @media (min-width: 768px) {
   :root {
     --header-h: var(--header-h-md);
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --sidebar-w: 17rem;            /* 272px — desktop (زيادة بسيطة فقط) */
   }
 }
 
@@ -375,7 +387,12 @@ body {
     background: var(--surface);
     border-bottom: 1px solid var(--line) !important;
   }
-  .sidebar-brand .text-secondary-900 { color: var(--ink) !important; }
+  .sidebar-brand .text-secondary-900 {
+    color: var(--ink) !important;
+    /* اسم الشركة يلتف بأمان على سطرين عند الحاجة بدون كسر داخل الكلمة الواحدة */
+    overflow-wrap: break-word;
+    word-break: keep-all;
+  }
   .sidebar-brand button { color: var(--muted-ink); }
 
   /* عنوان قسم داخل القائمة — هادئ جدًا، مجرد تسمية تنظيمية */

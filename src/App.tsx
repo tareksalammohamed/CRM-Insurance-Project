@@ -149,7 +149,7 @@ function AppLayout() {
       <main id="main-content" tabIndex={-1} className={clsx(
         'transition-all duration-300 focus:outline-none',
         // ===== Desktop: يتحرك مع الـ sidebar =====
-        sidebarCollapsed ? 'md:mr-20' : 'md:mr-64',
+        sidebarCollapsed ? 'md:mr-[var(--sidebar-w-collapsed)]' : 'md:mr-[var(--sidebar-w)]',
         // ===== Mobile: padding top للـ header + bottom للـ bottom nav =====
         'pt-14 md:pt-16',
         // مساحة أسفل الصفحة تكفى Bottom Navigation + المنطقة الآمنة للأجهزة

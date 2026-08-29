@@ -176,7 +176,7 @@ export function Header() {
         'flex items-center gap-2 px-2 md:px-4 transition-all duration-300',
         'print:hidden',
         scrolled && 'is-scrolled',
-        sidebarCollapsed ? 'md:mr-20' : 'md:mr-64'
+        sidebarCollapsed ? 'md:mr-[var(--sidebar-w-collapsed)]' : 'md:mr-[var(--sidebar-w)]'
       )}>
         {/* ===== يمين (بداية السطر فى RTL): القائمة ثم عنوان الصفحة =====
             الأولوية على الموبايل: زر القائمة ← عنوان الصفحة ← أدوات (بحث/إشعارات) */}
