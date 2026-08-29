@@ -436,7 +436,19 @@ export async function deleteCustomer(id: string): Promise<{ error?: string }> {
 
   if (error) {
     if (error.code === '42501' || error.code === '23503') {
-      return { error: 'لا يمكن حذف هذا العميل لوجود وثائق مرتبطة به' };
+      // لا نفترض دايماً إن السبب "له وثائق" — الرفض ممكن يكون فعلاً بسبب
+      // وثيقة مرتبطة (can_delete_customer ترجع false)، أو لسبب مختلف تماماً
+      // زي صلاحية الوصول لهذا العميل (owner_id/التسلسل الإداري)، وهو خطأ
+      // بنفس كود 42501 لكن رسالته المعروضة للمستخدم كانت غلط ومضللة.
+      // نتحقق من السبب الحقيقي عبر نفس الدالة المستخدمة فى RLS نفسها.
+      const { data: canDelete, error: checkError } = await supabase.rpc('can_delete_customer', {
+        p_customer_id: id,
+      });
+
+      if (!checkError && canDelete === false) {
+        return { error: 'لا يمكن حذف هذا العميل لوجود وثائق مرتبطة به' };
+      }
+      return { error: 'ليس لديك صلاحية لحذف هذا العميل' };
     }
     throw error;
   }
