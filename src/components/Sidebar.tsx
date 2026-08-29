@@ -7,13 +7,39 @@ import { useAppStore } from '../store/appStore';
 import { useSettings } from '../hooks/useSettings';
 import { ConnectionStatusBadge } from './ConnectionStatusBadge';
 import { BrandMark } from './BrandMark';
-import { getBottomNavItems, getVisibleNavLayout, type NavGroup, type NavLayoutEntry, type NavItem } from '../config/navigation';
+import { getBottomNavItems, getVisibleNavLayout, type NavGroup, type NavGroupKey, type NavLayoutEntry, type NavItem } from '../config/navigation';
 import clsx from 'clsx';
 
 function isPathActive(pathname: string, path: string) {
   if (path === '/') return pathname === '/';
   return pathname.startsWith(path);
 }
+
+// ============================================================================
+// لمسة لونية دلالية هادئة لكل قسم (Visual only — من نفس Palette التطبيق):
+//   العمليات → زمردي الهوية · الإدارة → أزرق · النظام → تيل · الحساب → كهرماني
+//   حاسبة الأسعار (مستقلة) → لايم الهوية
+// العنصر النشط يظل دائمًا بلون الـ Brand لثبات الهوية فى كل الأقسام.
+// ============================================================================
+type NavAccent = {
+  /** حاوية أيقونة الرابط (غير النشط) — خلفية ناعمة + لون أيقونة دلالي */
+  chip: string;
+  /** لون الأيقونة المجردة (وضع الطي — أيقونات بدون حاوية) */
+  bare: string;
+  /** حاوية أيقونة عنوان القسم الصغيرة */
+  header: string;
+};
+
+const GROUP_ACCENTS: Record<NavGroupKey, NavAccent> = {
+  operations: { chip: 'bg-primary-50 text-primary-600',  bare: 'text-primary-500',  header: 'bg-primary-50 text-primary-600' },
+  management: { chip: 'bg-info-50 text-info-600',        bare: 'text-info-500',     header: 'bg-info-50 text-info-600' },
+  system:     { chip: 'bg-success-50 text-success-600',  bare: 'text-success-600',  header: 'bg-success-50 text-success-600' },
+  account:    { chip: 'bg-warning-50 text-warning-600',  bare: 'text-warning-500',  header: 'bg-warning-50 text-warning-600' },
+};
+
+const STANDALONE_ACCENT: NavAccent = {
+  chip: 'bg-lime-100 text-lime-700', bare: 'text-lime-600', header: 'bg-lime-100 text-lime-700',
+};
 
 export function Sidebar() {
   const location = useLocation();
@@ -71,7 +97,10 @@ export function Sidebar() {
         )}>
           {!sidebarCollapsed ? (
             <div className="flex items-center gap-2.5 min-w-0">
-              <BrandMark className="w-9 h-9 flex-shrink-0" />
+              {/* الشعار داخل بلاطة Brand ناعمة — Enterprise brand header */}
+              <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-primary-50 to-white ring-1 ring-primary-100 shadow-soft flex-shrink-0">
+                <BrandMark className="w-7 h-7" />
+              </span>
               {/* اسم الشركة يظهر كاملًا دائمًا — يُسمح له بالالتفاف على سطرين
                   بشكل أنيق بدل القص بالـ ellipsis */}
               <span className="font-extrabold text-[13.5px] lg:text-[14px] text-secondary-900 leading-[1.35] tracking-tight break-words min-w-0">
@@ -79,7 +108,9 @@ export function Sidebar() {
               </span>
             </div>
           ) : (
-            <BrandMark className="w-9 h-9" />
+            <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-primary-50 to-white ring-1 ring-primary-100 shadow-soft">
+              <BrandMark className="w-7 h-7" />
+            </span>
           )}
 
           {!sidebarCollapsed && (
@@ -113,23 +144,31 @@ export function Sidebar() {
         <Link
           to="/profile"
           className={clsx(
-            'pressable mx-3 mt-3 flex items-center gap-2.5 rounded-xl border border-secondary-200 bg-secondary-50',
-            'hover:bg-primary-50 hover:border-primary-200 transition-colors duration-150',
-            sidebarCollapsed ? 'justify-center p-2 border-transparent bg-transparent' : 'p-2.5'
+            'group pressable mx-3 mt-3 flex items-center gap-2.5 rounded-xl border border-secondary-200 bg-gradient-to-l from-secondary-50 to-white',
+            'hover:border-primary-200 hover:from-primary-50 hover:to-primary-50/40 transition-colors duration-150',
+            sidebarCollapsed ? 'justify-center p-2 border-transparent bg-none' : 'p-2.5'
           )}
           title="الانتقال للملف الشخصي"
         >
-          <div className="w-9 h-9 rounded-full bg-primary-100 ring-1 ring-primary-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
-            {user.avatar_url
-              ? <img src={user.avatar_url} alt={user.name} className="w-9 h-9 rounded-full object-cover" loading="lazy" decoding="async" />
-              : <span className="text-primary-700 font-bold text-sm">{user.name.charAt(0)}</span>
-            }
+          {/* Avatar داخل حلقة متدرجة بلون الهوية — نفس الحجم السابق تمامًا */}
+          <div className="w-9 h-9 rounded-full p-[1.5px] bg-gradient-to-br from-primary-300 via-primary-500 to-primary-700 flex-shrink-0">
+            <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+              {user.avatar_url
+                ? <img src={user.avatar_url} alt={user.name} className="w-full h-full rounded-full object-cover" loading="lazy" decoding="async" />
+                : <span className="text-primary-700 font-bold text-[13px]">{user.name.charAt(0)}</span>
+              }
+            </div>
           </div>
           {!sidebarCollapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-bold text-secondary-900 truncate leading-tight">{user.name}</p>
-              <p className="text-[11px] font-semibold text-secondary-500 truncate mt-0.5">{ROLE_LABELS[user.role]}</p>
-            </div>
+            <>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-bold text-secondary-900 truncate leading-tight">{user.name}</p>
+                <span className="inline-flex items-center mt-1 px-1.5 py-px rounded-full bg-primary-50 text-primary-700 ring-1 ring-primary-100 text-[10px] font-bold truncate max-w-full">
+                  {ROLE_LABELS[user.role]}
+                </span>
+              </div>
+              <ChevronLeft className="w-3.5 h-3.5 text-secondary-300 group-hover:text-primary-400 transition-colors flex-shrink-0" />
+            </>
           )}
         </Link>
 
@@ -137,25 +176,32 @@ export function Sidebar() {
         <div data-tour-id="sidebar-nav" className="flex-1 overflow-y-auto py-3 px-2.5 mt-1 scrollbar-thin">
           {sidebarCollapsed ? (
             // فى وضع الطي (أيقونات فقط) نعرض كل الصفحات فى قائمة واحدة مسطحة
+            // مع تلوين كل أيقونة بلون قسمها الدلالي (النشط يظل بلون الهوية)
             <nav className="space-y-1">
-              {navLayout.flatMap((entry) => (entry.kind === 'group' ? entry.group.items : [entry.item])).map((item) => {
-                const Icon = item.icon;
-                const active = isPathActive(location.pathname, item.path);
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={clsx(
-                      'sidebar-collapsed-nav-row flex items-center justify-center h-11 px-0 rounded-xl transition-all duration-200',
-                      active ? 'sidebar-collapsed-nav-row-active text-primary-700' : 'text-secondary-500 hover:bg-secondary-50'
-                    )}
-                    title={item.label}
-                    aria-current={active ? 'page' : undefined}
-                  >
-                    <Icon strokeWidth={active ? 2.2 : 1.8} className={clsx('w-[19px] h-[19px] flex-shrink-0', active ? 'text-primary-600' : 'text-secondary-400')} />
-                  </Link>
-                );
-              })}
+              {navLayout
+                .flatMap((entry) => (
+                  entry.kind === 'group'
+                    ? entry.group.items.map((item) => ({ item, accent: GROUP_ACCENTS[entry.group.key] }))
+                    : [{ item: entry.item, accent: STANDALONE_ACCENT }]
+                ))
+                .map(({ item, accent }) => {
+                  const Icon = item.icon;
+                  const active = isPathActive(location.pathname, item.path);
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={clsx(
+                        'sidebar-collapsed-nav-row flex items-center justify-center h-11 px-0 rounded-xl transition-all duration-200',
+                        active ? 'sidebar-collapsed-nav-row-active text-primary-700' : 'hover:bg-secondary-50'
+                      )}
+                      title={item.label}
+                      aria-current={active ? 'page' : undefined}
+                    >
+                      <Icon strokeWidth={active ? 2.2 : 1.9} className={clsx('w-[19px] h-[19px] flex-shrink-0 transition-colors', active ? 'text-primary-600' : accent.bare)} />
+                    </Link>
+                  );
+                })}
             </nav>
           ) : (
             <nav className="space-y-1">
@@ -181,12 +227,14 @@ export function Sidebar() {
             onClick={signOut}
             title="تسجيل الخروج"
             className={clsx(
-              'flex items-center h-11 gap-2.5 w-full px-3 rounded-xl text-[13px] font-bold',
+              'group pressable flex items-center h-11 gap-2.5 w-full rounded-xl text-[13px] font-bold',
               'text-error-600 hover:bg-error-50 active:bg-error-100 transition-colors duration-200',
-              sidebarCollapsed && 'justify-center px-0'
+              sidebarCollapsed ? 'justify-center px-0' : 'px-2'
             )}
           >
-            <LogOut className="w-[18px] h-[18px] flex-shrink-0" />
+            <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-error-50 group-hover:bg-error-100 group-hover:scale-105 transition-all flex-shrink-0">
+              <LogOut className="w-4 h-4" />
+            </span>
             {!sidebarCollapsed && <span>تسجيل الخروج</span>}
           </button>
         </div>
@@ -346,26 +394,32 @@ function NavGroupSection({
   onNavigate?: () => void;
 }) {
   const GroupIcon = group.icon;
+  const accent = GROUP_ACCENTS[group.key];
 
   return (
     <div className="pb-1.5">
       <button
         onClick={onToggle}
-        className="sidebar-group-toggle flex items-center justify-between w-full h-8 px-2.5 rounded-lg transition-colors duration-150"
+        className="sidebar-group-toggle group flex items-center justify-between w-full h-8 px-1.5 rounded-lg transition-colors duration-150"
         aria-expanded={expanded}
       >
-        <span className="flex items-center gap-1.5 text-[10px] font-extrabold tracking-wider">
-          <GroupIcon strokeWidth={2.2} className="w-3.5 h-3.5" />
-          {group.label}
+        <span className="flex items-center gap-2 text-[10.5px] font-extrabold tracking-wider min-w-0">
+          {/* أيقونة القسم داخل حاوية ملوّنة دلاليًا — هوية بصرية لكل مجموعة */}
+          <span className={clsx('flex items-center justify-center w-[22px] h-[22px] rounded-md flex-shrink-0 transition-transform duration-200 group-hover:scale-105', accent.header)}>
+            <GroupIcon strokeWidth={2.2} className="w-3 h-3" />
+          </span>
+          <span className="truncate">{group.label}</span>
+          {/* خط فاصل ناعم يمتد بعد العنوان — فصل بصري هادئ بين الأقسام */}
+          <span className="h-px flex-1 min-w-2 bg-gradient-to-l from-secondary-200 to-transparent" aria-hidden="true" />
         </span>
-        <ChevronDown className={clsx('w-3.5 h-3.5 transition-transform duration-200', expanded ? 'rotate-0' : '-rotate-90')} />
+        <ChevronDown className={clsx('w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200', expanded ? 'rotate-0' : '-rotate-90')} />
       </button>
 
       <div className={clsx('grid transition-all duration-200 ease-in-out', expanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
         <div className="overflow-hidden">
           <div className="space-y-0.5 pt-1">
             {group.items.map((item) => (
-              <NavLinkRow key={item.path} item={item} pathname={pathname} onNavigate={onNavigate} />
+              <NavLinkRow key={item.path} item={item} pathname={pathname} accent={accent} onNavigate={onNavigate} />
             ))}
           </div>
         </div>
@@ -380,10 +434,11 @@ function NavGroupSection({
 // كل من NavGroupSection وStandaloneNavLink حتى يبقى شكل كل الروابط متطابقًا
 // ============================================================================
 function NavLinkRow({
-  item, pathname, onNavigate,
+  item, pathname, accent, onNavigate,
 }: {
   item: NavItem;
   pathname: string;
+  accent: NavAccent;
   onNavigate?: () => void;
 }) {
   const Icon = item.icon;
@@ -393,7 +448,7 @@ function NavLinkRow({
       to={item.path}
       onClick={onNavigate}
         className={clsx(
-          'sidebar-nav-row pressable relative flex items-center h-11 gap-2.5 pr-2 pl-2.5 rounded-xl text-[13px] transition-all duration-200',
+          'sidebar-nav-row group pressable relative flex items-center h-11 gap-2.5 pr-2 pl-2.5 rounded-xl text-[13px] transition-all duration-200',
           active
             ? 'sidebar-nav-row-active font-bold'
             : 'text-secondary-600 font-semibold hover:bg-secondary-50 hover:text-secondary-900'
@@ -402,15 +457,19 @@ function NavLinkRow({
       >
       {/* مؤشر جانبي للعنصر النشط — تمييز لا يعتمد على اللون وحده */}
       {active && (
-        <span className="absolute right-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-primary-600" aria-hidden="true" />
+        <span className="absolute right-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-full bg-gradient-to-b from-primary-500 to-primary-700" aria-hidden="true" />
       )}
+      {/* أيقونة ملوّنة دلاليًا بلون القسم — النشط يتحول لبلاطة Brand ممتلئة
+          بظل ناعم — واضح فورًا بدون أن يكون صارخًا */}
       <span
         className={clsx(
-          'flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 transition-colors',
-          active ? 'bg-primary-600 text-white' : 'bg-secondary-100 text-secondary-500'
+          'flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0 transition-all duration-200',
+          active
+            ? 'bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-primary-glow'
+            : clsx(accent.chip, 'group-hover:scale-105')
         )}
       >
-        <Icon strokeWidth={active ? 2.2 : 1.8} className="w-[17px] h-[17px]" />
+        <Icon strokeWidth={active ? 2.2 : 1.9} className="w-[17px] h-[17px]" />
       </span>
       <span className="flex items-baseline gap-1.5 min-w-0 truncate">
         <span className="truncate">{item.label}</span>
@@ -435,7 +494,7 @@ function StandaloneNavLink({
 }) {
   return (
     <div className="pb-1">
-      <NavLinkRow item={item} pathname={pathname} onNavigate={onNavigate} />
+      <NavLinkRow item={item} pathname={pathname} accent={STANDALONE_ACCENT} onNavigate={onNavigate} />
     </div>
   );
 }
