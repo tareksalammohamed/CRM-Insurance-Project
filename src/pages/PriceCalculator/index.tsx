@@ -1,6 +1,13 @@
 import { friendlyError } from '../../lib/errorMessages';
 import { useRef, useState, type KeyboardEvent } from 'react';
-import html2canvas from 'html2canvas';
+// ملحوظة: كنا نستخدم html2canvas هنا، لكنه بيعيد رسم النص بنفسه (بدل ما يعتمد
+// على محرك المتصفح)، وده بيكسر تشكيل الحروف العربية المتصلة واتجاه RTL —
+// فبيطلع النص العربي فى الصورة الناتجة مشوّه/معكوس. html-to-image بيحوّل
+// العنصر لـ SVG (foreignObject) ويسيب المتصفح نفسه يرسم النص زي ما بيظهر
+// فعلاً على الشاشة، فبيحافظ على شكل الحروف العربية صحيح تمامًا (نفس السبب
+// اللي خلّى صفحات تانية زي تقفيل الشهر تستخدم طباعة المتصفح الحقيقية بدل
+// html2canvas لأي محتوى عربي).
+import { toPng } from 'html-to-image';
 import {
   Calculator, RotateCcw, PlusCircle, Copy, Printer, Check, AlertCircle,
   DollarSign, Percent, ImageDown, Loader2,
@@ -140,22 +147,16 @@ export function PriceCalculator() {
       const printableElement = printQuoteRef.current;
       if (!printableElement) throw new Error('printable element is unavailable');
 
-      const canvas = await html2canvas(printableElement, {
+      const dataUrl = await toPng(printableElement, {
         backgroundColor: '#ffffff',
-        scale: Math.min(3, Math.max(2, window.devicePixelRatio || 1)),
-        useCORS: true,
-        allowTaint: false,
-        logging: false,
-        imageTimeout: 15000,
+        pixelRatio: Math.min(3, Math.max(2, window.devicePixelRatio || 1)),
         width: printableElement.scrollWidth,
         height: printableElement.scrollHeight,
-        windowWidth: printableElement.scrollWidth,
-        windowHeight: printableElement.scrollHeight,
       });
 
       const link = document.createElement('a');
       link.download = `عرض-سعر-${result.variant.label}.png`;
-      link.href = canvas.toDataURL('image/png');
+      link.href = dataUrl;
       link.click();
       notify.success('تم حفظ العرض كصورة PNG عالية الجودة');
     } catch (error) {
