@@ -104,18 +104,6 @@ export function MonthlyClosing() {
       const usersData = await fetchUsersByIds(ids);
       const branchRoles = await fetchBranchRoleMap(currentBranchId, ids);
 
-      // الشاشة التشغيلية تستبعد الوكيل المحذوف أو غير النشط، لكن لا نغيّر
-      // usersData الأصلية لأنها المصدر المقصود للإقفال المطبوع التاريخي.
-      const screenUsersData = usersData
-        .map((u) => {
-          const branchRole = branchRoles.get(u.id);
-          return branchRole ? { ...u, role: branchRole.role, manager_id: branchRole.manager_id } : u;
-        })
-        .filter((u) => {
-          const isAgent = u.role === 'agent' || u.role === 'premium_agent';
-          return !isAgent || (u.is_active !== false && !u.deleted_at);
-        });
-
       // فروع مودال الطباعة: مقصورة على الفروع التابعة للنطاق الحالي (ids)
       // بس، مش كل فروع التطبيق.
       fetchBranchesForUserIds(ids).then(setPrintBranches).catch((err) => console.error('Error loading print branches:', err));
@@ -123,6 +111,30 @@ export function MonthlyClosing() {
       // 3. كل المدفوعات الفعلية للشهر (غير ملغاة)
       const paymentsRaw = await fetchMonthPayments(monthStr);
       const payments = filterPaymentsByOwnerIds(paymentsRaw, ids);
+
+      // أصحاب شغل فعلي (إنتاج أو تحصيل) مسجل الشهر ده — بيتحسبوا فى إقفال
+      // الشهر حتى لو الوكيل بقى غير نشط أو محذوف دلوقتي، لأن شغل السنة
+      // بيتحسب على صاحبه الأصلي مهما حصل له بعدين.
+      const ownerIdsWithMovementThisMonth = new Set(
+        payments.map((p) => p.installment.policy.owner_id),
+      );
+
+      // الشاشة التشغيلية تستبعد الوكيل المحذوف أو غير النشط لو مفيش شغل
+      // باسمه الشهر ده (عشان مايتكدسش وكلاء قدامى فاضيين على الشاشة)، لكن
+      // لو له مدفوعات فعلية الشهر ده بيفضل ظاهر ومحسوب زي أي وكيل نشط —
+      // ولا نغيّر usersData الأصلية لأنها المصدر المقصود للإقفال المطبوع
+      // التاريخي أصلًا.
+      const screenUsersData = usersData
+        .map((u) => {
+          const branchRole = branchRoles.get(u.id);
+          return branchRole ? { ...u, role: branchRole.role, manager_id: branchRole.manager_id } : u;
+        })
+        .filter((u) => {
+          const isAgent = u.role === 'agent' || u.role === 'premium_agent';
+          if (!isAgent) return true;
+          const isActive = u.is_active !== false && !u.deleted_at;
+          return isActive || ownerIdsWithMovementThisMonth.has(u.id);
+        });
 
       // 4-5. ملخص الشاشة وبيانات التقرير المطبوع يُبنيان منفصلين عمدًا.
       const screenSummary = buildMonthlyClosingSummary(
