@@ -21,6 +21,8 @@ import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-f
 import { ar } from 'date-fns/locale';
 
 import { PageHeader } from '../../components/layout/PageHeader';
+import { SaveAsImageButton } from '../../components/ui/SaveAsImageButton';
+import { printWithTitle } from '../../lib/printWithTitle';
 import { ROLE_LABELS } from '../../lib/supabase';
 import type { ReportType, DateRange } from './types';
 import {
@@ -88,6 +90,9 @@ export function Reports() {
   // بدل إدراج الدالة نفسها فى الـ deps (هويتها تتغير كل render فكانت ستسبب
   // إعادة تحميل فى كل render) — بدون أى eslint-disable.
   const loadReportRef = useRef<() => void>(() => {});
+  // جذر الصفحة هو نفسه تقرير الطباعة (عليه class="print-report")، فبنمسك بيه
+  // عشان زر "حفظ كصورة" يصوّر نفس اللى بيتطبع بالظبط.
+  const printReportRef = useRef<HTMLDivElement>(null);
   loadReportRef.current = () => { void loadReport(); };
 
   useEffect(() => {
@@ -346,8 +351,12 @@ export function Reports() {
       : reportButtons.find((r) => r.id === reportType)?.label;
   const detailsColumns = data?.details && data.details.length > 0 ? Object.keys(data.details[0]) : [];
 
+  // اسم ملف موحّد للطباعة/حفظ PDF وللصورة — بياخد اسم التقرير المختار
+  // والفترة، فكل تقرير ينزل باسمه الحقيقى بدل اسم الشركة الثابت.
+  const printFileName = `${currentReportLabel ?? 'تقرير'}-${format(periodStart, 'yyyy-MM-dd')}-${format(periodEnd, 'yyyy-MM-dd')}`;
+
   return (
-    <div className="print-report space-y-6 animate-fadeIn print:space-y-3">
+    <div ref={printReportRef} className="print-report space-y-6 animate-fadeIn print:space-y-3">
       {/* رأس خاص بالطباعة فقط - لا يظهر أثناء الاستخدام العادى */}
       <div className="hidden print:block text-center mb-4">
         <h2 className="text-xl font-bold">{currentReportLabel}</h2>
@@ -369,13 +378,22 @@ export function Reports() {
           action={
             <div className="flex items-center gap-2">
               <button
-                onClick={() => window.print()}
+                onClick={() => printWithTitle(printFileName)}
                 className="btn btn-secondary"
                 title="طباعة التقرير"
               >
                 <Printer className="w-4 h-4" />
                 <span>طباعة</span>
               </button>
+              {/* نفس التقرير المطبوع بالظبط بس كصورة PNG — والرسومات البيانية
+                  مستبعدة منها تلقائيًا (طلب صريح: مش عايز رسومات بيانية فى
+                  الحفظ كصورة). لو المحتوى أطول من صفحة بينزل فى أكتر من صورة. */}
+              <SaveAsImageButton
+                targetRef={printReportRef}
+                fileName={printFileName}
+                className="btn btn-primary"
+                disabled={loading || !data}
+              />
             </div>
           }
         />

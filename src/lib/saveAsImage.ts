@@ -451,7 +451,25 @@ export async function saveElementAsImages(
     // نفسها (مش بـfilter بتاع المكتبة) عشان القياسات اللى بنحسب بيها تقسيم
     // الصفحات تبقى مطابقة للى بيتصوّر فعلاً.
     const excludeSelector = [...DEFAULT_EXCLUDE_SELECTORS, ...(options.excludeSelectors ?? [])].join(', ');
-    clone.querySelectorAll(excludeSelector).forEach((el) => el.remove());
+    const removed = Array.from(clone.querySelectorAll(excludeSelector));
+    const parents = removed.map((el) => el.parentElement);
+    removed.forEach((el) => el.remove());
+    // الرسم البيانى عادةً بيبقى جوه حاوية بارتفاع ثابت (مثال: class="h-64").
+    // مجرد شيل الرسم بيسيب فراغ أبيض كبير بنفس الارتفاع فى الصورة. فبنمشى
+    // لأعلى من مكان كل عنصر اتشال ونشيل أى حاوية بقت فاضية تمامًا (مفيهاش
+    // نص ولا صور)، فالصورة تطلع مرصوصة من غير فجوات بيضاء.
+    for (const parent of parents) {
+      let node: HTMLElement | null = parent;
+      while (node && node !== clone) {
+        const next: HTMLElement | null = node.parentElement;
+        const isEmpty =
+          node.textContent?.trim().length === 0 &&
+          node.querySelector('img, svg, canvas, input, table') === null;
+        if (!isEmpty) break;
+        node.remove();
+        node = next;
+      }
+    }
 
     await inlineImages(clone);
     await waitForPaint();
