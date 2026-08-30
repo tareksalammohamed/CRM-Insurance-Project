@@ -5,7 +5,8 @@ import { ar } from 'date-fns/locale';
 import { useSettings } from '../../hooks/useSettings';
 import { OrgChartTree, type ChartDensity } from './OrgChartTree';
 import { countChartEntities, type OrgChartNode } from './orgChartBuilder';
-import { exportNodeToPdf, printNode } from './pdfExport';
+import { exportNodeToPdf } from './pdfExport';
+import { printWithTitle } from '../../lib/printWithTitle';
 import { useNotify } from '../../lib/notify';
 import { useDialogBehavior } from '../../hooks/useDialogBehavior';
 import { DialogPortal } from '../../components/ui/DialogPortal';
@@ -19,6 +20,12 @@ interface FormationPreviewModalProps {
 
 const CHART_WIDTH = 1400; // عرض ثابت (بكسل) يماثل نسبة صفحة A4 أفقية عند التصدير/الطباعة
 const TARGET_RATIO = 210 / 297; // ارتفاع/عرض A4 أفقية
+// مساحة الطباعة الفعلية داخل A4 أفقية بعد هامش 10مم من كل جانب، بمقياس
+// 96dpi (نفس افتراض بقية أدوات الطباعة/الحفظ كصورة فى المشروع):
+// (297 - 20) مم × 3.7795 بكسل/مم ≈ 1047px. الشارت ثابت العرض عند
+// CHART_WIDTH، فبنصغّره بنسبة zoom ثابتة عشان يتسع فى عرض الورقة.
+const PRINT_USABLE_WIDTH_PX = Math.round((297 - 20) * 3.7795);
+const PRINT_ZOOM = Number((PRINT_USABLE_WIDTH_PX / CHART_WIDTH).toFixed(4));
 const DENSITY_ORDER: ChartDensity[] = ['xl', 'lg', 'md', 'sm', 'xs'];
 
 function nextFrame() {
@@ -115,15 +122,11 @@ export function FormationPreviewModal({ heads, branchName, asOfDate, onClose }: 
 
   const handlePrint = () => {
     if (!exportRef.current || busy) return;
-    setBusy('print');
-    try {
-      const opened = printNode(exportRef.current, `تشكيل الجهاز الإنتاجي${branchName ? ` - ${branchName}` : ''}`);
-      if (!opened) {
-        notify.error('يرجى السماح بالنوافذ المنبثقة لهذا الموقع لتتمكن من الطباعة.');
-      }
-    } finally {
-      setBusy(null);
-    }
+    // نفس أسلوب باقي أزرار الطباعة فى التطبيق: طباعة النافذة الحالية مباشرةً
+    // (window.print) بدل فتح نافذة منفصلة ونسخ الـHTML يدويًا لها — أسلوب
+    // النافذة المنفصلة كان بيطلّع صفحة بيضاء أحيانًا لو الخطوط/الصور
+    // ماخلصتش تحميل قبل استدعاء print() بالمهلة الثابتة.
+    printWithTitle(`تشكيل الجهاز الإنتاجي${branchName ? ` - ${branchName}` : ''}`);
   };
 
 
@@ -199,21 +202,34 @@ export function FormationPreviewModal({ heads, branchName, asOfDate, onClose }: 
             </div>
           </div>
 
-          {/* نسخة مخفية بحجمها الطبيعي (بدون أي transform على أي عنصر أب) تُستخدم فقط
-              كمصدر للتصدير والطباعة. لو التقطنا النسخة المصغّرة أعلاه مباشرةً، فإن
-              وجود transform:scale على أحد آبائها يخلي html2canvas يحسب مواضع
-              العناصر غلط فيطلع النص والصناديق متراكبة فوق بعض في الملف الناتج. */}
-          <div style={{ position: 'fixed', top: 0, left: '-99999px', pointerEvents: 'none' }} aria-hidden="true">
-            <OrgChartTree
-              ref={exportRef}
-              heads={heads}
-              branchName={branchName}
-              asOfDateLabel={asOfDateLabel}
-              companyName={branding.company_name}
-              companyLogoUrl={branding.company_logo_url}
-              density={density}
-              widthPx={CHART_WIDTH}
-            />
+          {/* نسخة بحجمها الطبيعي (بدون أي transform على أي عنصر أب) تُستخدم كمصدر
+              للتصدير (PDF) ومصدر الطباعة الفعلي معًا:
+              - على الشاشة: مخفية بـ hidden (Tailwind) — بعيدة تمامًا عن أي إزاحة
+                خارج الشاشة، لأن exportNodeToPdf بياخد نسخة (clone) منها بنفسه
+                فمش محتاجة تتوضع فعليًا برّا الشاشة.
+              - وقت الطباعة: print:block يظهرها + كلاس print-report يخليها
+                الوحيدة الظاهرة (قاعدة عامة فى index.css بتخفي كل حاجة تانية فى
+                الصفحة تلقائيًا)، مع zoom بمقياس ثابت يحوّل عرضها الثابت
+                (CHART_WIDTH) لعرض ورقة A4 أفقية القابل للطباعة فعليًا. */}
+          <div className="hidden print:block print-report" aria-hidden="true">
+            <style>{`
+              @media print {
+                @page { size: A4 landscape; margin: 10mm; }
+                .of-print-scale { zoom: ${PRINT_ZOOM}; }
+              }
+            `}</style>
+            <div className="of-print-scale">
+              <OrgChartTree
+                ref={exportRef}
+                heads={heads}
+                branchName={branchName}
+                asOfDateLabel={asOfDateLabel}
+                companyName={branding.company_name}
+                companyLogoUrl={branding.company_logo_url}
+                density={density}
+                widthPx={CHART_WIDTH}
+              />
+            </div>
           </div>
         </div>
       </div>
