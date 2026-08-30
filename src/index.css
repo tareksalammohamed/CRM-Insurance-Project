@@ -1229,6 +1229,80 @@ body {
   }
 
   /* ======================================================================
+     12-ب. STICKY ACTION BAR (شريط الإجراء الثابت أعلى الصفحة)
+     الزر الأساسي للصفحة (إضافة طلب تأمين / إصدار وثيقة) يفضل ظاهر وثابت
+     أسفل الهيدر مباشرة أثناء تصفح القوائم الطويلة — بديل نظيف للزر العائم
+     (FAB) اللى كان بيغطى محتوى البطاقات.
+  ====================================================================== */
+  .sticky-action-bar {
+    position: fixed;
+    top: var(--header-h);
+    left: 0;
+    right: 0;
+    z-index: 29;                        /* أسفل الهيدر (z-30) وأعلى المحتوى */
+    background: rgb(255 255 255 / 0.97);
+    backdrop-filter: saturate(180%) blur(12px);
+    -webkit-backdrop-filter: saturate(180%) blur(12px);
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--shadow-sm);
+    /* مخفي افتراضياً: بيظهر بس لما رأس الصفحة يخرج من مجال الرؤية */
+    opacity: 0;
+    transform: translateY(-100%);
+    pointer-events: none;
+    visibility: hidden;
+    transition: opacity var(--motion-base) var(--ease-out),
+                transform var(--motion-base) var(--ease-out),
+                visibility var(--motion-base) linear,
+                margin var(--motion-slow) var(--ease-out);
+  }
+  .sticky-action-bar.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+    visibility: visible;
+  }
+  .sticky-action-bar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    max-width: 80rem;                   /* نفس max-w-7xl لمحتوى الصفحة */
+    margin-inline: auto;
+    padding: 0.5rem 0.75rem;
+  }
+  @media (min-width: 640px) { .sticky-action-bar-inner { padding-inline: 1rem; } }
+  @media (min-width: 768px) { .sticky-action-bar-inner { padding-inline: 1.5rem; } }
+  @media (min-width: 1024px) { .sticky-action-bar-inner { padding-inline: 2rem; } }
+
+  .sticky-action-bar-label {
+    min-width: 0;
+    color: var(--ink);
+    font-size: 0.8125rem;
+    font-weight: 800;
+    letter-spacing: -0.015em;
+  }
+  @media (min-width: 768px) {
+    .sticky-action-bar-label { font-size: 0.9375rem; }
+  }
+  .sticky-action-bar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+    margin-inline-start: auto;
+  }
+  /* الزر داخل الشريط أقصر شوية من زر رأس الصفحة (الشريط شريط أدوات مدمج) */
+  .sticky-action-bar-actions .btn {
+    min-height: 2.375rem;
+    padding-inline: 0.875rem;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+  }
+  @media (hover: none) and (pointer: coarse) {
+    .sticky-action-bar-actions .btn { min-height: 2.5rem; }
+  }
+
+  /* ======================================================================
      13. DATA CARD (عميل / وثيقة / صف بيانات)
      كل بطاقة = كائن عمل مهم: رأس واضح (اسم + حالة)، شبكة مؤشرات، إجراءات.
      الشريط اللوني العلوي أُزيل — التمييز من الحد والحالة (badge) فقط.

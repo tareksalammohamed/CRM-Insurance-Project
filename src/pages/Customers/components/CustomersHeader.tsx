@@ -20,6 +20,17 @@ export function CustomersHeader({ onAddCustomer }: CustomersHeaderProps) {
           <span>إضافة طلب تأمين</span>
         </button>
       }
+      /* نفس الزر بشكل مدمج داخل الشريط الثابت أسفل الهيدر: يفضل ظاهر
+         للمستخدم وهو بينزل ويتصفح الطلبات بدون رجوع لأعلى الصفحة */
+      stickyAction={
+        <button
+          onClick={onAddCustomer}
+          className="btn btn-primary shadow-sm"
+        >
+          <Plus className="w-4 h-4" />
+          <span>إضافة طلب تأمين</span>
+        </button>
+      }
     />
   );
 }

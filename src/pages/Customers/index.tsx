@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useBranchContext } from '../../lib/branchContext';
 
@@ -145,15 +144,9 @@ export function Customers() {
         totalPages={totalPages}
       />
 
-      {/* ===== زر عائم لإضافة عميل: يفضل ظاهر قدام المستخدم وهو بيتصفح
-          ويعمل سكرول لأسفل، بدون داعي للرجوع لأول الصفحة ===== */}
-      <button
-        onClick={openAddCustomerModal}
-        aria-label="إضافة عميل"
-        className="fixed z-40 bottom-20 md:bottom-8 left-4 md:left-8 w-14 h-14 rounded-full bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white shadow-elevated flex items-center justify-center transition-colors duration-200"
-      >
-        <Plus className="w-6 h-6" />
-      </button>
+      {/* ملاحظة: الزر العائم (FAB) القديم لإضافة طلب تأمين أُزيل — استُبدل
+          بشريط إجراء ثابت أعلى الصفحة (StickyActionBar) داخل CustomersHeader،
+          فالزر يفضل ظاهر أثناء التمرير بدون تغطية محتوى البطاقات. */}
 
       {/* ===== مودال إضافة/تعديل عميل ===== */}
       {showModal && (

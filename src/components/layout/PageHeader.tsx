@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { StickyActionBar } from './StickyActionBar';
 
 interface PageHeaderProps {
   title: string;
@@ -9,6 +10,10 @@ interface PageHeaderProps {
   titleSuffix?: ReactNode;
   /** عنصر إجراء اختياري (مثل زر "إضافة") يظهر على يسار العنوان */
   action?: ReactNode;
+  /** نسخة مدمجة من الإجراء تظهر داخل شريط ثابت أسفل الهيدر بمجرد ما رأس
+   *  الصفحة يخرج من مجال الرؤية أثناء التمرير — يخلّى الإجراء الأساسي
+   *  للصفحة فى متناول المستخدم دائماً بدون رجوع لأعلى الصفحة */
+  stickyAction?: ReactNode;
 }
 
 /**
@@ -16,7 +21,7 @@ interface PageHeaderProps {
  * استُخرج من الأنماط المتطابقة فى صفحات العملاء، الوثائق، التحصيل
  * والهيكل الوظيفي. لا يحمل أي منطق عمل.
  */
-export function PageHeader({ title, subtitle, titleSuffix, action }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, titleSuffix, action, stickyAction }: PageHeaderProps) {
   const titleBlock = (
     <div className="page-header-copy flex flex-wrap items-baseline gap-x-2 gap-y-0.5 min-w-0">
       {/* h1 واحد لكل صفحة + مستوى السلم الطباعى المعتمد (type-h1) */}
@@ -27,12 +32,19 @@ export function PageHeader({ title, subtitle, titleSuffix, action }: PageHeaderP
     </div>
   );
 
+  // الشريط الثابت (لو مطلوب) — لازم يترندر جوه رأس الصفحة نفسه لأن المجسّ
+  // بداخله بيقيس موضع الرأس بالنسبة للهيدر (رأس الصفحة عنده position: relative)
+  const stickyBar = stickyAction ? (
+    <StickyActionBar label={title}>{stickyAction}</StickyActionBar>
+  ) : null;
+
   if (!action) {
     return (
       <div className="page-header-single">
         <span className="page-header-eyebrow type-eyebrow">مساحة العمل</span>
         {titleBlock}
         {subtitle && <p className="page-header-subtitle type-body">{subtitle}</p>}
+        {stickyBar}
       </div>
     );
   }
@@ -45,6 +57,7 @@ export function PageHeader({ title, subtitle, titleSuffix, action }: PageHeaderP
         {subtitle && <p className="page-header-subtitle type-body">{subtitle}</p>}
       </div>
       {action}
+      {stickyBar}
     </div>
   );
 }

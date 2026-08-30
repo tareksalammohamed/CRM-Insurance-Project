@@ -19,6 +19,17 @@ export function PoliciesHeader({ onAddPolicy }: PoliciesHeaderProps) {
           <span>إصدار وثيقة</span>
         </button>
       }
+      /* نفس الزر بشكل مدمج داخل الشريط الثابت أسفل الهيدر: يفضل ظاهر
+         للمستخدم وهو بينزل ويتصفح الوثائق بدون رجوع لأعلى الصفحة */
+      stickyAction={
+        <button
+          onClick={onAddPolicy}
+          className="btn btn-primary shadow-sm"
+        >
+          <Plus className="w-4 h-4" />
+          <span>إصدار وثيقة</span>
+        </button>
+      }
     />
   );
 }
