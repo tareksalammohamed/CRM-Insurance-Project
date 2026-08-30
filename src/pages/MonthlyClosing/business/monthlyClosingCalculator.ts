@@ -10,24 +10,53 @@ import type {
  * فى التقرير المطبوع لتمييز هذه الصفوف وعرض اسم صاحبها الفعلي بجانبها */
 export const PERSONAL_PRODUCTION_LABEL = 'إنتاج شخصي';
 
-/** التسمية المستخدمة فى عمود "رئيس المجموعة" لصفوف تفاصيل عمليات السداد
- * لما الوكيل يكون تابع للمراقب مباشرة من غير رئيس مجموعة بينهم — مُصدَّرة
- * عشان التقرير المطبوع يقدر يميّزها ويعرض نص أوضح بدلها (بدل ما تتعرض
- * وكأنها اسم رئيس مجموعة حقيقي اسمه "وكلاء مباشرون"). */
+/** تسمية احتياطية (fallback) فقط — الوكيل التابع لمستوى إدارى مباشرة (من غير
+ * رئيس مجموعة بينهم) بقى بياخد صف/عنوان باسمه الحقيقي مع تصنيف يوضّح تبعيته
+ * المباشرة والمستوى الناقص، بدل تجميع الكل تحت عنوان عام مجهول الهوية.
+ * التسمية دي مستخدمة بس لو الاسم نفسه مش موجود فى بيانات المستخدمين. */
 export const DIRECT_AGENTS_LABEL = 'وكلاء مباشرون';
+
+/** المسميات المستخدمة عند ذكر "مستوى إداري ناقص" داخل نص التصنيف — بصيغة
+ * نكرة (بدون "ال") لأنها بتيجي بعد كلمة "بدون"، فتقرأ سليمة نحويًا:
+ * "بدون رئيس مجموعة" مش "بدون رئيس المجموعة". مفاتيحها هى الدرجة الرقمية
+ * للمستوى (نفس أرقام getRoleLevel). */
+const MISSING_LEVEL_LABELS: Record<number, string> = {
+  2: 'مدير تطوير',
+  3: 'مراقب عام',
+  4: 'مراقب',
+  5: 'رئيس مجموعة',
+};
+
+/** بترجع نص المستويات الإدارية اللى "اتقفزت" فعليًا بين المرؤوس ومديره —
+ * مثلاً وكيل (6) تابع مراقب (4) مباشرة معناها إن مستوى رئيس المجموعة (5)
+ * ناقص → "بدون رئيس مجموعة"؛ ووكيل تابع مراقب عام (3) مباشرة معناها إن
+ * مستويين ناقصين → "بدون رئيس مجموعة أو مراقب". بترجع undefined لو مفيش
+ * أى مستوى ناقص. */
+function missingLevelsNote(subordinateRole: UserRole, managerRole: UserRole): string | undefined {
+  const missing: string[] = [];
+  for (let lvl = getRoleLevel(managerRole) + 1; lvl <= getRoleLevel(subordinateRole) - 1; lvl += 1) {
+    const label = MISSING_LEVEL_LABELS[lvl];
+    if (label) missing.push(label);
+  }
+  if (missing.length === 0) return undefined;
+  return `بدون ${missing.join(' أو ')}`;
+}
 
 // لو حد (وكيل / رئيس مجموعة / مراقب... إلخ) ظاهر فى صف تجميعة تحت مدير
 // مش المدير المباشر "المتوقع" له فى الهرم الطبيعي (يعني فى مستوى إداري
 // اتقفز)، بيتحط فى نفس جدول ناس أعلى منه فى الدرجة الوظيفية من غير ما يبان
 // ده واضح. الدالة دي بتبني نص التصنيف اللي بيوضح علاقته الحقيقية بمديره
-// (مثلاً "وكيل يتبع المراقب مباشرة")، وترجع undefined لو مفيش قفزة (يعني
+// وكذلك المستوى/المستويات الإدارية الناقصة (مثلاً "وكيل يتبع المراقب
+// مباشرة — بدون رئيس مجموعة")، وترجع undefined لو مفيش قفزة (يعني
 // المدير هو نفسه المستوى المتوقع طبيعيًا).
 function hierarchySkipNote(subordinateRole: UserRole, managerRole: UserRole, plural = false): string | undefined {
   const expectedManagerLevel = getRoleLevel(subordinateRole) - 1;
   if (getRoleLevel(managerRole) >= expectedManagerLevel) return undefined;
   const subordinateLabel = subordinateRole === 'agent' && plural ? 'وكلاء' : ROLE_LABELS[subordinateRole];
   const verb = plural ? 'يتبعون' : 'يتبع';
-  return `${subordinateLabel} ${verb} ${ROLE_LABELS[managerRole]} مباشرة`;
+  const base = `${subordinateLabel} ${verb} ${ROLE_LABELS[managerRole]} مباشرة`;
+  const missing = missingLevelsNote(subordinateRole, managerRole);
+  return missing ? `${base} — ${missing}` : base;
 }
 
 export interface CurrentUserRef {
@@ -337,17 +366,16 @@ export function buildMonthlyClosingSummary(
         });
       }
     }
-    if (directAgentIds.length > 0) {
-      // نفس قاعدة "وكيل مباشر واحد = يتكتب اسمه الحقيقي" لكن فى صف
-      // التجميعات المطبوع، على كل المستويات الإدارية.
-      const directName = directAgentIds.length === 1
-        ? (usersMap.get(directAgentIds[0])?.name ?? 'وكلاء مباشرون')
-        : 'وكلاء مباشرون';
+    // كل وكيل تابع للمستوى الإداري ده مباشرة (من غير رئيس مجموعة بينهم)
+    // بياخد صف مستقل باسمه الحقيقي + تصنيف يوضّح إنه يتبع الدرجة الوظيفية
+    // دي مباشرة والمستوى الناقص — بدل ما يتجمّعوا كلهم فى صف واحد مجهول
+    // اسمه "وكلاء مباشرون".
+    for (const aid of directAgentIds) {
       groupLeaders.push({
-        id: supId + '_direct',
-        name: directName,
-        ...sumAgentIds(directAgentIds),
-        roleNote: hierarchySkipNote('agent', supRole, directAgentIds.length > 1),
+        id: aid,
+        name: usersMap.get(aid)?.name ?? DIRECT_AGENTS_LABEL,
+        ...sumAgentIds([aid]),
+        roleNote: hierarchySkipNote(roleOf(aid), supRole),
       });
     }
 
@@ -408,22 +436,28 @@ export function buildMonthlyClosingSummary(
     if (directGroupLeaderIds.length > 0 || directAgentIds.length > 0 || agentMap.has(user.id)) {
       const groupLeaders: GroupLeaderAgg[] = directGroupLeaderIds.flatMap((id) => buildGroupLeaderAgg(id, userRole));
       if (directAgentIds.length > 0) {
-        // لو رئيس مجموعة بيشوف تجميعاته الشخصية، الوكلاء المباشرين دول هما
-        // فريقه هو نفسه، فبيتسموا "إنتاج شخصي" مش "وكلاء مباشرون" — وده
-        // وضع طبيعي مش قفزة فى الهرم، فمن غير تصنيف.
-        const directLabel = userRole === 'group_leader'
-          ? 'إنتاج شخصي'
-          : directAgentIds.length === 1
-            ? (usersMap.get(directAgentIds[0])?.name ?? 'وكلاء مباشرون')
-            : 'وكلاء مباشرون';
-        groupLeaders.push({
-          id: user.id + '_direct',
-          name: directLabel,
-          ...sumAgentIds(directAgentIds),
-          roleNote: userRole === 'group_leader'
-            ? undefined
-            : hierarchySkipNote('agent', userRole, directAgentIds.length > 1),
-        });
+        if (userRole === 'group_leader') {
+          // لو رئيس مجموعة بيشوف تجميعاته الشخصية، الوكلاء المباشرين دول هما
+          // فريقه هو نفسه (وضع طبيعي مش قفزة فى الهرم)، فبيتجمّعوا فى صف
+          // واحد اسمه "إنتاج شخصي" من غير تصنيف — نفس السلوك السابق بالظبط.
+          groupLeaders.push({
+            id: user.id + '_direct',
+            name: PERSONAL_PRODUCTION_LABEL,
+            ...sumAgentIds(directAgentIds),
+          });
+        } else {
+          // مراقب فما فوق: كل وكيل تابع له مباشرة (من غير رئيس مجموعة) بياخد
+          // صف مستقل باسمه الحقيقي + تصنيف يوضّح تبعيته المباشرة والمستوى
+          // الناقص، بدل صف واحد مجهول اسمه "وكلاء مباشرون".
+          for (const aid of directAgentIds) {
+            groupLeaders.push({
+              id: aid,
+              name: usersMap.get(aid)?.name ?? DIRECT_AGENTS_LABEL,
+              ...sumAgentIds([aid]),
+              roleNote: hierarchySkipNote(roleOf(aid), userRole),
+            });
+          }
+        }
       }
       // بيانات المستخدم الحالي الشخصية لو باع/حصّل بنفسه — بتتحط كصف
       // مستقل باسم "إنتاج شخصي" زي أي صف تاني، عشان تبان لوحدها. لو هو
@@ -463,6 +497,22 @@ export function buildMonthlyClosingSummary(
 
   // ── تفاصيل العمليات المسددة — قائمة مسطّحة ──
 
+  /**
+   * تصنيف رئيس المجموعة نفسه، محسوب من مديره الفعلي فى الشجرة (مش من صاحب
+   * التقرير) — عشان نفس رئيس المجموعة يطلع بنفس التصنيف بالحرف فى كل صفوفه:
+   * صف إنتاجه الشخصي وصفوف وكلائه على حدٍ سواء.
+   * `fallbackManagerRole` بتُستخدم بس لو مدير رئيس المجموعة نفسه غير موجود
+   * فى بيانات المستخدمين (بيانات ناقصة) — فبنرجع لسلوك أقرب مستوى معروف.
+   */
+  const groupLeaderOwnNote = (
+    groupLeaderId: string,
+    fallbackManagerRole: UserRole
+  ): string | undefined => {
+    const managerId = managerOf(groupLeaderId);
+    const managerRole = managerId ? roleOf(managerId) : undefined;
+    return hierarchySkipNote('group_leader', managerRole ?? fallbackManagerRole);
+  };
+
   const resolveHierarchyNames = (agentId: string) => {
     const agent = usersMap.get(agentId);
     const agentName = agent?.name || '';
@@ -474,7 +524,11 @@ export function buildMonthlyClosingSummary(
       // الوظيفي الحقيقي "رئيس المجموعة"، وعمود "الوكيل" يتكتب فيه
       // "إنتاج شخصي" بدل تكرار اسمه فيه.
       if (agentRole === 'group_leader') {
-        return { supervisorName: user.name, supervisorRole: userRole, groupLeaderName: agentName, agentName: PERSONAL_PRODUCTION_LABEL };
+        return {
+          supervisorName: user.name, supervisorRole: userRole,
+          groupLeaderName: agentName, agentName: PERSONAL_PRODUCTION_LABEL,
+          groupLevelNote: groupLeaderOwnNote(agentId, userRole),
+        };
       }
       // صاحب الإنتاج نفسه مراقب (اللي بيطبع التقرير) وباع/حصّل بنفسه —
       // اسمه أصلاً فى عمود المراقب، والعمودين التاليين "إنتاج شخصي".
@@ -482,15 +536,33 @@ export function buildMonthlyClosingSummary(
         return { supervisorName: agentName, supervisorRole: agentRole!, groupLeaderName: PERSONAL_PRODUCTION_LABEL, agentName: PERSONAL_PRODUCTION_LABEL };
       }
 
-      let groupLeaderName = DIRECT_AGENTS_LABEL;
+      // بندوّر على رئيس المجموعة بين الوكيل والمراقب. لو مفيش (الوكيل تابع
+      // للمراقب مباشرة)، بنكتب اسم الوكيل نفسه فى مستوى "رئيس المجموعة" مع
+      // تصنيف يوضّح تبعيته المباشرة — بدل عنوان عام "وكلاء مباشرون".
+      let groupLeaderName = '';
+      let groupLeaderId: string | null = null;
       let cur = agent ? managerOf(agentId) : null;
       while (cur && cur !== user.id) {
         const m = usersMap.get(cur);
         if (!m) break;
-        if (roleOf(cur) === 'group_leader') { groupLeaderName = m.name; break; }
+        if (roleOf(cur) === 'group_leader') { groupLeaderName = m.name; groupLeaderId = cur; break; }
         cur = managerOf(cur);
       }
-      return { supervisorName: user.name, supervisorRole: userRole, groupLeaderName, agentName };
+      if (!groupLeaderName) {
+        return {
+          supervisorName: user.name, supervisorRole: userRole,
+          groupLeaderName: agentName, agentName,
+          groupLevelNote: hierarchySkipNote(agentRole!, userRole),
+          groupLevelIsOwner: true,
+        };
+      }
+      return {
+        supervisorName: user.name, supervisorRole: userRole, groupLeaderName, agentName,
+        // تصنيف رئيس المجموعة نفسه (لو تابع لمستوى أعلى من المتوقع مباشرة) —
+        // بيتحسب من مديره الفعلي عشان يفضل ثابت فى كل صفوفه، سواء كان الصف
+        // ده لأحد وكلائه أو لإنتاجه الشخصي.
+        groupLevelNote: groupLeaderId ? groupLeaderOwnNote(groupLeaderId, userRole) : undefined,
+      };
     }
 
     // صاحب الإنتاج نفسه رئيس مجموعة (إنتاج شخصي) فى تقرير مستخدم أعلى منه —
@@ -508,7 +580,13 @@ export function buildMonthlyClosingSummary(
         cur = managerOf(cur);
       }
       if (!supervisorName) { supervisorName = user.name; supervisorRole = userRole; }
-      return { supervisorName, supervisorRole, groupLeaderName: agentName, agentName: PERSONAL_PRODUCTION_LABEL };
+      return {
+        supervisorName, supervisorRole,
+        groupLeaderName: agentName, agentName: PERSONAL_PRODUCTION_LABEL,
+        // رئيس مجموعة تابع للمراقب العام (أو أعلى) مباشرة من غير مراقب —
+        // بيتوضح تحت اسمه بدل ما يبان وكأنه تحت مراقب عادي.
+        groupLevelNote: groupLeaderOwnNote(agentId, supervisorRole),
+      };
     }
 
     // صاحب الإنتاج نفسه مراقب (أو مستوى إدارى أعلى) — اسمه فى عمود
@@ -518,6 +596,7 @@ export function buildMonthlyClosingSummary(
     }
 
     let groupLeaderName = '';
+    let groupLeaderId: string | null = null;
     let supervisorName = '';
     let supervisorRole: UserRole = userRole;
     let cur = agent ? managerOf(agentId) : null;
@@ -525,24 +604,43 @@ export function buildMonthlyClosingSummary(
       const m = usersMap.get(cur);
       if (!m) break;
       const mRole = roleOf(cur);
-      if (!groupLeaderName && mRole === 'group_leader') groupLeaderName = m.name;
-      if (!supervisorName && mRole === 'supervisor') { supervisorName = m.name; supervisorRole = mRole; }
+      if (!groupLeaderName && mRole === 'group_leader') { groupLeaderName = m.name; groupLeaderId = cur; }
+      // أول مستوى إدارى (مراقب فما فوق) فوق الوكيل هو اللى بيتكتب فى مستوى
+      // "المراقب" — قبل كده كان بيتلقط دور 'supervisor' حرفيًا بس، فوكيل
+      // تابع لمراقب عام مباشرة كان بياخد اسم صاحب التقرير بالغلط.
+      if (!supervisorName && getRoleLevel(mRole) <= 4) { supervisorName = m.name; supervisorRole = mRole; }
       if (cur === user.id) break;
       cur = managerOf(cur);
     }
     if (!supervisorName) { supervisorName = user.name; supervisorRole = userRole; }
-    if (!groupLeaderName) groupLeaderName = DIRECT_AGENTS_LABEL;
-    return { supervisorName, supervisorRole, groupLeaderName, agentName };
+    if (!groupLeaderName) {
+      // وكيل تابع لمستوى إدارى مباشرة من غير رئيس مجموعة: اسمه هو نفسه
+      // اللى بيتكتب فى مستوى "رئيس المجموعة" + تصنيف تبعيته المباشرة.
+      return {
+        supervisorName, supervisorRole,
+        groupLeaderName: agentName, agentName,
+        groupLevelNote: hierarchySkipNote(agentRole!, supervisorRole),
+        groupLevelIsOwner: true,
+      };
+    }
+    return {
+      supervisorName, supervisorRole, groupLeaderName, agentName,
+      // نفس التصنيف اللى بيظهر تحت اسم رئيس المجموعة فى صف إنتاجه الشخصي —
+      // بيتكرر هنا فى صفوف وكلائه عشان الشجرة تبان متسقة فى كل الصفحة.
+      groupLevelNote: groupLeaderId ? groupLeaderOwnNote(groupLeaderId, supervisorRole) : undefined,
+    };
   };
 
   const detailRows: PrintDetailRow[] = payments.map((p) => {
     const ownerId = p.installment.policy.owner_id;
-    const { supervisorName, supervisorRole, groupLeaderName, agentName } = resolveHierarchyNames(ownerId);
+    const { supervisorName, supervisorRole, groupLeaderName, agentName, groupLevelNote, groupLevelIsOwner } = resolveHierarchyNames(ownerId);
     return {
       supervisorName,
       supervisorRole,
       groupLeaderName,
       agentName,
+      groupLevelNote,
+      groupLevelIsOwner,
       customerName: p.installment.policy.customer.name,
       policyNumber: p.installment.policy.policy_number,
       installmentNumber: p.installment.installment_number,

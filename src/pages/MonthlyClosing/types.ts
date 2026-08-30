@@ -93,6 +93,16 @@ export interface PrintDetailRow {
   supervisorRole: UserRole;
   groupLeaderName: string;
   agentName: string;
+  /** تصنيف يوضّح التبعية الحقيقية لصاحب الاسم المكتوب فى مستوى "رئيس
+   * المجموعة" (groupLeaderName) لما يكون تابعًا لمستوى إداري أعلى من المتوقع
+   * مباشرة — مثلاً وكيل تابع المراقب من غير رئيس مجموعة، أو رئيس مجموعة تابع
+   * المراقب العام من غير مراقب. بيتعرض كسطر صغير تحت الاسم فى صفحات التفاصيل
+   * بدل عنوان عام مجهول الهوية زى "وكلاء مباشرون". */
+  groupLevelNote?: string;
+  /** true لو الاسم المكتوب فى مستوى "رئيس المجموعة" هو صاحب الإنتاج نفسه
+   * (وكيل تابع لمستوى إدارى مباشرة من غير رئيس مجموعة) — وقتها مفيش داعى
+   * لتكرار نفس الاسم فى سطر الوكيل تحته. */
+  groupLevelIsOwner?: boolean;
   customerName: string;
   policyNumber: string;
   installmentNumber: number;

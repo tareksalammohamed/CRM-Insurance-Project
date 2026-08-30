@@ -2,7 +2,7 @@ import { ROLE_LABELS } from '../../../lib/supabase';
 import { useSettings } from '../../../hooks/useSettings';
 import type { SupervisorAgg, PrintDetailRow } from '../types';
 import { fmt, last6 } from '../utils';
-import { PERSONAL_PRODUCTION_LABEL, DIRECT_AGENTS_LABEL } from '../business/monthlyClosingCalculator';
+import { PERSONAL_PRODUCTION_LABEL } from '../business/monthlyClosingCalculator';
 
 // عدد صفوف عمليات السداد في كل صفحة مطبوعة. بنقسّم الصفوف يدويًا لمجموعات
 // بدل ما نسيب المتصفح يقسّم جدول واحد طويل على الصفحات، عشان:
@@ -39,7 +39,16 @@ function subtotalLabel(entry: { supervisorName: string; groupLeaderName: string;
 // في صفحة التفاصيل نفسها.
 type PrintDetailEntry =
   | { kind: 'row'; row: PrintDetailRow }
-  | { kind: 'subtotal'; supervisorName: string; supervisorRole: PrintDetailRow['supervisorRole']; groupLeaderName: string; agentName: string; amount: number };
+  | {
+      kind: 'subtotal';
+      supervisorName: string;
+      supervisorRole: PrintDetailRow['supervisorRole'];
+      groupLeaderName: string;
+      agentName: string;
+      groupLevelNote?: string;
+      groupLevelIsOwner?: boolean;
+      amount: number;
+    };
 
 // بنبني كل وكيل كـ"مجموعة" واحدة (صفوفه + صف إجماليه) بدل قائمة مسطّحة،
 // عشان صفحة التفاصيل تقدر تتعامل مع كل مجموعة ككتلة واحدة متلاصقة ومتقسّمش
@@ -69,6 +78,8 @@ function buildDetailGroups(rows: PrintDetailRow[]): PrintDetailEntry[][] {
         supervisorRole: cur.supervisorRole,
         groupLeaderName: cur.groupLeaderName,
         agentName: cur.agentName,
+        groupLevelNote: cur.groupLevelNote,
+        groupLevelIsOwner: cur.groupLevelIsOwner,
         amount: sum,
       });
       groups.push(groupEntries);
@@ -128,7 +139,14 @@ function chunkPageIntoAgentBlocks(entries: PrintDetailEntry[]): PrintDetailEntry
 // بناخدها من صف الإجمالي لو موجود، أو من أول صف عادي لو المجموعة اتقسّمت
 // على أكتر من صفحة (حالة نادرة: وكيل عملياته لوحدها أكبر من صفحة). ده مجرد
 // قراءة بيانات موجودة أصلاً فى الصفوف، من غير أي حساب جديد.
-function blockContext(block: PrintDetailEntry[]): { supervisorName: string; supervisorRole: PrintDetailRow['supervisorRole']; groupLeaderName: string; agentName: string } {
+function blockContext(block: PrintDetailEntry[]): {
+  supervisorName: string;
+  supervisorRole: PrintDetailRow['supervisorRole'];
+  groupLeaderName: string;
+  agentName: string;
+  groupLevelNote?: string;
+  groupLevelIsOwner?: boolean;
+} {
   const withFields = block.find((e) => e.kind === 'subtotal') ?? block.find((e) => e.kind === 'row');
   if (!withFields) return { supervisorName: '', supervisorRole: 'supervisor', groupLeaderName: '', agentName: '' };
   return withFields.kind === 'subtotal'
@@ -347,6 +365,13 @@ export function PrintReport({
           background: #e2e8f0 !important; color: #1f2937; font-weight: 800;
           text-align: right; padding: 5px 10px; padding-right: 38px; font-size: 11px;
           border-right: 4px solid #94a3b8 !important;
+        }
+        /* سطر التصنيف تحت الاسم فى صفحات التفاصيل: يوضّح التبعية الحقيقية
+           (مثلاً "وكيل يتبع المراقب مباشرة — بدون رئيس مجموعة") بخط أصغر
+           وأخف من الاسم عشان الاسم يفضل هو العنصر الأقوى بصريًا. */
+        .print-report .pr-level-note {
+          margin-top: 2px; font-size: 9.5px; font-weight: 700;
+          letter-spacing: 0.1px; opacity: 0.92;
         }
         /* شارة ملوّنة أعلى كل صفحة تفاصيل توضّح فورًا إن الصفحة دي كاملة
            خاصة بقسم "الإنتاج الجديد" أو قسم "التحصيل" — بدل عمود "نوع
@@ -628,15 +653,25 @@ export function PrintReport({
                         {showGroupLeaderHeader && (
                           <tr className="pr-detail-gl-header">
                             <td colSpan={4}>
-                              {ctx.groupLeaderName === DIRECT_AGENTS_LABEL
-                                ? `وكلاء يتبعون ${ROLE_LABELS[ctx.supervisorRole]} مباشرة (بدون رئيس مجموعة)`
+                              {/* الاسم الحقيقي دايمًا — سواء رئيس مجموعة فعلي، أو
+                                  صاحب الإنتاج نفسه لما يكون تابعًا لمستوى إدارى
+                                  مباشرة (وقتها التصنيف تحته بيوضّح تبعيته). */}
+                              {ctx.groupLevelIsOwner || ctx.groupLevelNote
+                                ? ctx.groupLeaderName
                                 : `رئيس المجموعة: ${ctx.groupLeaderName}`}
+                              {ctx.groupLevelNote && (
+                                <div className="pr-level-note">{ctx.groupLevelNote}</div>
+                              )}
                             </td>
                           </tr>
                         )}
-                        <tr className="pr-detail-agent-header">
-                          <td colSpan={4}>{subtotalLabel(ctx)}</td>
-                        </tr>
+                        {/* لو الاسم اللى فوق هو صاحب الإنتاج نفسه، مفيش داعى
+                            نكرره تانى فى سطر الوكيل تحته مباشرة. */}
+                        {!ctx.groupLevelIsOwner && (
+                          <tr className="pr-detail-agent-header">
+                            <td colSpan={4}>{subtotalLabel(ctx)}</td>
+                          </tr>
+                        )}
                         {block.map((entry, i) => {
                           if (entry.kind === 'subtotal') {
                             return (
