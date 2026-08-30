@@ -27,6 +27,7 @@ import {
 import type { Branch } from '../../features/branches/types';
 import { buildMonthlyClosingSummary } from './business/monthlyClosingCalculator';
 import { printWithTitle } from '../../lib/printWithTitle';
+import { saveElementAsImages } from '../../lib/saveAsImage';
 import { useNotify } from '../../lib/notify';
 
 // ─── component ────────────────────────────────────────────
@@ -35,6 +36,8 @@ export function MonthlyClosing() {
   const notify = useNotify();
   const { currentBranchId } = useBranchContext();
   const printRef = useRef<HTMLDivElement>(null);
+  // عنصر التقرير المطبوع نفسه — بيتصوّر كما هو عند "حفظ كصورة"
+  const printReportRef = useRef<HTMLDivElement>(null);
 
   const [selectedMonth, setSelectedMonth] = useState(startOfMonth(new Date()));
   const [loading, setLoading]             = useState(true);
@@ -52,6 +55,7 @@ export function MonthlyClosing() {
   // فروع حقيقية (جدول branches) بدل حقل نصي حر، لكن القيمة المخزّنة والمستخدمة
   // فى PrintReport.tsx نصية زي ما هي بالظبط من غير أي تعديل هناك.
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [savingImage, setSavingImage]     = useState(false);
   const [branchName, setBranchName]       = useState('');
   const [printBranches, setPrintBranches] = useState<Branch[]>([]);
   const [printClosingDate, setPrintClosingDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
@@ -203,11 +207,39 @@ export function MonthlyClosing() {
     // تانية زي تحصيل السنة الثانية) — ده بيرسم النص العربي صح تمامًا لأنه
     // محرك الرسم الأصلي بتاع المتصفح، عكس أي تصوير بالـ html2canvas.
     setShowPrintModal(false);
-    const printMonthLabel = format(selectedMonth, 'MMMM yyyy', { locale: ar });
-    setTimeout(
-      () => printWithTitle(`تقفيل-${printMonthLabel}${branchName ? `-${branchName}` : ''}`),
-      100
-    );
+    setTimeout(() => printWithTitle(printFileName), 100);
+  };
+
+  // اسم ملف موحّد للطباعة/حفظ PDF وللصور — عشان الاتنين ينزلوا بنفس الاسم
+  const printFileName = `تقفيل-${format(selectedMonth, 'MMMM yyyy', { locale: ar })}${branchName ? `-${branchName}` : ''}`;
+
+  /**
+   * حفظ نفس التقرير المطبوع كصور PNG بدل الطباعة.
+   *
+   * بنستخدم نفس عنصر PrintReport الموجود فى الصفحة (المخفي بـhidden
+   * print:block) كمصدر للتصوير — فالصورة تطلع مطابقة للورق بالظبط. الأداة
+   * بتاخد نسخة منه فى مسرح مؤقت وتقسّمه صور بعدد صفحات الورق، والصفحة
+   * الأصلية مابتتأثرش خالص. تفاصيل التنفيذ فى src/lib/saveAsImage.ts.
+   */
+  const handleSaveImage = async () => {
+    if (savingImage) return;
+    setSavingImage(true);
+    try {
+      const result = await saveElementAsImages(printReportRef.current, {
+        fileName: printFileName,
+      });
+      setShowPrintModal(false);
+      notify.success(
+        result.pages > 1
+          ? `تم حفظ التقرير فى ${result.pages} صور PNG`
+          : 'تم حفظ التقرير كصورة PNG'
+      );
+    } catch (error) {
+      console.error('save closing report as image failed:', error);
+      notify.error('تعذّر حفظ التقرير كصورة. حاول مرة أخرى');
+    } finally {
+      setSavingImage(false);
+    }
   };
 
   const isCurrentMonth = isSameMonth(selectedMonth, new Date());
@@ -500,6 +532,7 @@ export function MonthlyClosing() {
             grandProduction={grandProduction}
             grandCollection={grandCollection}
             grandTotal={grandTotal}
+            containerRef={printReportRef}
           />
         </>
       )}
@@ -514,6 +547,8 @@ export function MonthlyClosing() {
           setPrintClosingDate={setPrintClosingDate}
           onClose={() => setShowPrintModal(false)}
           onConfirm={handleConfirmPrint}
+          onSaveImage={handleSaveImage}
+          savingImage={savingImage}
         />
       )}
 

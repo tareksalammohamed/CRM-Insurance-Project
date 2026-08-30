@@ -49,12 +49,23 @@ function missingLevelsNote(subordinateRole: UserRole, managerRole: UserRole): st
 // وكذلك المستوى/المستويات الإدارية الناقصة (مثلاً "وكيل يتبع المراقب
 // مباشرة — بدون رئيس مجموعة")، وترجع undefined لو مفيش قفزة (يعني
 // المدير هو نفسه المستوى المتوقع طبيعيًا).
-function hierarchySkipNote(subordinateRole: UserRole, managerRole: UserRole, plural = false): string | undefined {
+function hierarchySkipNote(
+  subordinateRole: UserRole,
+  managerRole: UserRole,
+  plural = false,
+  managerName?: string,
+): string | undefined {
   const expectedManagerLevel = getRoleLevel(subordinateRole) - 1;
   if (getRoleLevel(managerRole) >= expectedManagerLevel) return undefined;
   const subordinateLabel = subordinateRole === 'agent' && plural ? 'وكلاء' : ROLE_LABELS[subordinateRole];
   const verb = plural ? 'يتبعون' : 'يتبع';
-  const base = `${subordinateLabel} ${verb} ${ROLE_LABELS[managerRole]} مباشرة`;
+  // بعد الدرجة الوظيفية للمدير بيتكتب اسمه الحقيقي — "وكيل يتبع المراقب
+  // أحمد محمد مباشرة" بدل "وكيل يتبع المراقب مباشرة" اللى ما كانش بيوضّح
+  // مين المراقب المقصود بالظبط لما التقرير بيجمع أكتر من مراقب.
+  const managerLabel = managerName?.trim()
+    ? `${ROLE_LABELS[managerRole]} ${managerName.trim()}`
+    : ROLE_LABELS[managerRole];
+  const base = `${subordinateLabel} ${verb} ${managerLabel} مباشرة`;
   const missing = missingLevelsNote(subordinateRole, managerRole);
   return missing ? `${base} — ${missing}` : base;
 }
@@ -292,6 +303,23 @@ export function buildMonthlyClosingSummary(
   // ── بيانات التقرير المطبوع (هيكل إداري بحت) ──
   const isSupervisorPrinter = userRole === 'supervisor';
 
+  /**
+   * التقرير المطبوع بيعرض بس اللى عندهم حركة فعلية فى الشهر — أى حد
+   * (وكيل / رئيس مجموعة / مراقب / مراقب عام... إلخ) مالوش ولا مليم إنتاج
+   * جديد ولا تحصيل مابيتكتبش اسمه خالص فى الورق، بدل ما ياخد صف بأصفار
+   * يطوّل التقرير ويشغل صفحات من غير أى معلومة.
+   *
+   * بنفحص الإنتاج والتحصيل كل واحد لوحده (مش الإجمالي) عشان لو حصل عمليات
+   * متعاكسة (مبلغ موجب وسالب بيلغوا بعض) يفضل الصف ظاهر لأن فيه حركة فعلية
+   * تستحق المراجعة، مش سكوت تام.
+   *
+   * ملحوظة مهمة: الفلتر ده على العرض بس. الإجماليات الكبرى (grandProduction /
+   * grandCollection) محسوبة من شجرة البيانات الأصلية مش من الصفوف المعروضة،
+   * والصفوف المحجوبة أصفار أصلاً — فالأرقام مابتتأثرش بحرف.
+   */
+  const hasMovement = (r: { production: number; collection: number }): boolean =>
+    r.production !== 0 || r.collection !== 0;
+
   const getAgentIdsUnder = (managerId: string): string[] => {
     const result: string[] = [];
     const kids = childrenOf.get(managerId) || [];
@@ -313,7 +341,7 @@ export function buildMonthlyClosingSummary(
     return { production, collection, total };
   };
 
-  const buildGroupLeaderAgg = (glId: string, managerRole: UserRole): GroupLeaderAgg[] => {
+  const buildGroupLeaderAgg = (glId: string, managerRole: UserRole, managerName?: string): GroupLeaderAgg[] => {
     const gl = usersMap.get(glId)!;
     const ids = getAgentIdsUnder(glId);
     const agentsSum = sumAgentIds(ids);
@@ -323,7 +351,7 @@ export function buildMonthlyClosingSummary(
     const production = agentsSum.production + (own?.production ?? 0);
     const collection = agentsSum.collection + (own?.collection ?? 0);
     const total = agentsSum.total + (own?.total ?? 0);
-    const roleNote = hierarchySkipNote('group_leader', managerRole);
+    const roleNote = hierarchySkipNote('group_leader', managerRole, false, managerName);
     return [{ id: glId, name: gl.name, production, collection, total, roleNote }];
   };
 
@@ -341,7 +369,7 @@ export function buildMonthlyClosingSummary(
       const kuRole = roleOf(kid);
       const lvl = getRoleLevel(kuRole);
       if (kuRole === 'group_leader') {
-        groupLeaders.push(...buildGroupLeaderAgg(kid, supRole));
+        groupLeaders.push(...buildGroupLeaderAgg(kid, supRole, sup?.name));
       } else if (lvl >= 6) {
         directAgentIds.push(kid);
       } else if (lvl === getRoleLevel(supRole) + 1) {
@@ -362,7 +390,7 @@ export function buildMonthlyClosingSummary(
           production: nested.production,
           collection: nested.collection,
           total: nested.total,
-          roleNote: hierarchySkipNote(kuRole, supRole),
+          roleNote: hierarchySkipNote(kuRole, supRole, false, sup?.name),
         });
       }
     }
@@ -375,7 +403,7 @@ export function buildMonthlyClosingSummary(
         id: aid,
         name: usersMap.get(aid)?.name ?? DIRECT_AGENTS_LABEL,
         ...sumAgentIds([aid]),
-        roleNote: hierarchySkipNote(roleOf(aid), supRole),
+        roleNote: hierarchySkipNote(roleOf(aid), supRole, false, sup?.name),
       });
     }
 
@@ -399,13 +427,21 @@ export function buildMonthlyClosingSummary(
       });
     }
 
+    // الإجماليات بتتحسب من القائمة الكاملة قبل أى حجب، فحجب صفوف الأصفار
+    // مستحيل يأثر على أى رقم — والصفوف المحجوبة أصفار أصلاً.
     const totals = groupLeaders.reduce((acc, g) => ({
       production: acc.production + g.production,
       collection: acc.collection + g.collection,
       total: acc.total + g.total,
     }), { production: 0, collection: 0, total: 0 });
 
-    return { id: supId, name: nameOverride ?? sup?.name ?? '', role: supRole, groupLeaders, ...totals };
+    return {
+      id: supId, name: nameOverride ?? sup?.name ?? '', role: supRole,
+      // اللى مالوش حركة فى الشهر مابياخدش صف فى الورق (طلب صريح: مايتكتبش
+      // اسمه خالص لو مفيش إنتاج جديد ولا تحصيل).
+      groupLeaders: groupLeaders.filter(hasMovement),
+      ...totals,
+    };
   };
 
   const printSupervisorList: SupervisorAgg[] = [];
@@ -434,7 +470,7 @@ export function buildMonthlyClosingSummary(
     }
 
     if (directGroupLeaderIds.length > 0 || directAgentIds.length > 0 || agentMap.has(user.id)) {
-      const groupLeaders: GroupLeaderAgg[] = directGroupLeaderIds.flatMap((id) => buildGroupLeaderAgg(id, userRole));
+      const groupLeaders: GroupLeaderAgg[] = directGroupLeaderIds.flatMap((id) => buildGroupLeaderAgg(id, userRole, user.name));
       if (directAgentIds.length > 0) {
         if (userRole === 'group_leader') {
           // لو رئيس مجموعة بيشوف تجميعاته الشخصية، الوكلاء المباشرين دول هما
@@ -454,7 +490,7 @@ export function buildMonthlyClosingSummary(
               id: aid,
               name: usersMap.get(aid)?.name ?? DIRECT_AGENTS_LABEL,
               ...sumAgentIds([aid]),
-              roleNote: hierarchySkipNote(roleOf(aid), userRole),
+              roleNote: hierarchySkipNote(roleOf(aid), userRole, false, user.name),
             });
           }
         }
@@ -483,17 +519,27 @@ export function buildMonthlyClosingSummary(
           });
         }
       }
+      // نفس الملحوظة: الإجماليات من القائمة الكاملة قبل الحجب.
       const totals = groupLeaders.reduce((acc, g) => ({
         production: acc.production + g.production,
         collection: acc.collection + g.collection,
         total: acc.total + g.total,
       }), { production: 0, collection: 0, total: 0 });
       printSupervisorList.push({
-        id: user.id, name: user.name, role: userRole, groupLeaders, ...totals,
+        id: user.id, name: user.name, role: userRole,
+        groupLeaders: groupLeaders.filter(hasMovement),
+        ...totals,
         isSelfReport: userRole === 'group_leader',
       });
     }
   }
+
+  // مراقب/مراقب عام فريقه كله مالوش أى حركة فى الشهر — بلوكه بالكامل
+  // (عنوانه + جدوله + صف إجماليه) مابيتطبعش خالص، عشان الورق ما يمتليش
+  // بجداول أصفار. الإجماليات الكبرى محسوبة برّه القائمة دى فمابتتأثرش.
+  const visiblePrintSupervisors = printSupervisorList.filter(
+    (sv) => hasMovement(sv) || sv.groupLeaders.length > 0
+  );
 
   // ── تفاصيل العمليات المسددة — قائمة مسطّحة ──
 
@@ -501,16 +547,21 @@ export function buildMonthlyClosingSummary(
    * تصنيف رئيس المجموعة نفسه، محسوب من مديره الفعلي فى الشجرة (مش من صاحب
    * التقرير) — عشان نفس رئيس المجموعة يطلع بنفس التصنيف بالحرف فى كل صفوفه:
    * صف إنتاجه الشخصي وصفوف وكلائه على حدٍ سواء.
-   * `fallbackManagerRole` بتُستخدم بس لو مدير رئيس المجموعة نفسه غير موجود
-   * فى بيانات المستخدمين (بيانات ناقصة) — فبنرجع لسلوك أقرب مستوى معروف.
+   * `fallbackManagerRole`/`fallbackManagerName` بيُستخدموا بس لو مدير رئيس
+   * المجموعة نفسه غير موجود فى بيانات المستخدمين (بيانات ناقصة) — فبنرجع
+   * لسلوك أقرب مستوى معروف.
    */
   const groupLeaderOwnNote = (
     groupLeaderId: string,
-    fallbackManagerRole: UserRole
+    fallbackManagerRole: UserRole,
+    fallbackManagerName?: string,
   ): string | undefined => {
     const managerId = managerOf(groupLeaderId);
+    const manager = managerId ? usersMap.get(managerId) : undefined;
     const managerRole = managerId ? roleOf(managerId) : undefined;
-    return hierarchySkipNote('group_leader', managerRole ?? fallbackManagerRole);
+    return managerRole
+      ? hierarchySkipNote('group_leader', managerRole, false, manager?.name)
+      : hierarchySkipNote('group_leader', fallbackManagerRole, false, fallbackManagerName);
   };
 
   const resolveHierarchyNames = (agentId: string) => {
@@ -527,7 +578,7 @@ export function buildMonthlyClosingSummary(
         return {
           supervisorName: user.name, supervisorRole: userRole,
           groupLeaderName: agentName, agentName: PERSONAL_PRODUCTION_LABEL,
-          groupLevelNote: groupLeaderOwnNote(agentId, userRole),
+          groupLevelNote: groupLeaderOwnNote(agentId, userRole, user.name),
         };
       }
       // صاحب الإنتاج نفسه مراقب (اللي بيطبع التقرير) وباع/حصّل بنفسه —
@@ -552,7 +603,7 @@ export function buildMonthlyClosingSummary(
         return {
           supervisorName: user.name, supervisorRole: userRole,
           groupLeaderName: agentName, agentName,
-          groupLevelNote: hierarchySkipNote(agentRole!, userRole),
+          groupLevelNote: hierarchySkipNote(agentRole!, userRole, false, user.name),
           groupLevelIsOwner: true,
         };
       }
@@ -561,7 +612,7 @@ export function buildMonthlyClosingSummary(
         // تصنيف رئيس المجموعة نفسه (لو تابع لمستوى أعلى من المتوقع مباشرة) —
         // بيتحسب من مديره الفعلي عشان يفضل ثابت فى كل صفوفه، سواء كان الصف
         // ده لأحد وكلائه أو لإنتاجه الشخصي.
-        groupLevelNote: groupLeaderId ? groupLeaderOwnNote(groupLeaderId, userRole) : undefined,
+        groupLevelNote: groupLeaderId ? groupLeaderOwnNote(groupLeaderId, userRole, user.name) : undefined,
       };
     }
 
@@ -585,7 +636,7 @@ export function buildMonthlyClosingSummary(
         groupLeaderName: agentName, agentName: PERSONAL_PRODUCTION_LABEL,
         // رئيس مجموعة تابع للمراقب العام (أو أعلى) مباشرة من غير مراقب —
         // بيتوضح تحت اسمه بدل ما يبان وكأنه تحت مراقب عادي.
-        groupLevelNote: groupLeaderOwnNote(agentId, supervisorRole),
+        groupLevelNote: groupLeaderOwnNote(agentId, supervisorRole, supervisorName),
       };
     }
 
@@ -619,7 +670,7 @@ export function buildMonthlyClosingSummary(
       return {
         supervisorName, supervisorRole,
         groupLeaderName: agentName, agentName,
-        groupLevelNote: hierarchySkipNote(agentRole!, supervisorRole),
+        groupLevelNote: hierarchySkipNote(agentRole!, supervisorRole, false, supervisorName),
         groupLevelIsOwner: true,
       };
     }
@@ -627,7 +678,7 @@ export function buildMonthlyClosingSummary(
       supervisorName, supervisorRole, groupLeaderName, agentName,
       // نفس التصنيف اللى بيظهر تحت اسم رئيس المجموعة فى صف إنتاجه الشخصي —
       // بيتكرر هنا فى صفوف وكلائه عشان الشجرة تبان متسقة فى كل الصفحة.
-      groupLevelNote: groupLeaderId ? groupLeaderOwnNote(groupLeaderId, supervisorRole) : undefined,
+      groupLevelNote: groupLeaderId ? groupLeaderOwnNote(groupLeaderId, supervisorRole, supervisorName) : undefined,
     };
   };
 
@@ -661,7 +712,7 @@ export function buildMonthlyClosingSummary(
     directAgents: directAgentList,
     grandProduction: totalProd,
     grandCollection: totalColl,
-    printSupervisors: printSupervisorList,
+    printSupervisors: visiblePrintSupervisors,
     printDetailRows: detailRows,
   };
 }

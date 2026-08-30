@@ -1,3 +1,4 @@
+import type { Ref } from 'react';
 import { ROLE_LABELS } from '../../../lib/supabase';
 import { useSettings } from '../../../hooks/useSettings';
 import type { SupervisorAgg, PrintDetailRow } from '../types';
@@ -160,6 +161,7 @@ export function PrintReport({
   supervisorName, supervisorRoleLabel, monthLabel, closingDate, branchName,
   printSupervisors, printDetailRows,
   grandProduction, grandCollection, grandTotal,
+  containerRef,
 }: {
   supervisorName: string;
   supervisorRoleLabel: string;
@@ -171,6 +173,8 @@ export function PrintReport({
   grandProduction: number;
   grandCollection: number;
   grandTotal: number;
+  /** يمسك بعنصر التقرير نفسه عشان "حفظ كصورة" يقدر يصوّره كما هو */
+  containerRef?: Ref<HTMLDivElement>;
 }) {
   const { branding } = useSettings();
 
@@ -194,7 +198,7 @@ export function PrintReport({
   const totalAggPages = 1;
 
   return (
-    <div className="hidden print:block print-report" dir="rtl">
+    <div ref={containerRef} className="hidden print:block print-report" dir="rtl">
       <style>{`
         @media print {
           @page { size: A4; margin: 16mm 12mm 14mm; }
