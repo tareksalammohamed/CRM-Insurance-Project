@@ -79,15 +79,17 @@ export async function fetchTeamUsers(userIds: string[]) {
       const { data, error } = await supabase
         .from('users')
         .select('id, name, role, target, manager_id, is_active, deleted_at')
-        .in('id', userIds)
-        .eq('is_active', true)
-        .is('deleted_at', null);
+        .in('id', userIds);
       if (error) throw error;
       return data || [];
     },
     { emptyValue: [] as any[] },
   );
-  return result.data.filter((u: any) => u.is_active === true && !u.deleted_at);
+  // نُبقي كل أفراد النطاق داخل البيانات حتى تدخل مدفوعات العضو غير النشط
+  // في التجميع التاريخي للمدير، بينما computeTeamPerformance يقرر لاحقًا
+  // من يظهر في القائمة (النشط فقط). هذا يجعل صف طارق عند سمر مطابقًا
+  // لإجمالي طارق في حسابه دون تغيير قاعدة الحساب.
+  return result.data;
 }
 
 export async function fetchMonthPayments(monthStartStr: string) {
