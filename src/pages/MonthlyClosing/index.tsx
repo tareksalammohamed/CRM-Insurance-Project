@@ -163,6 +163,25 @@ export function MonthlyClosing() {
         managerHops += 1;
       }
 
+      // اسم الموقّع يُحدد من سلسلة المديرين المضافة للتقرير، وليس من دور
+      // المستخدم الذي ضغط زر الطباعة. هذا يضمن ظهور اسم سمر وتوقيعها عند
+      // طباعة المراقب نفسه.
+      let signer: (typeof printUsersData)[number] | undefined;
+      let signerId = branchRoles.get(user!.id)?.manager_id
+        ?? usersData.find((u) => u.id === user!.id)?.manager_id
+        ?? null;
+      let signerHops = 0;
+      while (signerId && signerHops < 8) {
+        const candidate = knownPrintUsers.get(signerId);
+        if (!candidate) break;
+        if (candidate.role === 'general_supervisor') {
+          signer = candidate;
+          break;
+        }
+        signerId = candidate.manager_id;
+        signerHops += 1;
+      }
+
       const printSummary = buildMonthlyClosingSummary(
         { id: user!.id, name: user!.name, role: user!.role },
         printUsersData,
@@ -175,7 +194,12 @@ export function MonthlyClosing() {
       setGrandCollection(screenSummary.grandCollection);
       setSupervisors(screenSummary.supervisors);
       setDirectAgents(screenSummary.directAgents);
-      setPrintSupervisors(printSummary.printSupervisors);
+      const printSupervisorsWithSigner = printSummary.printSupervisors.map((sv) => ({
+        ...sv,
+        generalSupervisorId: sv.generalSupervisorId ?? signer?.id,
+        generalSupervisorName: sv.generalSupervisorName ?? signer?.name,
+      }));
+      setPrintSupervisors(printSupervisorsWithSigner);
       setPrintDetailRows(printSummary.printDetailRows);
 
     } catch (err) {
