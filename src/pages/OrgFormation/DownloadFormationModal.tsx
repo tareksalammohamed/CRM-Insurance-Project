@@ -8,14 +8,14 @@ interface DownloadFormationModalProps {
   onPreview: (branchName: string, asOfDate: string) => void;
 }
 
-const todayStr = () => {
+const monthStartStr = () => {
   const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 };
 
 export function DownloadFormationModal({ onClose, onPreview }: DownloadFormationModalProps) {
   const [branchName, setBranchName] = useState('');
-  const [asOfDate, setAsOfDate] = useState(todayStr());
+  const [asOfDate, setAsOfDate] = useState(monthStartStr());
 
   const handlePreview = () => {
     onPreview(branchName.trim(), asOfDate);
@@ -57,7 +57,7 @@ export function DownloadFormationModal({ onClose, onPreview }: DownloadFormation
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-secondary-700 mb-1.5">اعتبارًا من</label>
+              <label className="block text-sm font-medium text-secondary-700 mb-1.5">تاريخ التشكيل</label>
               <div className="relative">
                 <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-secondary-400 pointer-events-none" />
                 <input
