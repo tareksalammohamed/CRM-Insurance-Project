@@ -20,10 +20,9 @@ export interface BranchRoleInfo {
 
 /**
  * "نطاق" المستخدم (هو نفسه + كل من تحته) — بيستخدم get_user_subtree_branch_aware
- * الجديدة (migration 054): لو branchId فاضي، بترجع بالظبط نفس نتيجة
- * get_user_subtree الأصلية (عابرة للفروع، بالاعتماد على users.manager_id)،
- * ولو branchId موجود، بتمشي فى السلسلة بالاعتماد على user_branch_roles
- * الخاصة بنفس الفرع بس.
+ * عند عدم تحديد branchId، نستخدم get_user_subtree الأصلية مباشرةً للحفاظ
+ * على المسار العام العابر للفروع. ولو branchId موجود، بتمشي فى السلسلة
+ * بالاعتماد على user_branch_roles الخاصة بنفس الفرع بس.
  */
 export async function fetchUserSubtreeIdsBranchAware(
   cacheKeyPrefix: string,
@@ -33,10 +32,14 @@ export async function fetchUserSubtreeIdsBranchAware(
   const result = await dalRead(
     `${cacheKeyPrefix}:subtree:${userId}:${branchId ?? 'none'}`,
     async () => {
-      const { data, error } = await supabase.rpc('get_user_subtree_branch_aware', {
-        user_id: userId,
-        branch_id: branchId ?? null,
-      });
+      const { data, error } = branchId
+        ? await supabase.rpc('get_user_subtree_branch_aware', {
+            user_id: userId,
+            branch_id: branchId,
+          })
+        : await supabase.rpc('get_user_subtree', {
+            user_id: userId,
+          });
       if (error) throw error;
       return (data as string[]) || [userId];
     },

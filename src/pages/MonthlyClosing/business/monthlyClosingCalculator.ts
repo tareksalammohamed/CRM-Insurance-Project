@@ -556,10 +556,14 @@ export function buildMonthlyClosingSummary(
         collection: acc.collection + g.collection,
         total: acc.total + g.total,
       }), { production: 0, collection: 0, total: 0 });
+      const target = usersMap.get(user.id)?.target ?? 0;
       printSupervisorList.push({
         id: user.id, name: user.name, role: userRole,
         groupLeaders: groupLeaders.filter(hasMovement),
         ...totals,
+        target,
+        achievementRate: target > 0 ? Math.round((totals.total / target) * 100) : 0,
+        directGroupLeaderCount: directGroupLeaderIds.length,
         isSelfReport: userRole === 'group_leader',
       });
     }
