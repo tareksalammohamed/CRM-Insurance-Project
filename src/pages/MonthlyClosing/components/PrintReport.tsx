@@ -371,7 +371,10 @@ export function PrintReport({
         .print-report .pr-memo-sign-line {
           width: 200px; border-bottom: 1.3px solid #9ca3af; height: 42px; margin-bottom: 6px;
         }
-        .print-report .pr-memo-sign-date { font-size: 10px; color: #6b7280; }
+        .print-report .pr-memo-sign-date {
+          display: block; width: 190px; margin-top: 2px;
+          text-align: center; font-size: 10px; color: #6b7280;
+        }
 
         /* جدول التفاصيل: عنوان التقرير ورأس الجدول يتكرران تلقائياً في كل صفحة مطبوعة */
         .print-report .pr-detail-table thead { display: table-header-group; }

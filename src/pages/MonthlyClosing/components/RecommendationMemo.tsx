@@ -22,13 +22,8 @@ function indefiniteRoleLabel(role: UserRole): string {
   return ROLE_LABELS[role].replace(/^ال/, '');
 }
 
-// الحالة الوحيدة اللى فيها توقيع يدوي حقيقي متاح مُسبقًا: مذكرة "طارق سلام"
-// تحديدًا (وافقت عليها المراقب العام سمر الهواري فعليًا بتوقيعها اليدوي على
-// نفس هذا القالب). أي مراقب تاني (حتى لو نفس المراقب العام) بياخد نفس
-// القالب باسم مراقبه العام الفعلي، لكن بمكان توقيع فاضي للتوقيع اليدوي —
-// لأن الموافقة دي لسه ما اتوقعتش فعليًا.
-const PRE_SIGNED_SUPERVISOR_NAME = 'طارق سلام';
-
+// التوقيع اليدوي المعتمد لسمر يُستخدم في مذكرة فرق التنسيب
+// ويظهر أسفل اسمها مباشرةً داخل مساحة التوقيع.
 export function RecommendationMemo({
   supervisor, branchName, monthLabel, printDate, branding, pageNumber,
 }: {
@@ -39,7 +34,7 @@ export function RecommendationMemo({
   branding: { company_name: string; company_logo_url: string | null };
   pageNumber: number;
 }) {
-  const hasPreSignedSignature = supervisor.name.trim() === PRE_SIGNED_SUPERVISOR_NAME;
+  const hasSupervisorSignature = Boolean(supervisor.generalSupervisorName);
   const generalSupervisorRoleLabel = indefiniteRoleLabel('general_supervisor');
   const scopeLabel = branchName ? ` ${branchName}` : '';
 
@@ -69,17 +64,17 @@ export function RecommendationMemo({
         <div className="pr-memo-sign-role">{generalSupervisorRoleLabel}{scopeLabel}</div>
         <div className="pr-memo-sign-name">{supervisor.generalSupervisorName || '\u00A0'}</div>
 
-        {hasPreSignedSignature && supervisor.generalSupervisorName ? (
+        {hasSupervisorSignature ? (
           <>
             <div className="pr-memo-signature-slot">
-              <img src={samarElhawarySignature} alt="التوقيع" className="pr-memo-sign-img" />
+              <img src={samarElhawarySignature} alt="" className="pr-memo-sign-img" />
             </div>
             <div className="pr-memo-sign-date">التاريخ: {printDate}</div>
           </>
         ) : (
           <>
             <div className="pr-memo-sign-line" />
-            <div className="pr-memo-sign-date">التوقيع: ______________&nbsp;&nbsp;&nbsp;التاريخ: {printDate}</div>
+            <div className="pr-memo-sign-date">التاريخ: {printDate}</div>
           </>
         )}
       </div>
