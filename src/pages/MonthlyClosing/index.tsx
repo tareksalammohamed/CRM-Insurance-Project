@@ -144,9 +144,28 @@ export function MonthlyClosing() {
         currentBranchId,
         branchRoles,
       );
+      // تقرير المراقب يحتاج اسم المراقب العام الموقّع، رغم أن نطاق الحساب
+      // يبدأ من المراقب ولا يحتوي على والديه. نضيف سلسلة المديرين للتقرير
+      // المطبوع فقط؛ لا نغيّر نطاق المدفوعات أو أي إجمالي في التقفيل.
+      const printUsersData = [...usersData];
+      const knownPrintUsers = new Map(printUsersData.map((u) => [u.id, u]));
+      let nextManagerId = branchRoles.get(user!.id)?.manager_id
+        ?? usersData.find((u) => u.id === user!.id)?.manager_id
+        ?? null;
+      let managerHops = 0;
+      while (nextManagerId && managerHops < 8 && !knownPrintUsers.has(nextManagerId)) {
+        const managers = await fetchUsersByIds([nextManagerId]);
+        const manager = managers[0];
+        if (!manager) break;
+        printUsersData.push(manager);
+        knownPrintUsers.set(manager.id, manager);
+        nextManagerId = manager.manager_id;
+        managerHops += 1;
+      }
+
       const printSummary = buildMonthlyClosingSummary(
         { id: user!.id, name: user!.name, role: user!.role },
-        usersData,
+        printUsersData,
         payments,
         currentBranchId,
         branchRoles,
