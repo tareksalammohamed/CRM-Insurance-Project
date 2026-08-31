@@ -2,6 +2,18 @@ import { createContext, useContext, useCallback, useEffect, useMemo, useState, R
 import { useAuth } from '../hooks/useAuth';
 import { fetchMyBranches, type MyBranchMembership } from './myBranches';
 import { filterVisibleMemberships } from './branchVisibility';
+import { getRoleLevel, type UserRole } from './supabase';
+
+// الأدوار اللي بطبيعتها بتشرف على أكتر من فرع فى نفس الوقت (مش وضع وظيفي
+// مقصور على فرع واحد بالتعريف) — حتى لو حاليًا عندها صف واحد بس فى
+// user_branch_roles (يعني لسه معندهاش أكتر من وضع وظيفي فعلي مسجل).
+// getRoleLevel: super_admin=1, development_manager=2, general_supervisor=3،
+// وأي درجة من دول لازم تشوف كل الفروع تحت هرمها افتراضيًا، مش تتقيّد بفرع
+// الـ backfill/التسجيل بتاعها.
+function isCrossBranchByNature(role: UserRole | null): boolean {
+  if (!role) return false;
+  return getRoleLevel(role) <= 3;
+}
 
 // ===================================
 // "سياق الفرع" (Branch Context) — المرحلة الثانية من دعم تعدد الفروع.
@@ -69,14 +81,16 @@ export function BranchProvider({ children }: { children: ReactNode }) {
       const roles = filterVisibleMemberships(allRoles, userRole ?? undefined);
       setBranches(roles);
 
-      if (userRole === 'super_admin') {
-        // السوبر أدمن مش موظف فعلي فى أي فرع — عضويته فى "الفرع الرئيسي"
-        // مجرد placeholder تقني (backfill/RLS) مش وضع وظيفي حقيقي. لو سبناه
-        // ياخد نفس مسار "وضع واحد بس" تحت، هيتقيّد بفرعه الوحيد ده وهيشوف
-        // بس نفسه (مفيش حد تاني عضو فى الفرع الرئيسي)، فبيفقد رؤية كل باقي
-        // الفروع الفعلية. currentBranchId = null يرجّعه لسلوك get_user_subtree
-        // الأصلي العابر للفروع (كل من تحته فى الهرم بغض النظر عن الفرع) —
-        // يعني يشوف إنتاج وبيانات كل الفروع دايمًا بشكل افتراضي.
+      if (isCrossBranchByNature(userRole)) {
+        // super_admin / development_manager / general_supervisor: دول
+        // بطبيعة درجتهم الوظيفية بيشرفوا على أكتر من فرع فى نفس الوقت، حتى
+        // لو حاليًا مسجلين بوضع وظيفي واحد بس (صف واحد فى user_branch_roles
+        // — مثلاً فرع الـ backfill/التسجيل الافتراضي بتاعهم). لو قيّدناهم
+        // بفرعهم الوحيد ده زي أي مستخدم عادي، هيفقدوا رؤية باقي الفروع
+        // اللي فعليًا تحت إشرافهم (ده كان سبب اختفاء بيانات كاملة — إنتاج
+        // وتحصيل وتارجت — لما مراقب عام يفتح نفس التقرير اللي مراقب الفرع
+        // فاتحه). currentBranchId = null يرجّعهم لسلوك get_user_subtree
+        // الأصلي العابر للفروع (كل من تحتهم فى الهرم بغض النظر عن الفرع).
         setCurrentBranchIdState(null);
         setLoading(false);
         return;
