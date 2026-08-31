@@ -227,6 +227,10 @@ export function PrintReport({
           line-height: 1.5;
         }
         .print-report .pr-page-break { page-break-before: always; break-before: page; }
+        /* تصغير خفيف لصفحات التفاصيل حتى يظل التذييل/سطر الترقيم داخل نفس الصفحة
+           بدل أن يدفعه المتصفح إلى صفحة جديدة عند امتلاء الجدول. */
+        .print-report .pr-detail-page { zoom: 0.96; page-break-inside: avoid; break-inside: avoid; }
+        .print-report .pr-detail-page .pr-footer { page-break-inside: avoid; break-inside: avoid; }
 
         .print-report table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .print-report th, .print-report td { border: 1px solid #d8dce1; padding: 6px 8px; text-align: center; }
@@ -640,7 +644,7 @@ export function PrintReport({
 
           if (detailPages.length === 0) {
             return [(
-              <div className="pr-page-break" key={`${sectionKey}-empty`}>
+              <div className="pr-page-break pr-detail-page" key={`${sectionKey}-empty`}>
                 <table className={`pr-detail-table ${meta.tableClass}`}>
                   <thead>
                     <tr className="pr-detail-title-row">
@@ -685,7 +689,7 @@ export function PrintReport({
             let lastSupervisor = '';
             let lastGroupLeader = '';
             return (
-              <div className="pr-page-break" key={`${sectionKey}-${pageIdx}`}>
+              <div className="pr-page-break pr-detail-page" key={`${sectionKey}-${pageIdx}`}>
                 <table className={`pr-detail-table ${meta.tableClass}`}>
                   <thead>
                     <tr className="pr-detail-title-row">
