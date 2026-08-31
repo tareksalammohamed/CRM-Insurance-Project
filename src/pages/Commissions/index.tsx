@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useBranchContext } from '../../lib/branchContext';
 import { useReconnectRefetch } from '../../hooks/useReconnectRefetch';
-import { Wallet, CalendarClock, CalendarCheck2, Percent, AlertTriangle } from 'lucide-react';
+import { Wallet, CalendarClock, CalendarCheck2, Percent, AlertTriangle, FilePlus2, RefreshCw } from 'lucide-react';
 import clsx from 'clsx';
 
 import type { CommissionRow } from './types';
@@ -67,6 +67,10 @@ export function Commissions() {
   useReconnectRefetch(loadCommissions);
 
   const summary = computeSummary(rows);
+  const year1Rows = rows.filter((row) => row.type === 'year1');
+  const renewalRows = rows.filter((row) => row.type === 'renewal');
+  const year1Summary = computeSummary(year1Rows);
+  const renewalSummary = computeSummary(renewalRows);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -98,43 +102,86 @@ export function Commissions() {
         </div>
       )}
 
-      {/* بطاقات الملخص */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <div className="kpi-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-secondary-500">إجمالي عمولات الشهر</p>
-              <p className="text-2xl font-bold text-secondary-900 mt-1">
-                {formatCurrency(summary.totalMonth)}
-              </p>
+      {/* ملخص العمولات حسب السنة */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Percent className="w-5 h-5 text-primary-600" />
+          <h3 className="text-base md:text-lg font-bold text-secondary-900">تفاصيل العمولات حسب السنة</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+          <div className="kpi-card border-r-4 border-primary-500 bg-gradient-to-br from-primary-50/70 to-white">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-primary-700">إجمالي عمولات الشهر</p>
+                <p className="text-2xl font-bold text-secondary-900 mt-1">{formatCurrency(summary.totalMonth)}</p>
+                <p className="text-xs text-secondary-500 mt-2">{rows.length} عملية محسوبة</p>
+              </div>
+              <div className="w-11 h-11 rounded-xl bg-primary-100 flex items-center justify-center shrink-0">
+                <Wallet className="w-5 h-5 text-primary-600" />
+              </div>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center">
-              <Wallet className="w-6 h-6 text-primary-600" />
+            <div className="mt-4 pt-3 border-t border-primary-100 flex justify-between text-xs text-secondary-500">
+              <span>يوم 27: {formatCurrency(summary.dueOn27)}</span>
+              <span>يوم 12: {formatCurrency(summary.dueOn12)}</span>
+            </div>
+          </div>
+
+          <div className="kpi-card border-r-4 border-sky-500 bg-gradient-to-br from-sky-50/80 to-white">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-sky-700">السنة الأولى</p>
+                <p className="text-2xl font-bold text-secondary-900 mt-1">{formatCurrency(year1Summary.totalMonth)}</p>
+                <p className="text-xs text-secondary-500 mt-2">{year1Rows.length} قسط · نسبة العمولة 2.2%</p>
+              </div>
+              <div className="w-11 h-11 rounded-xl bg-sky-100 flex items-center justify-center shrink-0">
+                <FilePlus2 className="w-5 h-5 text-sky-600" />
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-sky-100 flex justify-between text-xs text-secondary-500">
+              <span>يوم 27: {formatCurrency(year1Summary.dueOn27)}</span>
+              <span>يوم 12: {formatCurrency(year1Summary.dueOn12)}</span>
+            </div>
+          </div>
+
+          <div className="kpi-card border-r-4 border-emerald-500 bg-gradient-to-br from-emerald-50/80 to-white">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-emerald-700">السنة الثانية والثالثة</p>
+                <p className="text-2xl font-bold text-secondary-900 mt-1">{formatCurrency(renewalSummary.totalMonth)}</p>
+                <p className="text-xs text-secondary-500 mt-2">{renewalRows.length} قسط · نسبة العمولة 0.0005</p>
+              </div>
+              <div className="w-11 h-11 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                <RefreshCw className="w-5 h-5 text-emerald-600" />
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-emerald-100 flex justify-between text-xs text-secondary-500">
+              <span>يوم 27: {formatCurrency(renewalSummary.dueOn27)}</span>
+              <span>يوم 12: {formatCurrency(renewalSummary.dueOn12)}</span>
             </div>
           </div>
         </div>
+      </div>
 
+      {/* بطاقات مواعيد الصرف */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div className="kpi-card">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-secondary-500">عمولات تُصرف يوم 27</p>
-              <p className="text-2xl font-bold text-secondary-900 mt-1">
-                {formatCurrency(summary.dueOn27)}
-              </p>
+              <p className="text-2xl font-bold text-secondary-900 mt-1">{formatCurrency(summary.dueOn27)}</p>
+              <p className="text-xs text-secondary-400 mt-1">مسددات 1–15 من الشهر</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-warning-100 flex items-center justify-center">
               <CalendarClock className="w-6 h-6 text-warning-600" />
             </div>
           </div>
         </div>
-
         <div className="kpi-card">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-secondary-500">عمولات تُصرف يوم 12</p>
-              <p className="text-2xl font-bold text-secondary-900 mt-1">
-                {formatCurrency(summary.dueOn12)}
-              </p>
+              <p className="text-2xl font-bold text-secondary-900 mt-1">{formatCurrency(summary.dueOn12)}</p>
+              <p className="text-xs text-secondary-400 mt-1">مسددات 16–نهاية الشهر السابق</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-success-100 flex items-center justify-center">
               <CalendarCheck2 className="w-6 h-6 text-success-600" />

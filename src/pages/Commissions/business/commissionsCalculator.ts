@@ -139,5 +139,5 @@ export const formatCurrency = (amount: number) =>
 
 export const COMMISSION_TYPE_LABELS: Record<CommissionRow['type'], string> = {
   year1: 'السنة الأولى',
-  renewal: 'تجديد',
+  renewal: 'السنة الثانية والثالثة',
 };
