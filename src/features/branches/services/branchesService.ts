@@ -74,6 +74,22 @@ export async function setBranchActive(branchId: string, isActive: boolean): Prom
   if (error) throw error;
 }
 
+export async function deleteBranch(branchId: string): Promise<void> {
+  // شرط الحذف: لا يُسمح بحذف الفرع إذا كان عليه أي تعيين مستخدم،
+  // سواء كان المستخدم نشطًا أو معطّلًا.
+  const { count, error: rolesError } = await supabase
+    .from('user_branch_roles')
+    .select('id', { count: 'exact', head: true })
+    .eq('branch_id', branchId);
+  if (rolesError) throw rolesError;
+  if ((count || 0) > 0) {
+    throw new Error('لا يمكن حذف الفرع لأنه مرتبط بمستخدمين. أزل تعيينات المستخدمين أولًا.');
+  }
+
+  const { error } = await supabase.from('branches').delete().eq('id', branchId);
+  if (error) throw error;
+}
+
 export interface AddUserBranchRoleInput {
   userId: string;
   branchId: string;

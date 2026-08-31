@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { canManageBranches } from '../../../lib/supabase';
-import { Building2, Lock, Plus, Power, Loader2 } from 'lucide-react';
+import { Building2, Lock, Plus, Power, Loader2, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
-import { fetchBranches, setBranchActive } from '../services/branchesService';
+import { deleteBranch, fetchBranches, setBranchActive } from '../services/branchesService';
 import type { Branch } from '../types';
 import { AddBranchModal } from '../components/AddBranchModal';
 import { filterVisibleBranches } from '../../../lib/branchVisibility';
@@ -18,6 +18,8 @@ export function BranchesAdminPage() {
   const [loading, setLoading] = useState(true);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [togglingBranchId, setTogglingBranchId] = useState<string | null>(null);
+  const [deletingBranchId, setDeletingBranchId] = useState<string | null>(null);
+  const [branchActionError, setBranchActionError] = useState<string | null>(null);
 
   const [showAddBranch, setShowAddBranch] = useState(false);
 
@@ -45,6 +47,7 @@ export function BranchesAdminPage() {
   }
 
   const handleToggleBranch = async (branch: Branch) => {
+    setBranchActionError(null);
     setTogglingBranchId(branch.id);
     try {
       await setBranchActive(branch.id, !branch.is_active);
@@ -53,6 +56,21 @@ export function BranchesAdminPage() {
       console.error('Error toggling branch:', err);
     } finally {
       setTogglingBranchId(null);
+    }
+  };
+
+  const handleDeleteBranch = async (branch: Branch) => {
+    if (!window.confirm(`هل أنت متأكد من حذف فرع «${branch.name}»؟ لا يمكن التراجع عن هذا الإجراء.`)) return;
+    setBranchActionError(null);
+    setDeletingBranchId(branch.id);
+    try {
+      await deleteBranch(branch.id);
+      await loadAll();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'تعذر حذف الفرع.';
+      setBranchActionError(message);
+    } finally {
+      setDeletingBranchId(null);
     }
   };
 
@@ -78,6 +96,9 @@ export function BranchesAdminPage() {
         <div className="card space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-secondary-900">الفروع</h3>
+            {branchActionError && (
+              <p className="text-sm font-medium text-error-600" role="alert">{branchActionError}</p>
+            )}
             <button onClick={() => setShowAddBranch(true)} className="btn btn-secondary">
               <Plus className="w-4 h-4" />
               <span>فرع جديد</span>
@@ -96,18 +117,34 @@ export function BranchesAdminPage() {
                       {b.is_active ? 'مفعّل' : 'معطّل'}
                     </span>
                   </div>
-                  <button
-                    onClick={() => handleToggleBranch(b)}
-                    disabled={togglingBranchId === b.id}
-                    className="btn btn-ghost text-secondary-600 flex-shrink-0"
-                  >
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => handleToggleBranch(b)}
+                      disabled={togglingBranchId === b.id || deletingBranchId === b.id}
+                      className="btn btn-ghost text-secondary-600"
+                    >
                     {togglingBranchId === b.id ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <Power className="w-4 h-4" />
                     )}
-                    <span className="hidden sm:inline">{b.is_active ? 'تعطيل' : 'تفعيل'}</span>
-                  </button>
+                      <span className="hidden sm:inline">{b.is_active ? 'تعطيل' : 'تفعيل'}</span>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteBranch(b)}
+                      disabled={togglingBranchId === b.id || deletingBranchId === b.id}
+                      className="btn btn-ghost text-error-600"
+                      title="حذف الفرع"
+                      aria-label={`حذف فرع ${b.name}`}
+                    >
+                      {deletingBranchId === b.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                      <span className="hidden sm:inline">حذف</span>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
