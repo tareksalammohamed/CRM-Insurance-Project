@@ -196,8 +196,9 @@ export const OrgChartTree = forwardRef<HTMLDivElement, OrgChartTreeProps>(functi
         /* قائمة الوكلاء — أقل وزن بصري، للقراءة السريعة */
         .org-formation-report .org-tree li.org-agents-leaf { padding-top: ${Math.round(d.gap * 0.65)}px; }
         .org-formation-report .org-agents-box {
-          width: ${d.agentColW}px; background:#fbfcfb; border:1px solid #eef2f0; border-radius: 10px;
-          padding: 5px 10px; display:flex; flex-direction:column;
+          width: max-content; min-width: ${d.agentColW}px;
+          background:#fbfcfb; border:1px solid #eef2f0; border-radius: 10px;
+          padding: 5px 12px; display:flex; flex-direction:column;
         }
         .org-formation-report .org-agent-row {
           display: flex; align-items: center; gap: 6px;
@@ -207,6 +208,7 @@ export const OrgChartTree = forwardRef<HTMLDivElement, OrgChartTreeProps>(functi
         .org-formation-report .org-agent-dot { flex-shrink:0; width: 5px; height: 5px; border-radius: 999px; background: #8fd4b7; }
         .org-formation-report .org-agent-name {
           font-size: ${d.nameAgent}px; font-weight: 600; color:#3f544d; text-align:right; line-height: 1.3;
+          white-space: nowrap;
         }
       `}</style>
 
