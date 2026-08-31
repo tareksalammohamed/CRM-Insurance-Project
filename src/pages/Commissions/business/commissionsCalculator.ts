@@ -11,13 +11,13 @@ const INSTALLMENTS_PER_METHOD: Record<string, number> = {
   annual: 1,
 };
 
-// عمولة السنة الأولى = 2.4% من مبلغ التأمين، موزعة على عدد الأقساط
-const YEAR1_RATE = 0.024;
-// عمولة التجديد (من السنة الثانية فأكثر) = 4 لكل 1000 من مبلغ التأمين
-// (0.004 من مبلغ التأمين)، موزعة على عدد الأقساط بنفس طريقة السداد —
+// عمولة السنة الأولى = 2.2% من مبلغ التأمين، موزعة على عدد الأقساط
+const YEAR1_RATE = 0.022;
+// عمولة السنتين الثانية والثالثة = 0.0005 من مبلغ التأمين، موزعة
+// على عدد الأقساط بنفس طريقة السداد —
 // لو السداد سنوي فالعمولة كاملة مرة واحدة، ولو غير سنوي (شهري/ربع سنوي/
 // نصف سنوي) توزّع بالتساوي على عدد الأقساط زي عمولة السنة الأولى بالظبط
-const RENEWAL_RATE_PER_THOUSAND = 4 / 1000;
+const RENEWAL_RATE = 0.0005;
 
 // قاعدة صرف العمولة:
 // - سداد من يوم 1 إلى يوم 15 -> يُصرف يوم 27 من نفس الشهر.
@@ -104,7 +104,7 @@ export function computeCommissionRows(
       continue;
     }
 
-    const commissionAmount = (Number(policy.sum_assured) * RENEWAL_RATE_PER_THOUSAND) / installmentsCount;
+    const commissionAmount = (Number(policy.sum_assured) * RENEWAL_RATE) / installmentsCount;
 
     rows.push({
       id: `y2-${payment.id}`,
