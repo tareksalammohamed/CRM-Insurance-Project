@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { useBranchContext } from '../../../lib/branchContext';
 import { type UserRole } from '../../../lib/supabase';
@@ -54,6 +54,9 @@ export function useDashboard() {
   // سلسلة التنقل الهرمي داخل الـ Sheet (من الجذر إلى الشخص المعروض حاليًا)؛
   // فارغة = الـ Sheet مغلق
   const [sheetStack, setSheetStack] = useState<TeamMemberDetail[]>([]);
+  // رقم متسلسل للطلب الحالي: يمنع استجابة قديمة لحساب/فرع سابق من الكتابة
+  // فوق بيانات الحساب الحالي، وهو مهم خصوصًا عند الانتقال بين حساب طارق وسمر.
+  const dashboardRequestIdRef = useRef(0);
 
   // ملحوظة: الـeffects اللي بتستدعي loadDashboardData/loadCancellationStats
   // اتنقلت تحت تعريفهما (بقوا useCallback بنفس الـdeps اللي كانت معلنة يدويًا
@@ -76,6 +79,7 @@ export function useDashboard() {
   }, [user, currentBranchId]);
 
   const loadDashboardData = useCallback(async (silent = false) => {
+    const requestId = ++dashboardRequestIdRef.current;
     if (!silent) setLoading(true);
     try {
       const now = selectedMonth;
@@ -98,6 +102,10 @@ export function useDashboard() {
           fetchTeamUsers(userIds),
           fetchBranchRoleMap(currentBranchId, userIds),
         ]);
+
+      // لو بدأ طلب أحدث (تغيير حساب/فرع/شهر)، تجاهل نتيجة الطلب القديم
+      // بالكامل حتى لا يظهر إجمالي مستخدم آخر في الصفحة الحالية.
+      if (requestId !== dashboardRequestIdRef.current) return;
 
       const policies = policiesRes.data || [];
       const payments = paymentsRes.data || [];
@@ -130,7 +138,7 @@ export function useDashboard() {
     } catch (error) {
       console.error('Error loading dashboard:', error);
     } finally {
-      if (!silent) setLoading(false);
+      if (!silent && requestId === dashboardRequestIdRef.current) setLoading(false);
     }
   }, [user, currentBranchId, selectedMonth]);
 
