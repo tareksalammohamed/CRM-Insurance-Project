@@ -1,10 +1,17 @@
 import type { Ref } from 'react';
-import { ROLE_LABELS } from '../../../lib/supabase';
+import { ROLE_LABELS, type UserRole } from '../../../lib/supabase';
 import { useSettings } from '../../../hooks/useSettings';
 import type { SupervisorAgg, PrintDetailRow } from '../types';
 import { fmt, last6 } from '../utils';
 import { PERSONAL_PRODUCTION_LABEL } from '../business/monthlyClosingCalculator';
 import { RecommendationMemo, qualifiesForRecommendationMemo } from './RecommendationMemo';
+
+export interface NewFormationUser {
+  id: string;
+  name: string;
+  role: UserRole;
+  managerName?: string;
+}
 
 // عدد صفوف عمليات السداد في كل صفحة مطبوعة. بنقسّم الصفوف يدويًا لمجموعات
 // بدل ما نسيب المتصفح يقسّم جدول واحد طويل على الصفحات، عشان:
@@ -160,7 +167,7 @@ function blockContext(block: PrintDetailEntry[]): {
 // يظهر فقط عند الطباعة — صفحة تجميعات أولى (هيكل إداري بحت) ثم صفحات تفاصيل العمليات المسددة
 export function PrintReport({
   supervisorName, supervisorRoleLabel, monthLabel, closingDate, branchName,
-  printSupervisors, printDetailRows,
+  printSupervisors, printDetailRows, formationUsers, formationDate,
   grandProduction, grandCollection, grandTotal,
   containerRef,
 }: {
@@ -171,6 +178,8 @@ export function PrintReport({
   branchName?: string;
   printSupervisors: SupervisorAgg[];
   printDetailRows: PrintDetailRow[];
+  formationUsers?: NewFormationUser[];
+  formationDate?: string;
   grandProduction: number;
   grandCollection: number;
   grandTotal: number;
@@ -200,7 +209,9 @@ export function PrintReport({
   // للشرطين (راجع RecommendationMemo.tsx) — بدون أي تأثير على أي حساب أو
   // صف موجود فى صفحة التجميعات نفسها.
   const memoSupervisors = printSupervisors.filter(qualifiesForRecommendationMemo);
-  const totalAggPages = 1 + memoSupervisors.length;
+  const selectedFormationUsers = formationUsers || [];
+  // التشكيل وورقة فرق التنسيب تأتيان في نهاية ملف التقفيل، بعد صفحات التفاصيل.
+  const totalAggPages = 1;
 
   return (
     <div ref={containerRef} className="hidden print:block print-report" dir="rtl">
@@ -454,6 +465,11 @@ export function PrintReport({
            عنصر position: fixed واحد بيتكرر تلقائيًا (اللي بيديله رقم صفحة
            غلط لأن الـ counter بيتزوّد مرة واحدة بس مهما عدد الصفحات)،
            بنطبع تذييل مستقل تحت محتوى كل صفحة برقمها الصحيح المحسوب فعليًا. */
+        .print-report .pr-formation-page { padding: 18px 20px; page-break-before: always; break-before: page; }
+        .print-report .pr-formation-table th { background: #166534; }
+        .print-report .pr-formation-table td { padding: 9px 10px; }
+        .print-report .pr-formation-note { text-align: center; color: #6b7280; margin: 6px 0 14px; }
+
         .print-report .pr-footer {
           margin-top: 10px;
           text-align: center; font-size: 9.5px; color: #9ca3af;
@@ -587,21 +603,6 @@ export function PrintReport({
           {branding.company_name} · تقرير تقفيل الشهر — {monthLabel} · صفحة 1
         </div>
       </div>
-
-      {/* ══ مذكرة "صرف فرق التنسيب" التلقائية — صفحة مستقلة لكل مراقب
-          مستوفٍ للشرطين (3 رؤساء مجموعات بالظبط، ونسبة تحقيق ≥ 151%).
-          راجع RecommendationMemo.tsx لتفاصيل الشرط والتوقيع. ══ */}
-      {memoSupervisors.map((sv, idx) => (
-        <RecommendationMemo
-          key={`memo-${sv.id}`}
-          supervisor={sv}
-          branchName={branchName}
-          monthLabel={monthLabel}
-          printDate={closingDate}
-          branding={branding}
-          pageNumber={2 + idx}
-        />
-      ))}
 
       {/* ══ الصفحة الثانية وما بعدها: عمليات السداد، مقسّمة لصفحات مستقلة ══
           كل صفحة جدول قائم بذاته وله ترويسته الخاصة (اسم المراقب + الشهر)
@@ -791,7 +792,50 @@ export function PrintReport({
         const newPages = renderSection(newRows, 'new', grandProduction, totalAggPages + 1);
         const collectionPages = renderSection(collectionRows, 'collection', grandCollection, totalAggPages + newPages.length + 1);
 
-        return <>{newPages}{collectionPages}</>;
+        const detailPageCount = newPages.length + collectionPages.length;
+        const formationPage = 2 + detailPageCount;
+        const memoStartPage = formationPage + (selectedFormationUsers.length > 0 ? 1 : 0);
+
+        return <>
+          {newPages}
+          {collectionPages}
+          {selectedFormationUsers.length > 0 && (
+            <div className="pr-formation-page">
+              <div className="pr-company">
+                {branding.company_logo_url && <img src={branding.company_logo_url} alt={branding.company_name} />}
+                <span>{branding.company_name}</span>
+              </div>
+              <div className="pr-title">تشكيل الجهاز الإنتاجي</div>
+              <div className="pr-sub">اعتبارًا من {formationDate || '01/—/——'}{branchName && ` — الفرع: ${branchName}`}</div>
+              <p className="pr-formation-note">المستخدمون الذين أُنشئت حساباتهم خلال شهر التقفيل ولهم مسددات ظاهرة في التقرير</p>
+              <table className="pr-formation-table">
+                <thead><tr><th>م</th><th>الاسم</th><th>المسمى الوظيفي</th><th>التبعية</th></tr></thead>
+                <tbody>
+                  {selectedFormationUsers.map((u, index) => (
+                    <tr key={u.id}>
+                      <td>{index + 1}</td>
+                      <td className="font-semibold">{u.name}</td>
+                      <td>{ROLE_LABELS[u.role]}</td>
+                      <td>{u.managerName || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="pr-footer">{branding.company_name} · التشكيل · صفحة {formationPage}</div>
+            </div>
+          )}
+          {memoSupervisors.map((sv, idx) => (
+            <RecommendationMemo
+              key={`memo-${sv.id}`}
+              supervisor={sv}
+              branchName={branchName}
+              monthLabel={monthLabel}
+              printDate={closingDate}
+              branding={branding}
+              pageNumber={memoStartPage + idx}
+            />
+          ))}
+        </>;
       })()}
     </div>
   );

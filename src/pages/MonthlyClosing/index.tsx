@@ -16,12 +16,12 @@ import { ar } from 'date-fns/locale';
 import type { AgentSummary, SupervisorSummary, SupervisorAgg, PrintDetailRow } from './types';
 import { fmt } from './utils';
 import { AgentRow } from './components/AgentRow';
-import { PrintReport } from './components/PrintReport';
+import { PrintReport, type NewFormationUser } from './components/PrintReport';
 import { PrintSetupModal } from './components/PrintSetupModal';
 import { ConfirmActionModal } from './components/ConfirmActionModal';
 import {
   fetchClosingRecord, fetchUserSubtreeIds, fetchUsersByIds, fetchBranchRoleMap,
-  fetchMonthPayments, filterPaymentsByOwnerIds, closeMonth, openMonth,
+  fetchMonthPayments, filterPaymentsByOwnerIds, fetchFirstWorkMonthByOwnerIds, closeMonth, openMonth,
   fetchBranchesForUserIds,
 } from './services/monthlyClosingService';
 import type { Branch } from '../../features/branches/types';
@@ -69,6 +69,7 @@ export function MonthlyClosing() {
   const [directAgents, setDirectAgents]   = useState<AgentSummary[]>([]);
   const [printSupervisors, setPrintSupervisors] = useState<SupervisorAgg[]>([]);
   const [printDetailRows, setPrintDetailRows]   = useState<PrintDetailRow[]>([]);
+  const [printFormationUsers, setPrintFormationUsers] = useState<NewFormationUser[]>([]);
 
   // UI expand state
   const [expandedSupervisors, setExpandedSupervisors] = useState<Set<string>>(new Set());
@@ -111,6 +112,26 @@ export function MonthlyClosing() {
       // 3. كل المدفوعات الفعلية للشهر (غير ملغاة)
       const paymentsRaw = await fetchMonthPayments(monthStr);
       const payments = filterPaymentsByOwnerIds(paymentsRaw, ids);
+
+      // مستخدم جديد للتشكيل = أول حركة شغل فعلية له في شهر التقفيل،
+      // حتى لو كان الحساب أُنشئ قبل ذلك. نُبقي التشكيل مستقلًا عن التقفيل
+      // في التاريخ، وسيظهر عليه يوم 1 من الشهر.
+      const paymentOwnerIds = Array.from(new Set(
+        payments.map((p) => p.installment?.policy?.owner_id).filter(Boolean),
+      ));
+      const firstWorkMonthByOwner = await fetchFirstWorkMonthByOwnerIds(paymentOwnerIds);
+      const usersById = new Map(usersData.map((u) => [u.id, u]));
+      const formationUsers = usersData
+        .filter((u) => firstWorkMonthByOwner.get(u.id) === monthStr)
+        .map((u) => {
+          const managerId = branchRoles.get(u.id)?.manager_id ?? u.manager_id;
+          return {
+            id: u.id,
+            name: u.name,
+            role: branchRoles.get(u.id)?.role ?? u.role,
+            managerName: managerId ? usersById.get(managerId)?.name : undefined,
+          };
+        });
 
       // أصحاب شغل فعلي (إنتاج أو تحصيل) مسجل الشهر ده — بيتحسبوا فى إقفال
       // الشهر حتى لو الوكيل بقى غير نشط أو محذوف دلوقتي، لأن شغل السنة
@@ -201,6 +222,7 @@ export function MonthlyClosing() {
       }));
       setPrintSupervisors(printSupervisorsWithSigner);
       setPrintDetailRows(printSummary.printDetailRows);
+      setPrintFormationUsers(formationUsers);
 
     } catch (err) {
       console.error('Error loading monthly closing data:', err);
@@ -587,6 +609,8 @@ export function MonthlyClosing() {
             grandProduction={grandProduction}
             grandCollection={grandCollection}
             grandTotal={grandTotal}
+            formationUsers={printFormationUsers}
+            formationDate={format(startOfMonth(selectedMonth), 'dd/MM/yyyy')}
             containerRef={printReportRef}
           />
         </>

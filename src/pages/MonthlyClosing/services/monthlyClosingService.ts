@@ -68,7 +68,7 @@ export async function fetchUsersByIds(ids: string[]): Promise<BasicUser[]> {
     async () => {
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, role, manager_id, target, is_active, deleted_at')
+        .select('id, name, role, manager_id, target, is_active, deleted_at, created_at')
         .in('id', ids);
       if (error) throw error;
       return (data || []) as BasicUser[];
@@ -106,6 +106,45 @@ export async function fetchMonthPayments(monthStr: string): Promise<any[]> {
 
 export function filterPaymentsByOwnerIds(paymentsRaw: any[], ids: string[]): PaymentRow[] {
   return paymentsRaw.filter((p: any) => ids.includes(p.installment?.policy?.owner_id)) as PaymentRow[];
+}
+
+/**
+ * أول شهر ظهر فيه شغل فعلي للمستخدم (قسط سنة أولى أو تحصيل تجديد)،
+ * مع استبعاد المدفوعات الملغاة. نستخدمه لتحديد المستخدم الذي بدأ شغله
+ * لأول مرة في شهر التقفيل حتى لو أُنشئ حسابه قبل ذلك.
+ */
+export async function fetchFirstWorkMonthByOwnerIds(ownerIds: string[]): Promise<Map<string, string>> {
+  const result = new Map<string, string>();
+  if (ownerIds.length === 0) return result;
+
+  const dataResult = await dalRead(
+    `monthlyClosing:firstWorkMonth:${ownerIds.slice().sort().join(',')}`,
+    async () => {
+      const [year1Res, renewalRes] = await Promise.all([
+        supabase
+          .from('payments')
+          .select('payment_month, installment:installment_id(policy:policy_id(owner_id))')
+          .eq('is_cancelled', false),
+        supabase
+          .from('year2_payments')
+          .select('payment_month, policy:policy_id(owner_id)')
+          .eq('is_cancelled', false),
+      ]);
+      if (year1Res.error) throw year1Res.error;
+      if (renewalRes.error) throw renewalRes.error;
+      return { year1: year1Res.data || [], renewal: renewalRes.data || [] };
+    },
+    { emptyValue: { year1: [] as any[], renewal: [] as any[] } },
+  );
+
+  const consider = (ownerId: unknown, month: unknown) => {
+    if (typeof ownerId !== 'string' || !ownerIds.includes(ownerId) || typeof month !== 'string') return;
+    const previous = result.get(ownerId);
+    if (!previous || month < previous) result.set(ownerId, month);
+  };
+  dataResult.data.year1.forEach((row: any) => consider(row.installment?.policy?.owner_id, row.payment_month));
+  dataResult.data.renewal.forEach((row: any) => consider(row.policy?.owner_id, row.payment_month));
+  return result;
 }
 
 export async function closeMonth(monthStr: string, userId: string) {

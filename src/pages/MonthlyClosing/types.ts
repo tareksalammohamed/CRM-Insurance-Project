@@ -138,4 +138,6 @@ export interface BasicUser {
    * التقرير المطبوع يتعمد الاحتفاظ به لإظهار التحصيلات التاريخية. */
   is_active?: boolean;
   deleted_at?: string | null;
+  /** تاريخ إنشاء الحساب لتحديد المستخدمين الجدد في شهر التقفيل. */
+  created_at?: string | null;
 }
