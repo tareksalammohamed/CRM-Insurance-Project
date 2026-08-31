@@ -49,6 +49,9 @@ export function RecommendationMemo({
         {branding.company_logo_url && <img src={branding.company_logo_url} alt={branding.company_name} />}
         <span>{branding.company_name}</span>
       </div>
+      <div className="pr-memo-title">مذكرة صرف فرق التنسيب</div>
+      <div className="pr-memo-sub">تقرير تقفيل الشهر — {monthLabel}</div>
+      <div className="pr-memo-title-rule" />
 
       <div className="pr-memo-salutation">السيد الأستاذ/ عضو مجلس الإدارة المنتدب</div>
       <div className="pr-memo-greeting">تحية طيبة وبعد،،،</div>
@@ -68,13 +71,15 @@ export function RecommendationMemo({
 
         {hasPreSignedSignature && supervisor.generalSupervisorName ? (
           <>
-            <img src={samarElhawarySignature} alt="" className="pr-memo-sign-img" />
-            <div className="pr-memo-sign-date">{printDate}</div>
+            <div className="pr-memo-signature-slot">
+              <img src={samarElhawarySignature} alt="التوقيع" className="pr-memo-sign-img" />
+            </div>
+            <div className="pr-memo-sign-date">التاريخ: {printDate}</div>
           </>
         ) : (
           <>
             <div className="pr-memo-sign-line" />
-            <div className="pr-memo-sign-date">التوقيع: ______________&nbsp;&nbsp;&nbsp;التاريخ: ______________</div>
+            <div className="pr-memo-sign-date">التوقيع: ______________&nbsp;&nbsp;&nbsp;التاريخ: {printDate}</div>
           </>
         )}
       </div>

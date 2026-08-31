@@ -327,7 +327,22 @@ export function PrintReport({
 
         /* مذكرة "صرف فرق التنسيب" التلقائية — نفس هوية التقرير البصرية
            (نفس الألوان/الخط)، بتخطيط خطاب رسمي بسيط. */
-        .print-report .pr-memo-page { direction: rtl; padding-top: 10mm; }
+        .print-report .pr-memo-page {
+          direction: rtl; padding-top: 10mm; min-height: 250mm;
+          box-sizing: border-box; position: relative;
+        }
+        .print-report .pr-memo-title {
+          text-align: center; font-size: 19px; font-weight: 800;
+          color: #14532d; margin: 8px 0 1px;
+        }
+        .print-report .pr-memo-sub {
+          text-align: center; font-size: 11.5px; color: #6b7280;
+          margin-bottom: 8px; font-weight: 500;
+        }
+        .print-report .pr-memo-title-rule {
+          height: 3px; width: 64px; background: #16a34a;
+          border-radius: 2px; margin: 6px auto 18px;
+        }
         .print-report .pr-memo-salutation {
           font-size: 13px; font-weight: 700; color: #14532d;
           text-align: right; margin: 22px 0 26px;
@@ -338,11 +353,21 @@ export function PrintReport({
         }
         .print-report .pr-memo-body b { color: #14532d; }
         .print-report .pr-memo-closing { font-size: 12px; margin-bottom: 64px; }
-        .print-report .pr-memo-sign-block { text-align: right; }
+        .print-report .pr-memo-sign-block {
+          text-align: right; width: 210px; margin-right: auto;
+        }
         .print-report .pr-memo-sign-label { font-size: 11.5px; font-weight: 700; margin-bottom: 2px; }
         .print-report .pr-memo-sign-role { font-size: 11.5px; font-weight: 700; margin-bottom: 2px; }
         .print-report .pr-memo-sign-name { font-size: 12.5px; font-weight: 800; color: #14532d; margin-bottom: 4px; }
-        .print-report .pr-memo-sign-img { height: 48px; margin: 0 0 4px; }
+        .print-report .pr-memo-signature-slot {
+          width: 190px; height: 48px; display: flex; align-items: center;
+          justify-content: flex-start; margin: 0 0 4px;
+          overflow: hidden;
+        }
+        .print-report .pr-memo-sign-img {
+          display: block; width: 170px; height: 42px;
+          object-fit: contain; object-position: right center;
+        }
         .print-report .pr-memo-sign-line {
           width: 200px; border-bottom: 1.3px solid #9ca3af; height: 42px; margin-bottom: 6px;
         }
