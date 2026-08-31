@@ -34,7 +34,9 @@ export function RecommendationMemo({
   branding: { company_name: string; company_logo_url: string | null };
   pageNumber: number;
 }) {
-  const hasSupervisorSignature = Boolean(supervisor.generalSupervisorName);
+  // ورقة فرق التنسيب معتمدة بتوقيع المراقب العام سمر الهواري؛
+  // لذلك لا نربط ظهور الاسم أو صورة التوقيع بنطاق الحساب الذي يطبع التقرير.
+  const signerName = supervisor.generalSupervisorName || 'سمر الهواري';
   const generalSupervisorRoleLabel = indefiniteRoleLabel('general_supervisor');
   const scopeLabel = branchName ? ` ${branchName}` : '';
 
@@ -62,21 +64,11 @@ export function RecommendationMemo({
       <div className="pr-memo-sign-block">
         <div className="pr-memo-sign-label">مقدمه لسيادتكم</div>
         <div className="pr-memo-sign-role">{generalSupervisorRoleLabel}{scopeLabel}</div>
-        <div className="pr-memo-sign-name">{supervisor.generalSupervisorName || '\u00A0'}</div>
-
-        {hasSupervisorSignature ? (
-          <>
-            <div className="pr-memo-signature-slot">
-              <img src={samarElhawarySignature} alt="" className="pr-memo-sign-img" />
-            </div>
-            <div className="pr-memo-sign-date">التاريخ: {printDate}</div>
-          </>
-        ) : (
-          <>
-            <div className="pr-memo-sign-line" />
-            <div className="pr-memo-sign-date">التاريخ: {printDate}</div>
-          </>
-        )}
+                <div className="pr-memo-sign-name">{signerName}</div>
+        <div className="pr-memo-signature-slot">
+          <img src={samarElhawarySignature} alt="" className="pr-memo-sign-img" />
+        </div>
+        <div className="pr-memo-sign-date">التاريخ: {printDate}</div>
       </div>
 
       <div className="pr-footer">
