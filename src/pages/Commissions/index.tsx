@@ -131,7 +131,7 @@ export function Commissions() {
               <div>
                 <p className="text-sm font-semibold text-sky-700">السنة الأولى</p>
                 <p className="text-2xl font-bold text-secondary-900 mt-1">{formatCurrency(year1Summary.totalMonth)}</p>
-                <p className="text-xs text-secondary-500 mt-2">{year1Rows.length} قسط · نسبة العمولة 2.2%</p>
+                <p className="text-xs text-secondary-500 mt-2">{year1Rows.length} قسط</p>
               </div>
               <div className="w-11 h-11 rounded-xl bg-sky-100 flex items-center justify-center shrink-0">
                 <FilePlus2 className="w-5 h-5 text-sky-600" />
@@ -148,7 +148,7 @@ export function Commissions() {
               <div>
                 <p className="text-sm font-semibold text-emerald-700">السنة الثانية والثالثة</p>
                 <p className="text-2xl font-bold text-secondary-900 mt-1">{formatCurrency(renewalSummary.totalMonth)}</p>
-                <p className="text-xs text-secondary-500 mt-2">{renewalRows.length} قسط · نسبة العمولة 0.0005</p>
+                <p className="text-xs text-secondary-500 mt-2">{renewalRows.length} قسط</p>
               </div>
               <div className="w-11 h-11 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
                 <RefreshCw className="w-5 h-5 text-emerald-600" />
