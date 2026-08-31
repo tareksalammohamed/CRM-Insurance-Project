@@ -4,6 +4,7 @@ import { useSettings } from '../../../hooks/useSettings';
 import type { SupervisorAgg, PrintDetailRow } from '../types';
 import { fmt, last6 } from '../utils';
 import { PERSONAL_PRODUCTION_LABEL } from '../business/monthlyClosingCalculator';
+import { RecommendationMemo, qualifiesForRecommendationMemo } from './RecommendationMemo';
 
 // عدد صفوف عمليات السداد في كل صفحة مطبوعة. بنقسّم الصفوف يدويًا لمجموعات
 // بدل ما نسيب المتصفح يقسّم جدول واحد طويل على الصفحات، عشان:
@@ -194,8 +195,12 @@ export function PrintReport({
   const aggTierClass = aggTier === 0 ? '' : ` pr-agg-tier-${aggTier}`;
   const aggBlockGap = [10, 6, 4, 2][aggTier];
   // صفحة التجميعات صفحة واحدة دايمًا الآن، فصفحات التفاصيل بعدها بتبدأ
-  // ترقيمها من صفحة 2 ثابتة.
-  const totalAggPages = 1;
+  // ترقيمها بعد عدد صفحات التجميعات + مذكرات التوصية (لو فيه).
+  // مذكرة "صرف فرق التنسيب" التلقائية: صفحة إضافية مستقلة لكل مراقب مستوفٍ
+  // للشرطين (راجع RecommendationMemo.tsx) — بدون أي تأثير على أي حساب أو
+  // صف موجود فى صفحة التجميعات نفسها.
+  const memoSupervisors = printSupervisors.filter(qualifiesForRecommendationMemo);
+  const totalAggPages = 1 + memoSupervisors.length;
 
   return (
     <div ref={containerRef} className="hidden print:block print-report" dir="rtl">
@@ -319,6 +324,29 @@ export function PrintReport({
         .print-report .pr-agg-tier-3 .pr-grand-box { padding: 4px 8px; margin-top: 4px; }
         .print-report .pr-agg-tier-3 .pr-grand-box .row { font-size: 8px; padding: 0; }
         .print-report .pr-agg-tier-3 .pr-grand-box .row.total { font-size: 9.5px; padding-top: 3px; margin-top: 2px; }
+
+        /* مذكرة "صرف فرق التنسيب" التلقائية — نفس هوية التقرير البصرية
+           (نفس الألوان/الخط)، بتخطيط خطاب رسمي بسيط. */
+        .print-report .pr-memo-page { direction: rtl; padding-top: 10mm; }
+        .print-report .pr-memo-salutation {
+          font-size: 13px; font-weight: 700; color: #14532d;
+          text-align: right; margin: 22px 0 26px;
+        }
+        .print-report .pr-memo-greeting { font-size: 12px; margin-bottom: 22px; }
+        .print-report .pr-memo-body {
+          font-size: 12.5px; line-height: 2.1; text-align: justify; margin-bottom: 34px;
+        }
+        .print-report .pr-memo-body b { color: #14532d; }
+        .print-report .pr-memo-closing { font-size: 12px; margin-bottom: 64px; }
+        .print-report .pr-memo-sign-block { text-align: right; }
+        .print-report .pr-memo-sign-label { font-size: 11.5px; font-weight: 700; margin-bottom: 2px; }
+        .print-report .pr-memo-sign-role { font-size: 11.5px; font-weight: 700; margin-bottom: 2px; }
+        .print-report .pr-memo-sign-name { font-size: 12.5px; font-weight: 800; color: #14532d; margin-bottom: 4px; }
+        .print-report .pr-memo-sign-img { height: 48px; margin: 0 0 4px; }
+        .print-report .pr-memo-sign-line {
+          width: 200px; border-bottom: 1.3px solid #9ca3af; height: 42px; margin-bottom: 6px;
+        }
+        .print-report .pr-memo-sign-date { font-size: 10px; color: #6b7280; }
 
         /* جدول التفاصيل: عنوان التقرير ورأس الجدول يتكرران تلقائياً في كل صفحة مطبوعة */
         .print-report .pr-detail-table thead { display: table-header-group; }
@@ -531,6 +559,21 @@ export function PrintReport({
           {branding.company_name} · تقرير تقفيل الشهر — {monthLabel} · صفحة 1
         </div>
       </div>
+
+      {/* ══ مذكرة "صرف فرق التنسيب" التلقائية — صفحة مستقلة لكل مراقب
+          مستوفٍ للشرطين (3 رؤساء مجموعات بالظبط، ونسبة تحقيق ≥ 151%).
+          راجع RecommendationMemo.tsx لتفاصيل الشرط والتوقيع. ══ */}
+      {memoSupervisors.map((sv, idx) => (
+        <RecommendationMemo
+          key={`memo-${sv.id}`}
+          supervisor={sv}
+          branchName={branchName}
+          monthLabel={monthLabel}
+          printDate={closingDate}
+          branding={branding}
+          pageNumber={2 + idx}
+        />
+      ))}
 
       {/* ══ الصفحة الثانية وما بعدها: عمليات السداد، مقسّمة لصفحات مستقلة ══
           كل صفحة جدول قائم بذاته وله ترويسته الخاصة (اسم المراقب + الشهر)

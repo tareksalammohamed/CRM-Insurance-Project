@@ -355,11 +355,33 @@ export function buildMonthlyClosingSummary(
     return [{ id: glId, name: gl.name, production, collection, total, roleNote }];
   };
 
+  /** أقرب مدير فى السلسلة الإدارية فوق userId درجته الفعلية "مراقب عام" —
+   * بيدوّر بس ضمن usersMap المجلوبة أصلاً لهذا التقرير (بدون أى fetch
+   * إضافي)؛ لو النطاق الحالي ما بيوصلش لمراقب عام (تقرير مقصور على فريق
+   * مراقب واحد بمعزل عن مديره)، بترجع undefined ومذكرة التوصية بتسيب اسم
+   * الموقّع فاضي للتعبئة اليدوية بدل اختلاق اسم. */
+  const findGeneralSupervisor = (userId: string): { id: string; name: string } | undefined => {
+    let cur = managerOf(userId);
+    let hops = 0;
+    while (cur && hops < 8) {
+      const m = usersMap.get(cur);
+      if (!m) return undefined;
+      if (roleOf(cur) === 'general_supervisor') return { id: cur, name: m.name };
+      cur = managerOf(cur);
+      hops += 1;
+    }
+    return undefined;
+  };
+
   const buildSupervisorAgg = (supId: string, nameOverride?: string): SupervisorAgg => {
     const sup = usersMap.get(supId);
     const kids = childrenOf.get(supId) || [];
     const groupLeaders: GroupLeaderAgg[] = [];
     const directAgentIds: string[] = [];
+    // عدد رؤساء المجموعات التابعين مباشرة هيكليًا (بغض النظر عن حركتهم فى
+    // الشهر ده) — لمذكرة التوصية (شرط "3 رؤساء مجموعات")، مختلف عمدًا عن
+    // groupLeaders.length النهائي اللى بيتفلتر لاحقًا بـ hasMovement.
+    let directGroupLeaderCount = 0;
 
     const supRole: UserRole = roleOf(supId) ?? sup?.role ?? 'supervisor';
 
@@ -369,6 +391,7 @@ export function buildMonthlyClosingSummary(
       const kuRole = roleOf(kid);
       const lvl = getRoleLevel(kuRole);
       if (kuRole === 'group_leader') {
+        directGroupLeaderCount += 1;
         groupLeaders.push(...buildGroupLeaderAgg(kid, supRole, sup?.name));
       } else if (lvl >= 6) {
         directAgentIds.push(kid);
@@ -435,12 +458,20 @@ export function buildMonthlyClosingSummary(
       total: acc.total + g.total,
     }), { production: 0, collection: 0, total: 0 });
 
+    const target = Number(sup?.target || 0);
+    const generalSupervisor = findGeneralSupervisor(supId);
+
     return {
       id: supId, name: nameOverride ?? sup?.name ?? '', role: supRole,
       // اللى مالوش حركة فى الشهر مابياخدش صف فى الورق (طلب صريح: مايتكتبش
       // اسمه خالص لو مفيش إنتاج جديد ولا تحصيل).
       groupLeaders: groupLeaders.filter(hasMovement),
       ...totals,
+      target,
+      achievementRate: target > 0 ? Math.round((totals.total / target) * 100) : 0,
+      directGroupLeaderCount,
+      generalSupervisorId: generalSupervisor?.id,
+      generalSupervisorName: generalSupervisor?.name,
     };
   };
 
