@@ -1,7 +1,7 @@
 import { friendlyError } from '../../lib/errorMessages';
 import { useNotify } from '../../lib/notify';
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useReconnectRefetch } from '../../hooks/useReconnectRefetch';
 import {
@@ -43,6 +43,9 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 
 export function PolicyDetail() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  // معرّف قسط جاي من رابط إشعار "تم سداد قسط" — لتمييزه والتمرير إليه
+  const highlightInstallmentId = searchParams.get('installment');
   const navigate = useNavigate();
   const { user } = useAuth();
   const notify = useNotify();
@@ -463,6 +466,7 @@ export function PolicyDetail() {
           policyStatus={policy.status}
           onPay={handleOpenPayModal}
           onCancel={handleOpenCancelModal}
+          highlightId={highlightInstallmentId}
         />
       </div>
 
