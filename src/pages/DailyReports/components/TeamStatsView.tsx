@@ -99,7 +99,7 @@ export function TeamStatsView({ userId, viewerName, viewerRoleLabel, roleLevel, 
             <div className="grid lg:grid-cols-2 gap-4 items-start">
               <StatsTreeView nodes={tree} selectedId={selectedId} onSelect={(n) => setSelectedId(n.userId)} />
               {selectedNode ? (
-                <NodeDetailPanel node={selectedNode} />
+                <NodeDetailPanel node={selectedNode} startDate={startStr} endDate={endStr} />
               ) : (
                 <div className="card text-center py-8 text-secondary-400">
                   اختر فرداً أو مجموعة من القائمة لعرض تفاصيلها
