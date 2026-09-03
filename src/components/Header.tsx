@@ -119,17 +119,34 @@ export function Header() {
   const getNotificationLink = (n: Notification): string | null => {
     switch (n.entity_type) {
       case 'policy':         return n.entity_id ? `/policies/${n.entity_id}` : '/policies';
-      case 'customer':       return '/customers';
-      case 'installment':    return '/collection';
+      case 'customer':       return n.entity_id ? `/customers?open=${n.entity_id}` : '/customers';
+      case 'installment':    return null; // بيتحل بشكل غير متزامن (محتاج policy_id) — شوف handleNotificationClick
       case 'user':           return '/users';
       case 'monthly_closing':return '/monthly-closing';
       default:                return null;
     }
   };
 
-  const handleNotificationClick = (n: Notification) => {
+  const handleNotificationClick = async (n: Notification) => {
     if (!n.is_read) markAsRead(n.id);
     setNotificationsOpen(false);
+
+    // إشعار سداد/إلغاء سداد قسط: entity_id هو معرّف القسط نفسه، فمحتاجين
+    // نجيب الوثيقة التابع لها عشان نفتح صفحتها ونمرّر رقم القسط للتمييز
+    if (n.entity_type === 'installment' && n.entity_id) {
+      const { data, error } = await supabase
+        .from('installments')
+        .select('policy_id')
+        .eq('id', n.entity_id)
+        .maybeSingle();
+      if (!error && data?.policy_id) {
+        navigate(`/policies/${data.policy_id}?installment=${n.entity_id}`);
+      } else {
+        navigate('/collection');
+      }
+      return;
+    }
+
     const link = getNotificationLink(n);
     if (link) navigate(link);
   };
