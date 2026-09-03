@@ -9,7 +9,7 @@ import type { User, Installment } from '../../../lib/supabase';
 
 import { customerSchema, type CustomerFormData, type CustomerWithRelations, type CustomerPolicySummary } from '../types';
 import {
-  updateCustomer, createCustomer, deleteCustomer,
+  updateCustomer, createCustomer, deleteCustomer, fetchCustomerById,
 } from '../services/customersService';
 import { buildCustomerPrintHtml } from '../services/customerHelpers';
 import { buildCollectionDrillDownUrl } from '../../Dashboard/utils';
@@ -91,6 +91,31 @@ export function useCustomerActions({
     handleOpenModal();
     const next = new URLSearchParams(searchParams);
     next.delete('new');
+    setSearchParams(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, user]);
+
+  // فتح "تفاصيل العميل" تلقائياً لو الرابط جاي بـ ?open=<customerId> — مستخدَم
+  // من الضغط على إشعار عميل جديد (رئيس المجموعة/المراقب...) عشان يفتح على
+  // العميل نفسه حتى لو مش ظاهر فى الصفحة/الفلتر الحالي
+  useEffect(() => {
+    if (!user) return;
+    const openId = searchParams.get('open');
+    if (!openId) return;
+
+    (async () => {
+      try {
+        const customer = await fetchCustomerById(openId);
+        if (customer) await handleOpenCustomerDetails(customer);
+        else notify.error('العميل غير موجود أو تم حذفه');
+      } catch (error) {
+        console.error('Error opening customer from notification link:', error);
+        notify.error('تعذّر فتح تفاصيل العميل');
+      }
+    })();
+
+    const next = new URLSearchParams(searchParams);
+    next.delete('open');
     setSearchParams(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, user]);
