@@ -39,6 +39,36 @@ function SectionHeading({ icon, label }: { icon: ReactNode; label: string }) {
   );
 }
 
+// أفاتار بحروف اسم الإيجنت — نفس منطق UserAvatar (دايرة متدرّجة اللون +
+// حروف الاسم) بدون الحاجة لكائن User كامل، عشان يتّسق شكل صفوف هذا النموذج
+// مع بطاقات المستخدمين فى باقي التطبيق
+const AGENT_AVATAR_GRADIENTS = [
+  'from-primary-500 to-primary-600',
+  'from-info-500 to-info-600',
+  'from-success-500 to-success-600',
+  'from-warning-500 to-warning-600',
+];
+
+function agentInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '؟';
+  if (parts.length === 1) return parts[0].slice(0, 2);
+  return `${parts[0][0]}${parts[1][0]}`;
+}
+
+function AgentAvatar({ agentId, agentName }: { agentId: string; agentName: string }) {
+  let hash = 0;
+  for (let i = 0; i < agentId.length; i++) hash = (hash * 31 + agentId.charCodeAt(i)) >>> 0;
+  const gradient = AGENT_AVATAR_GRADIENTS[hash % AGENT_AVATAR_GRADIENTS.length];
+  return (
+    <div
+      className={`w-11 h-11 rounded-full shrink-0 flex items-center justify-center font-bold text-sm text-white bg-gradient-to-br shadow-sm ring-2 ring-white ${gradient}`}
+    >
+      {agentInitials(agentName)}
+    </div>
+  );
+}
+
 export function StatsEntryForm() {
   const { user } = useAuth();
   const { currentBranchId } = useBranchContext();
@@ -141,10 +171,13 @@ export function StatsEntryForm() {
 
       {!loading && !loadError && rows.map((row) => (
         <div key={row.agentId} className="card space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold text-secondary-900">{row.agentName}</h3>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <AgentAvatar agentId={row.agentId} agentName={row.agentName} />
+              <h3 className="font-bold text-secondary-900 truncate">{row.agentName}</h3>
+            </div>
             {row.saved && !row.saving && (
-              <span className="badge badge-success flex items-center gap-1">
+              <span className="badge badge-success flex items-center gap-1 shrink-0">
                 <CheckCircle2 className="w-3.5 h-3.5" /> محفوظ
               </span>
             )}
