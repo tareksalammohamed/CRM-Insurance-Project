@@ -317,6 +317,19 @@ export function getCustomerPolicyStatus(customer: CustomerWithRelations): Policy
   return getLatestPolicy(customer)?.status || 'no_policy';
 }
 
+// جلب عميل واحد بمعرّفه (بنفس شكل CustomerWithRelations) — تُستخدم لفتح
+// "تفاصيل العميل" مباشرة من رابط خارجي (إشعار) حتى لو العميل مش ضمن
+// الصفحة/الفلتر المحمّل حالياً فى الجدول
+export async function fetchCustomerById(id: string): Promise<CustomerWithRelations | null> {
+  const { data, error } = await supabase
+    .from('customers')
+    .select('*, owner:owner_id(id, name), policies(id, policy_number, policy_type, premium_amount, sum_assured, start_date, status, created_at)')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as CustomerWithRelations) || null;
+}
+
 // نستخدم دالة update_customer_op الموجودة بالفعل: بتعمل التحديث وتسجيل
 // النشاط جوه معاملة واحدة، ومحمية بمفتاح idempotency. بنمرر
 // p_expected_updated_at كـ NULL عمداً للحفاظ على نفس السلوك الحالي بالضبط
