@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Loader2, Plus, Trash2, MapPin, Clock, CheckCircle2 } from 'lucide-react';
+import { Loader2, Plus, Trash2, MapPin, Clock, CheckCircle2, ExternalLink } from 'lucide-react';
 
 import { fetchAgentAppointments, createAppointment, deleteAppointment } from '../services/appointmentCheckinsService';
 import type { AgentAppointmentCheckin } from '../types';
@@ -85,31 +85,44 @@ export function AgentAppointmentsPanel({ agentId, dateStr, enteredBy, isOutdoor 
         <>
           {appointments.length > 0 && (
             <ul className="space-y-1.5">
-              {appointments.map((a) => (
-                <li key={a.id} className="flex items-center justify-between text-sm bg-secondary-50 rounded-lg px-2.5 py-1.5">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Clock className="w-3.5 h-3.5 text-secondary-400 shrink-0" />
-                    <span className="font-medium text-secondary-800">{formatTime(a.appointment_time)}</span>
-                    <span className="text-secondary-600 truncate">{a.client_name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {a.checked_in_at ? (
-                      <span className="badge badge-success flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> تم تسجيل الموقع
-                      </span>
-                    ) : (
-                      <span className="text-xs text-secondary-400">بانتظار وصول الإيجنت</span>
-                    )}
-                    <button
-                      className="text-secondary-400 hover:text-error-600"
-                      onClick={() => handleDelete(a.id)}
-                      title="حذف المعاد"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </li>
-              ))}
+              {appointments.map((a) => {
+                const hasLocation = !!a.checked_in_at && a.latitude != null && a.longitude != null;
+                return (
+                  <li key={a.id} className="flex items-center justify-between text-sm bg-secondary-50 rounded-lg px-2.5 py-1.5 gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Clock className="w-3.5 h-3.5 text-secondary-400 shrink-0" />
+                      <span className="font-medium text-secondary-800">{formatTime(a.appointment_time)}</span>
+                      <span className="text-secondary-600 truncate">{a.client_name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {hasLocation ? (
+                        <a
+                          href={`https://www.google.com/maps?q=${a.latitude},${a.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="badge badge-success flex items-center gap-1 hover:brightness-95"
+                          title="فتح الموقع فى خرائط جوجل"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" /> تم تسجيل الموقع <ExternalLink className="w-3 h-3" />
+                        </a>
+                      ) : a.checked_in_at ? (
+                        <span className="badge badge-success flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> تم تسجيل الموقع
+                        </span>
+                      ) : (
+                        <span className="text-xs text-secondary-400">بانتظار وصول الإيجنت</span>
+                      )}
+                      <button
+                        className="text-secondary-400 hover:text-error-600"
+                        onClick={() => handleDelete(a.id)}
+                        title="حذف المعاد"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
 
