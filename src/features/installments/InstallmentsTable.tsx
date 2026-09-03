@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { CheckCircle, Clock, AlertTriangle, CreditCard, XCircle, Inbox, Hash } from 'lucide-react';
 import clsx from 'clsx';
 import { format } from 'date-fns';
@@ -23,6 +24,9 @@ interface InstallmentsTableProps {
   onPay: (installment: Installment) => void;
   onCancel: (installment: Installment) => void;
   emptyMessage?: string;
+  // معرّف قسط يُراد تمييزه والتمرير إليه تلقائياً — مستخدَم عند الدخول من
+  // رابط إشعار "تم سداد قسط" مباشرة على القسط المعني
+  highlightId?: string | null;
 }
 
 function getStatusIcon(status: string) {
@@ -43,6 +47,7 @@ export function InstallmentsTable({
   onPay,
   onCancel,
   emptyMessage = 'لا توجد أقساط لهذه الوثيقة',
+  highlightId = null,
 }: InstallmentsTableProps) {
   if (loading) {
     return (
@@ -76,6 +81,13 @@ export function InstallmentsTable({
   }
 
   const payAllowed = (inst: Installment) => canPay(inst) && (policyStatus ? policyStatus === 'active' : true);
+
+  // تمرير وتمييز القسط المستهدف تلقائياً (لو موجود ضمن القائمة الحالية)
+  useEffect(() => {
+    if (!highlightId) return;
+    const el = document.getElementById(`installment-row-${highlightId}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlightId, installments]);
 
   const renderAction = (inst: Installment) => {
     if (inst.status === 'paid') {
@@ -111,7 +123,11 @@ export function InstallmentsTable({
       {/* ===== الموبايل: كل قسط فى بطاقة مستقلة (نفس البيانات بالحرف) ===== */}
       <div className="stack-list md:hidden">
         {installments.map((inst) => (
-          <div key={inst.id} className="stack-row">
+          <div
+            key={inst.id}
+            id={`installment-row-${inst.id}`}
+            className={clsx('stack-row', inst.id === highlightId && 'ring-2 ring-primary-500 ring-offset-1')}
+          >
             <div className="stack-row-head">
               <span className="stack-row-title">
                 <Hash className="w-3.5 h-3.5 text-secondary-400 shrink-0" />
@@ -168,7 +184,11 @@ export function InstallmentsTable({
           </thead>
           <tbody>
             {installments.map((inst) => (
-              <tr key={inst.id}>
+              <tr
+                key={inst.id}
+                id={`installment-row-${inst.id}`}
+                className={clsx(inst.id === highlightId && 'ring-2 ring-inset ring-primary-500 bg-primary-50/40')}
+              >
                 <td>
                   <div className="flex items-center gap-2">
                     <span className="font-bold tabular-nums">{inst.installment_number}</span>
