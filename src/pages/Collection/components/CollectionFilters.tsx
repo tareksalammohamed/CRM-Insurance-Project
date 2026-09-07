@@ -13,7 +13,7 @@ interface CollectionFiltersProps {
   onQuickFilterDraftChange: (id: QuickFilter) => void;
   subTypeDraft: SubType;
   onSubTypeDraftChange: (v: SubType) => void;
-  teamMembers: { id: string; name: string; role: UserRole }[];
+  teamMembers: { id: string; name: string; role: UserRole; is_active: boolean }[];
   ownerFilterDraft: OwnerFilter;
   onOwnerFilterDraftChange: (id: OwnerFilter) => void;
   currentUserId: string | undefined;
