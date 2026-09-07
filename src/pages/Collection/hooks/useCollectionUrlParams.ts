@@ -7,6 +7,8 @@ interface CollectionUrlParams {
   initialQuickFilter: QuickFilter;
   initialOwnerFilter: OwnerFilter;
   initialMonth: string | null;
+  initialSearch: string | null;
+  highlightInstallmentId: string | null;
   hasUrlNavigation: boolean;
 }
 
@@ -37,9 +39,18 @@ export function useCollectionUrlParams(): CollectionUrlParams {
   const monthFromUrl = searchParams.get('month');
   const initialMonth = monthFromUrl && isValid(parseISO(monthFromUrl)) ? monthFromUrl : null;
 
+  // بحث جاهز جاي من رابط خارجي (مثلاً إشعار "تم سداد قسط") — بيملأ خانة
+  // البحث تلقائياً برقم الوثيقة عشان يضيّق القائمة على القسط المقصود
+  const searchFromUrl = searchParams.get('search');
+  const initialSearch = searchFromUrl?.trim() || null;
+
+  // معرّف قسط بعينه يُراد تمييزه والتمرير إليه ضمن نتائج البحث
+  const installmentFromUrl = searchParams.get('installment');
+  const highlightInstallmentId = installmentFromUrl?.trim() || null;
+
   const hasUrlNavigation = Boolean(
-    tabFromUrl || subTypeFromUrl || quickFilterFromUrl || ownerFromUrl || initialMonth
+    tabFromUrl || subTypeFromUrl || quickFilterFromUrl || ownerFromUrl || initialMonth || initialSearch
   );
 
-  return { initialSubType, initialQuickFilter, initialOwnerFilter, initialMonth, hasUrlNavigation };
+  return { initialSubType, initialQuickFilter, initialOwnerFilter, initialMonth, initialSearch, highlightInstallmentId, hasUrlNavigation };
 }
