@@ -20,6 +20,8 @@ interface CollectionCardProps {
   onPay: (installment: InstallmentWithRelations) => void;
   onCancel: (installment: InstallmentWithRelations) => void;
   onMore: (installment: InstallmentWithRelations, anchor: ActionMenuAnchor) => void;
+  // true لو ده القسط المستهدف من رابط إشعار خارجي — بيتحطّ عليه تمييز بصري
+  highlighted?: boolean;
 }
 
 // أول حرف من اسم العميل — مرساة بصرية تسرّع المسح البصري للقائمة
@@ -28,7 +30,7 @@ function initialOf(name: string | undefined): string {
   return trimmed ? trimmed.charAt(0) : '؟';
 }
 
-function CollectionCardImpl({ installment, onPay, onCancel, onMore }: CollectionCardProps) {
+function CollectionCardImpl({ installment, onPay, onCancel, onMore, highlighted = false }: CollectionCardProps) {
   // كل دلالات الحالة تأتى من نفس الدالة المشتركة بدون أى تغيير فى منطقها
   const { dueDate, isPaid, isOverdue, dayLabel, statusLabel } = getInstallmentDisplayInfo(installment);
 
@@ -39,7 +41,7 @@ function CollectionCardImpl({ installment, onPay, onCancel, onMore }: Collection
   const customerName = installment.policy.customer?.name || '-';
 
   return (
-    <div className={clsx('col-row', tone)}>
+    <div id={`collection-row-${installment.id}`} className={clsx('col-row', tone, highlighted && 'ring-2 ring-primary-500 ring-offset-1')}>
       {/* ===== الهوية: العميل + رقم الوثيقة + حالة القسط ===== */}
       <div className="col-row-head">
         <span className="col-row-avatar" aria-hidden="true">
