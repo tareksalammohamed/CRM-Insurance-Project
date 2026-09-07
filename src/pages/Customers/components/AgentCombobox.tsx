@@ -106,7 +106,6 @@ export function AgentCombobox({
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="ابحث بالاسم..."
                 className="input-field pr-9"
-                autoFocus
               />
               {search && (
                 <button
