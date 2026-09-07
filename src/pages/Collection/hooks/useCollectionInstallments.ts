@@ -12,9 +12,10 @@ interface UseCollectionInstallmentsArgs {
   ownerFilter: OwnerFilter;
   branchId?: string | null;
   monthStart?: string | null;
+  initialSearch?: string | null;
 }
 
-export function useCollectionInstallments({ user, yearMode, quickFilter, subType, ownerFilter, branchId = null, monthStart = null }: UseCollectionInstallmentsArgs) {
+export function useCollectionInstallments({ user, yearMode, quickFilter, subType, ownerFilter, branchId = null, monthStart = null, initialSearch = null }: UseCollectionInstallmentsArgs) {
   const [installments, setInstallments] = useState<InstallmentWithRelations[]>([]);
   const [loading, setLoading]           = useState(true);
   // أول تحميل فقط (لسه مفيش أي بيانات) هو اللي يستحق Skeleton كامل —
@@ -23,8 +24,8 @@ export function useCollectionInstallments({ user, yearMode, quickFilter, subType
   const [page, setPage]             = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [localSearch, setLocalSearch] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearch || '');
+  const [localSearch, setLocalSearch] = useState(initialSearch || '');
 
   // مرجع حي لآخر قيمة مُطبَّقة للبحث — بيُستخدم فى الـdebounce تحت فقط
   // للمقارنة، بدون ما يكون dependency للمؤقت نفسه.
