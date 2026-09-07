@@ -7,7 +7,7 @@ import { useReconnectRefetch } from '../../../hooks/useReconnectRefetch';
 // الفرع الحالي المختار لو موجود) — يُستخدم لملء فلتر "الفريق" بأسماء حقيقية
 // مقيّدة بصلاحياته، بدل قائمة درجات وظيفية ثابتة تشمل كل مستخدمي النظام
 export function useTeamMembers(user: User | null | undefined, branchId: string | null = null) {
-  const [teamMembers, setTeamMembers] = useState<{ id: string; name: string; role: UserRole }[]>([]);
+  const [teamMembers, setTeamMembers] = useState<{ id: string; name: string; role: UserRole; is_active: boolean }[]>([]);
 
   const loadTeamMembers = async () => {
     if (!user) return;
