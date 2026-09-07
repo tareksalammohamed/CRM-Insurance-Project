@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useEffect } from 'react';
 import type { InstallmentWithRelations } from '../types';
 import { LoadingState } from './LoadingState';
 import { EmptyState } from './EmptyState';
@@ -17,6 +17,8 @@ interface CollectionListProps {
   page: number;
   totalPages: number;
   onPageChange: (updater: (p: number) => number) => void;
+  // معرّف قسط بعينه يُراد تمييزه والتمرير إليه — جاي من رابط إشعار خارجي
+  highlightId?: string | null;
 }
 
 // ===== قائمة الأقساط (بطاقات) =====
@@ -36,7 +38,15 @@ function CollectionListImpl({
   page,
   totalPages,
   onPageChange,
+  highlightId = null,
 }: CollectionListProps) {
+  // تمرير وتمييز القسط المستهدف تلقائياً لما تحمّل نتائج البحث الجاي من الإشعار
+  useEffect(() => {
+    if (!highlightId) return;
+    const el = document.getElementById(`collection-row-${highlightId}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlightId, installments]);
+
   if (isInitialLoading) {
     return <LoadingState />;
   }
@@ -55,6 +65,7 @@ function CollectionListImpl({
             onPay={onPay}
             onCancel={onCancel}
             onMore={onMore}
+            highlighted={installment.id === highlightId}
           />
         ))}
       </div>
