@@ -132,17 +132,22 @@ export function Header() {
     setNotificationsOpen(false);
 
     // إشعار سداد/إلغاء سداد قسط: entity_id هو معرّف القسط نفسه، فمحتاجين
-    // نجيب الوثيقة التابع لها عشان نفتح صفحتها ونمرّر رقم القسط للتمييز
+    // نجيب رقم الوثيقة التابع لها عشان نفتح صفحة "التحصيل والسداد" مع بحث
+    // جاهز برقم الوثيقة، ونمرّر معرّف القسط للتمييز والتمرير. تبويب "المسدد"
+    // مناسب لسداد ناجح فقط — إلغاء السداد يرجّع القسط "مستحق/متأخر" فمفيش
+    // داعي نفلتر بتبويب معيّن، بنسيب الفلتر الافتراضي (الكل) والبحث كافي
     if (n.entity_type === 'installment' && n.entity_id) {
       const { data, error } = await supabase
         .from('installments')
-        .select('policy_id')
+        .select('policy:policy_id(policy_number)')
         .eq('id', n.entity_id)
         .maybeSingle();
-      if (!error && data?.policy_id) {
-        navigate(`/policies/${data.policy_id}?installment=${n.entity_id}`);
+      const policyNumber = (data as any)?.policy?.policy_number as string | undefined;
+      const quickFilterParam = n.type === 'payment_received' ? '&quickFilter=paid' : '';
+      if (!error && policyNumber) {
+        navigate(`/collection?search=${encodeURIComponent(policyNumber)}&installment=${n.entity_id}${quickFilterParam}`);
       } else {
-        navigate('/collection');
+        navigate(`/collection${quickFilterParam ? '?quickFilter=paid' : ''}`);
       }
       return;
     }
