@@ -34,7 +34,7 @@ export function Collection() {
   const { user } = useAuth();
   const { currentBranchId } = useBranchContext();
 
-  const { initialSubType, initialQuickFilter, initialOwnerFilter, initialMonth, hasUrlNavigation } =
+  const { initialSubType, initialQuickFilter, initialOwnerFilter, initialMonth, initialSearch, highlightInstallmentId, hasUrlNavigation } =
     useCollectionUrlParams();
 
   // تبدأ الصفحة مباشرة بالسنة الأولى، مع بقاء القسمين مفصولين منطقياً.
@@ -70,7 +70,7 @@ export function Collection() {
     localSearch,
     setLocalSearch,
     loadInstallments,
-  } = useCollectionInstallments({ user, yearMode, quickFilter, subType, ownerFilter, branchId: currentBranchId, monthStart: initialMonth });
+  } = useCollectionInstallments({ user, yearMode, quickFilter, subType, ownerFilter, branchId: currentBranchId, monthStart: initialMonth, initialSearch });
 
   // المستخدم وصل للصفحة من نقرة على بطاقة/رقم بفلتر جاهز فى الرابط —
   // لازم يشوف دليل واضح إن القائمة مفلترة بالفعل مع مخرج للرجوع للكل.
@@ -232,6 +232,7 @@ export function Collection() {
               page={page}
               totalPages={totalPages}
               onPageChange={setPage}
+              highlightId={highlightInstallmentId}
             />
           </section>
         </>
