@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, ChevronDown, Check, User as UserIcon, X } from 'lucide-react';
+import { Search, ChevronDown, Check, User as UserIcon, X, UserX } from 'lucide-react';
 import clsx from 'clsx';
 import { ROLE_LABELS, type UserRole } from '../../../lib/supabase';
+import { AppBottomSheet } from '../../../components/ui/AppBottomSheet';
 
 export interface AgentOption {
   id: string;
   name: string;
   role: UserRole;
+  is_active?: boolean;
 }
 
 interface AgentComboboxProps {
@@ -19,6 +21,8 @@ interface AgentComboboxProps {
   // لو true، بيظهر خيار "الكل" أعلى القائمة (يُستخدم فى لوحة الفلاتر فقط)
   includeAllOption?: boolean;
   allOptionLabel?: string;
+  // عنوان الشيت السفلي عند الفتح
+  sheetTitle?: string;
 }
 
 // خيارات فلتر "الدرجة الوظيفية" داخل القائمة — لتسهيل الوصول للوكيل المطلوب
@@ -40,25 +44,17 @@ function matchesJobLevel(role: UserRole, level: 'all' | UserRole): boolean {
 // قائمة احترافية لاختيار الوكيل: بحث فوري أثناء الكتابة بالاسم، تصفية حسب
 // الدرجة الوظيفية (مراقب عام / مراقب / رئيس مجموعة / وكيل)، وتمرير سريع
 // لقائمة قابلة للتمرير بدلاً من select طويل غير عملي.
+// القائمة نفسها بتترندر فى شيت سفلي عام (AppBottomSheet) بدل قائمة absolute
+// جوه الصفحة — كده مبتتقصّش ولا بتمنع السكرول مهما كان طول القائمة أو مكان
+// الحقل فى الصفحة.
 export function AgentCombobox({
   agents, value, onChange, currentUserId, placeholder = 'اختر الوكيل',
-  hasError, includeAllOption, allOptionLabel = 'جميع الوكلاء',
+  hasError, includeAllOption, allOptionLabel = 'جميع الوكلاء', sheetTitle = 'اختر من الفريق',
 }: AgentComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [jobLevel, setJobLevel] = useState<'all' | UserRole>('all');
-  const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   useEffect(() => {
     if (open) {
@@ -84,10 +80,10 @@ export function AgentCombobox({
       : '';
 
   return (
-    <div ref={containerRef} className="relative">
+    <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setOpen(true)}
         className={clsx(
           'input-field flex items-center justify-between gap-2 text-right w-full',
           hasError && 'border-error-500'
@@ -96,12 +92,12 @@ export function AgentCombobox({
         <span className={clsx('truncate', !displayLabel && 'text-secondary-400')}>
           {displayLabel || placeholder}
         </span>
-        <ChevronDown className={clsx('w-4 h-4 text-secondary-400 shrink-0 transition-transform', open && 'rotate-180')} />
+        <ChevronDown className="w-4 h-4 text-secondary-400 shrink-0" />
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-1 w-full bg-white rounded-xl border border-secondary-200 shadow-lg overflow-hidden animate-fadeIn">
-          <div className="p-2 border-b border-secondary-100 space-y-2">
+        <AppBottomSheet title={sheetTitle} onClose={() => setOpen(false)}>
+          <div className="px-4 pb-2 space-y-2 sm:px-5">
             <div className="relative">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary-400" />
               <input
@@ -109,7 +105,8 @@ export function AgentCombobox({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="ابحث بالاسم..."
-                className="input-field pr-9 py-1.5 text-sm"
+                className="input-field pr-9"
+                autoFocus
               />
               {search && (
                 <button
@@ -140,13 +137,13 @@ export function AgentCombobox({
             </div>
           </div>
 
-          <div className="max-h-56 overflow-y-auto scrollbar-thin">
+          <div className="max-h-[50vh] overflow-y-auto scrollbar-thin">
             {includeAllOption && (
               <button
                 type="button"
                 onClick={() => { onChange('all'); setOpen(false); }}
                 className={clsx(
-                  'w-full flex items-center justify-between gap-2 px-3 py-2 text-sm text-right hover:bg-secondary-50',
+                  'w-full flex items-center justify-between gap-2 px-4 py-2.5 text-sm text-right hover:bg-secondary-50 sm:px-5',
                   value === 'all' && 'bg-primary-50 text-primary-700 font-medium'
                 )}
               >
@@ -155,7 +152,7 @@ export function AgentCombobox({
               </button>
             )}
             {filteredAgents.length === 0 ? (
-              <div className="px-3 py-6 text-center text-sm text-secondary-400">
+              <div className="px-4 py-6 text-center text-sm text-secondary-400">
                 لا يوجد وكلاء مطابقين
               </div>
             ) : (
@@ -165,8 +162,9 @@ export function AgentCombobox({
                   type="button"
                   onClick={() => { onChange(agent.id); setOpen(false); }}
                   className={clsx(
-                    'w-full flex items-center justify-between gap-2 px-3 py-2 text-sm text-right hover:bg-secondary-50',
-                    value === agent.id && 'bg-primary-50 text-primary-700 font-medium'
+                    'w-full flex items-center justify-between gap-2 px-4 py-2.5 text-sm text-right hover:bg-secondary-50 sm:px-5',
+                    value === agent.id && 'bg-primary-50 text-primary-700 font-medium',
+                    agent.is_active === false && 'opacity-70'
                   )}
                 >
                   <span className="flex items-center gap-2 min-w-0">
@@ -174,6 +172,11 @@ export function AgentCombobox({
                     <span className="truncate">
                       {agent.name}{agent.id === currentUserId ? ' (أنا)' : ''}
                     </span>
+                    {agent.is_active === false && (
+                      <span className="badge badge-secondary text-[10px] shrink-0 flex items-center gap-1">
+                        <UserX className="w-3 h-3" /> غير نشط
+                      </span>
+                    )}
                   </span>
                   <span className="flex items-center gap-2 shrink-0">
                     <span className="text-[10px] text-secondary-400">{ROLE_LABELS[agent.role]}</span>
@@ -183,7 +186,7 @@ export function AgentCombobox({
               ))
             )}
           </div>
-        </div>
+        </AppBottomSheet>
       )}
     </div>
   );
