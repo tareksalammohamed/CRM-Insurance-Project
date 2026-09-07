@@ -31,7 +31,7 @@ export interface FetchInstallmentsParams {
 // وظيفية تفلتر بأسماء فريقها الفعلي فقط (رئيس مجموعة يشوف وكلاءه، مراقب
 // يشوف رؤساء مجموعاته، مدير تطوير يشوف كل من تحته... إلخ) بدل قائمة ثابتة
 // من الأدوار تشمل كل مستخدمي النظام بغض النظر عن الهيكل.
-export async function fetchTeamForCurrentUser(user: User, branchId: string | null = null): Promise<{ id: string; name: string; role: UserRole }[]> {
+export async function fetchTeamForCurrentUser(user: User, branchId: string | null = null): Promise<{ id: string; name: string; role: UserRole; is_active: boolean }[]> {
   if (user.role === 'agent' || user.role === 'premium_agent') {
     return [];
   }
@@ -41,11 +41,12 @@ export async function fetchTeamForCurrentUser(user: User, branchId: string | nul
     async () => {
       const allIds = await fetchUserSubtreeIdsBranchAware('collection', user.id, branchId);
 
+      // ملحوظة: من غير فلترة is_active — لازم يظهروا فى فلتر "الفريق" حتى لو
+      // غير نشطين، عشان يقدر رئيس المجموعة/المراقب يشوف تحصيلاتهم القديمة
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, role')
+        .select('id, name, role, is_active')
         .in('id', allIds)
-        .eq('is_active', true)
         .order('name');
 
       if (error) throw error;
@@ -53,10 +54,12 @@ export async function fetchTeamForCurrentUser(user: User, branchId: string | nul
       return [...(data || [])].sort((a, b) => {
         if (a.id === user.id) return -1;
         if (b.id === user.id) return 1;
+        // النشطين أولاً، ثم الغير نشطين فى الآخر
+        if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
         return a.name.localeCompare(b.name, 'ar');
       });
     },
-    { emptyValue: [] as { id: string; name: string; role: UserRole }[] },
+    { emptyValue: [] as { id: string; name: string; role: UserRole; is_active: boolean }[] },
   );
   return result.data;
 }
