@@ -95,18 +95,22 @@ export function usePolicyActions({
         const customer = await fetchCustomerForPicker(newForCustomerId);
         setSelectedCustomer(customer);
         setEditingPolicy(null);
+        // العميل مالوش وثيقة سابقة → تعبئة وقفل مبلغ التأمين وطريقة السداد
+        // تلقائياً من بيانات "طلب التأمين" المسجلة معه (راجع
+        // customerDefaultsLocked فى PolicyFormDialog)، ولو مفيهوش هذه
+        // البيانات بيرجع لنفس القيم الافتراضية القديمة قابلة للتعديل يدوياً.
+        // العميل عنده وثيقة سابقة بالفعل (بنُصدر له وثيقة تانية) → مفيش
+        // تعبئة ولا قفل، الحقول تفضل فاضية وقابلة للتعديل الكامل بمعزل تماماً
+        // عن الوثيقة الموجودة.
+        const isSecondPolicy = !!customer?.current_policy_number;
         reset({
           policy_number: '',
           customer_id: newForCustomerId,
           policy_type: 'quadruple',
           start_date: computeDefaultPolicyStartDate(),
-          // مبلغ التأمين وطريقة السداد يترصدوا تلقائياً من بيانات "طلب
-          // التأمين" المسجلة مع العميل (راجع customer_defaults_locked فى
-          // PolicyFormDialog) — لو العميل قديم ومفيهوش هذه البيانات، بيرجع
-          // لنفس القيم الافتراضية القديمة عشان الحقل يفضل قابل للتعديل يدوياً
-          payment_method: (customer?.payment_method as PaymentMethod) || 'monthly',
+          payment_method: isSecondPolicy ? 'monthly' : ((customer?.payment_method as PaymentMethod) || 'monthly'),
           premium_amount: '' as any,
-          sum_assured: customer?.insurance_amount ?? ('' as any),
+          sum_assured: isSecondPolicy ? ('' as any) : (customer?.insurance_amount ?? ('' as any)),
           notes: '',
           isEditingPolicy: false
         });
@@ -178,13 +182,17 @@ export function usePolicyActions({
     setSelectedCustomer(customer);
     setValue('customer_id', customer.id, { shouldValidate: true });
 
-    // عند إصدار وثيقة جديدة (مش تعديل وثيقة موجودة)، وكان عند العميل بيانات
-    // "طلب تأمين" محفوظة، بنعبّي مبلغ التأمين وطريقة السداد تلقائياً منها
-    // بدل إدخالهما يدوياً تانى — نفس الحقلين بيتقفلوا للعرض فقط فى
-    // PolicyFormDialog (customerDefaultsLocked). لو العميل مفيهوش هذه
+    // عند إصدار وثيقة جديدة (مش تعديل وثيقة موجودة) لعميل مالوش أي وثيقة
+    // سابقة، وكان عنده بيانات "طلب تأمين" محفوظة، بنعبّي مبلغ التأمين وطريقة
+    // السداد تلقائياً منها بدل إدخالهما يدوياً — نفس الحقلين بيتقفلوا للعرض
+    // فقط فى PolicyFormDialog (customerDefaultsLocked). لو العميل مفيهوش هذه
     // البيانات (عميل قديم قبل إضافة الميزة)، الحقول تفضل زي ما هي قابلة
     // للتعديل يدوياً بدون أي تغيير فى السلوك القديم.
-    if (!editingPolicy && customer.insurance_amount != null && customer.payment_method) {
+    // لو العميل عنده وثيقة قائمة بالفعل وبنُصدر له وثيقة تانية، مفيش تعبئة
+    // ولا قفل تلقائي — الحقول تفضل فاضية وقابلة للتعديل الكامل، لأن الوثيقة
+    // الجديدة مفروض تكون مستقلة تماماً عن الوثيقة الموجودة (قيمة قسط ومبلغ
+    // تأمين وطريقة سداد مختلفين محتمل).
+    if (!editingPolicy && !customer.current_policy_number && customer.insurance_amount != null && customer.payment_method) {
       setValue('sum_assured', customer.insurance_amount, { shouldValidate: true });
       setValue('payment_method', customer.payment_method as PaymentMethod, { shouldValidate: true });
     }
@@ -193,11 +201,16 @@ export function usePolicyActions({
   };
 
   // مبلغ التأمين وطريقة السداد بيبقوا للعرض فقط (مقفولين) فى نموذج "إصدار
-  // وثيقة جديدة" لو العميل المختار عنده بيانات "طلب تأمين" محفوظة —
-  // بيتقفلوا لحماية القيمة اللي اترصدت تلقائياً من التعديل غير المقصود. ما
-  // بيتفعلش أثناء تعديل وثيقة موجودة أصلاً (نفس السلوك القديم زي ما هو).
+  // وثيقة جديدة" لو العميل المختار عنده بيانات "طلب تأمين" محفوظة ومفيش له
+  // أي وثيقة سابقة — بيتقفلوا لحماية القيمة اللي اترصدت تلقائياً من التعديل
+  // غير المقصود. لو العميل عنده وثيقة قائمة بالفعل (current_policy_number)،
+  // الحقلين بيفضلوا مفتوحين للتعديل الكامل حتى لو عنده بيانات طلب تأمين
+  // محفوظة، عشان الوثيقة الجديدة تقدر تُصدر بقيمة قسط ومبلغ تأمين وطريقة
+  // سداد مختلفين تماماً عن الوثيقة الموجودة. ما بيتفعلش أثناء تعديل وثيقة
+  // موجودة أصلاً (نفس السلوك القديم زي ما هو).
   const customerDefaultsLocked =
-    !editingPolicy && !!selectedCustomer && selectedCustomer.insurance_amount != null && !!selectedCustomer.payment_method;
+    !editingPolicy && !!selectedCustomer && !selectedCustomer.current_policy_number &&
+    selectedCustomer.insurance_amount != null && !!selectedCustomer.payment_method;
 
   const onSubmit = async (data: PolicyFormData) => {
     if (!user) return;
