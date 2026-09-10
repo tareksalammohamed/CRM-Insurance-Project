@@ -330,6 +330,7 @@ function normalizeHeaderForMatch(value: any): string {
     .replace(/[أإآٱ]/g, 'ا') // أشكال الألف والهمزة
     .replace(/[ى]/g, 'ي')
     .replace(/[ة]/g, 'ه') // التاء المربوطة/الهاء في عناوين الملفات
+    .replace(/ابتداء|ابتدا|بدء/g, 'بداية') // صيغ شائعة لـ "بداية" التأمين
     .replace(/ـ/g, '') // التطويل
     .replace(/\s+/g, ' ')
     .trim();
