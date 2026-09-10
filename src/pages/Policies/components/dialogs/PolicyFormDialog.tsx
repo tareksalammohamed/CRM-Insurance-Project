@@ -102,7 +102,7 @@ export function PolicyFormDialog({
 
               <div className="form-grid">
                 <div className="form-group">
-                  <label className="input-label" htmlFor="pf-number">رقم الوثيقة *</label>
+                  <label className="input-label" htmlFor="pf-number">رقم الوثيقة {showSplitPreview ? '1' : ''} *</label>
                   <input
                     id="pf-number"
                     {...register('policy_number')}
@@ -118,6 +118,32 @@ export function PolicyFormDialog({
                     </p>
                   )}
                 </div>
+
+                {showSplitPreview && splitChunks.slice(1).map((chunk, index) => {
+                  const numberIndex = index + 1;
+                  return (
+                    <div className="form-group" key={`split-policy-number-${numberIndex}`}>
+                      <label className="input-label" htmlFor={`pf-number-${numberIndex}`}>
+                        رقم الوثيقة {numberIndex + 1} ({formatCurrency(chunk.sumAssured)}) *
+                      </label>
+                      <input
+                        id={`pf-number-${numberIndex}`}
+                        {...register(`policy_numbers.${index}` as const)}
+                        dir="ltr"
+                        aria-invalid={!!errors.policy_numbers}
+                        className={clsx('input-field font-mono', errors.policy_numbers && 'border-error-500')}
+                        placeholder={`أدخل رقم الوثيقة ${numberIndex + 1}`}
+                      />
+                    </div>
+                  );
+                })}
+
+                {showSplitPreview && errors.policy_numbers && (
+                  <p className="input-error form-col-full" role="alert">
+                    <AlertCircle />
+                    {String(errors.policy_numbers.message || 'راجع أرقام وثائق المجموعة')}
+                  </p>
+                )}
 
                 <div className="form-group">
                   <label className="input-label">العميل *</label>

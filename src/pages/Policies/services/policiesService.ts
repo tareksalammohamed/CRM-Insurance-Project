@@ -435,9 +435,10 @@ export async function createPolicyGroup(
   operationId: string = crypto.randomUUID(),
 ): Promise<{ policyGroupId: string; count: number }> {
   const { isEditingPolicy, remainder_premium_amount, ...policyData } = data;
+  const policyNumbers = [policyData.policy_number, ...(policyData.policy_numbers || [])];
   const { data: result, error } = await supabase.rpc('create_policy_group_op', {
     p_operation_id: operationId,
-    p_policy_number: policyData.policy_number,
+    p_policy_numbers: policyNumbers,
     p_customer_id: policyData.customer_id,
     p_policy_type: policyData.policy_type,
     p_start_date: policyData.start_date,

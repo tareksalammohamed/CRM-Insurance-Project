@@ -22,6 +22,8 @@ export const policySchema = z.object({
   // premium_amount المُدخل مرة واحدة، أما آخر وحدة (أقل من 50,000) فقسطها
   // مختلف غالباً فبيتدخل بشكل منفصل.
   remainder_premium_amount: z.number().optional(),
+  // أرقام الوثائق الفرعية يدخلها المستخدم بنفسه عند التقسيم؛ لا يتم توليد أي لاحقة تلقائياً.
+  policy_numbers: z.array(z.string()).optional(),
   notes: z.string().optional(),
   isEditingPolicy: z.boolean().optional()
 }).superRefine((data, ctx) => {
@@ -36,6 +38,12 @@ export const policySchema = z.object({
 
   if (!data.isEditingPolicy && policyRequiresSplit(data.policy_type, data.sum_assured)) {
     const chunks = computeProtectionInvestmentSplit(data.sum_assured as number);
+    const enteredNumbers = [data.policy_number, ...(data.policy_numbers || [])].map((value) => value.trim());
+    if (enteredNumbers.length !== chunks.length || enteredNumbers.some((value) => !value)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'أدخل رقم كل وثيقة من وثائق المجموعة', path: ['policy_numbers'] });
+    } else if (new Set(enteredNumbers).size !== enteredNumbers.length) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'أرقام وثائق المجموعة يجب أن تكون مختلفة', path: ['policy_numbers'] });
+    }
     if (splitHasRemainderChunk(chunks)) {
       if (
         data.remainder_premium_amount === undefined ||
