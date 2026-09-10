@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import type { PolicyFormData } from '../types';
 import { withOfflineQueue } from '../../../lib/offlineQueue';
 import { dalRead } from '../../../lib/dataAccessLayer';
+import { groupPoliciesForDisplay } from '../business/policyGrouping';
 
 const PAGE_SIZE = 10;
 
@@ -87,16 +88,22 @@ export async function fetchPoliciesPage({
         query = query.gte('start_date', monthStart).lt('start_date', monthEnd);
       }
 
-      const from = (page - 1) * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
-
-      const { data, error, count } = await query.range(from, to);
+      // نحمّل النتائج المطابقة كاملة قبل التقسيم حتى لا تتوزع وثائق المجموعة
+      // بين صفحتين وتظهر كوثائق منفصلة.
+      const { data, error } = await query.limit(10000);
       if (error) throw error;
 
+      const entries = groupPoliciesForDisplay((data || []) as Policy[]);
+      const from = (page - 1) * PAGE_SIZE;
+      const pageEntries = entries.slice(from, from + PAGE_SIZE);
+      const pagePolicies = pageEntries.flatMap((entry) =>
+        entry.kind === 'group' ? entry.members : [entry.policy]
+      );
+
       return {
-        policies: data as Policy[],
-        totalPages: Math.ceil((count || 0) / PAGE_SIZE),
-        totalCount: count || 0,
+        policies: pagePolicies,
+        totalPages: Math.max(1, Math.ceil(entries.length / PAGE_SIZE)),
+        totalCount: entries.length,
       };
     },
     { emptyValue: EMPTY_POLICIES_PAGE },

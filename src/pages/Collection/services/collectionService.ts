@@ -1,6 +1,7 @@
 import { supabase, type User, type UserRole } from '../../../lib/supabase';
 import { format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay, parseISO, isValid } from 'date-fns';
 import type { QuickFilter, SubType, InstallmentWithRelations, OwnerFilter } from '../types';
+import { groupInstallmentsForDisplay } from '../business/collectionGrouping';
 import {
   fetchInstallmentsByPolicyId, payInstallment, cancelInstallmentPayment,
 } from '../../../features/installments/installmentsService';
@@ -286,19 +287,24 @@ async function fetchInstallmentsOnline({ quickFilter, subType, ownerFilter, page
     query = query.in('policy_id', combinedIds);
   }
 
-  const from = (page - 1) * PAGE_SIZE;
-  const to   = from + PAGE_SIZE - 1;
-
-  const { data, error, count } = await query
+  const { data, error } = await query
     .order('due_date', { ascending: true })
-    .range(from, to);
+    .limit(10000);
 
   if (error) throw error;
 
+  const allInstallments = (data as InstallmentWithRelations[]) || [];
+  const entries = groupInstallmentsForDisplay(allInstallments);
+  const from = (page - 1) * PAGE_SIZE;
+  const pageEntries = entries.slice(from, from + PAGE_SIZE);
+  const pageInstallments = pageEntries.flatMap((entry) =>
+    entry.kind === 'group' ? entry.members : [entry.installment]
+  );
+
   return {
-    installments: (data as InstallmentWithRelations[]) || [],
-    totalCount: count || 0,
-    totalPages: Math.ceil((count || 0) / PAGE_SIZE),
+    installments: pageInstallments,
+    totalCount: entries.length,
+    totalPages: Math.max(1, Math.ceil(entries.length / PAGE_SIZE)),
   };
 }
 
