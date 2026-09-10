@@ -323,6 +323,18 @@ function normalizeHeaderCell(value: any): string {
   return normalizeText(value).replace(/\*$/, '').trim();
 }
 
+function normalizeHeaderForMatch(value: any): string {
+  return normalizeHeaderCell(value)
+    .normalize('NFKC')
+    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '') // التشكيل
+    .replace(/[أإآٱ]/g, 'ا') // أشكال الألف والهمزة
+    .replace(/[ى]/g, 'ي')
+    .replace(/[ة]/g, 'ه') // التاء المربوطة/الهاء في عناوين الملفات
+    .replace(/ـ/g, '') // التطويل
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 const ARABIC_INDIC_DIGITS: Record<string, string> = {
   '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
   '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9'
@@ -488,7 +500,8 @@ export async function parseWorkbookFile(file: File, agents: ImportAgent[] = []):
   // الأعمدة الإلزامية فقط هي اللي بيتسبب غيابها في خطأ "الأعمدة الناقصة"
   IMPORT_COLUMNS.forEach((col) => {
     if (col.key === 'premium_amount') return;
-    const idx = headerRow.findIndex((h) => h === col.header);
+    const expectedHeader = normalizeHeaderForMatch(col.header);
+    const idx = headerRow.findIndex((h) => normalizeHeaderForMatch(h) === expectedHeader);
     if (idx === -1) {
       if (col.required) missingHeaders.push(col.header);
     } else {
