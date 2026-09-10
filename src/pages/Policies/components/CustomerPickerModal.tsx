@@ -6,6 +6,7 @@ import { ar } from 'date-fns/locale';
 import clsx from 'clsx';
 
 import { searchCustomersForPicker, type CustomerPickerItem } from '../services/policiesService';
+import { DialogPortal } from '../../../components/ui/DialogPortal';
 
 interface CustomerPickerModalProps {
   isOpen: boolean;
@@ -66,7 +67,13 @@ export function CustomerPickerModal({ isOpen, onClose, onSelect }: CustomerPicke
 
   if (!isOpen) return null;
 
+  // بترندر مباشرة فى document.body (بدل جوه شجرة صفحة الوثائق) — نفس سبب
+  // استخدام DialogPortal فى PolicyFormDialog: حاوية الصفحة بتحمل
+  // animate-fadeIn (transform)، وده بيعمل containing block جديد لأى عنصر
+  // position:fixed جواه، فتظهر الخلفية (.modal-overlay) خارج الشاشة تمامًا
+  // وتبان القائمة "مش بتفتح" رغم إن onOpenCustomerPicker بيشتغل صح فعليًا.
   return (
+    <DialogPortal>
     <div className="modal-overlay z-[60]" onClick={onClose}>
       <div
         className="modal-content max-w-lg flex flex-col animate-slideUp sm:animate-fadeIn"
@@ -182,5 +189,6 @@ export function CustomerPickerModal({ isOpen, onClose, onSelect }: CustomerPicke
         <div className="safe-area-bottom shrink-0" />
       </div>
     </div>
+    </DialogPortal>
   );
 }
