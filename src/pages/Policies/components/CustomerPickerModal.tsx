@@ -74,7 +74,10 @@ export function CustomerPickerModal({ isOpen, onClose, onSelect }: CustomerPicke
   // وتبان القائمة "مش بتفتح" رغم إن onOpenCustomerPicker بيشتغل صح فعليًا.
   return (
     <DialogPortal>
-    <div className="modal-overlay z-[60]" onClick={onClose}>
+    {/* z-[80]: زي نفس نمط "مودال جوه مودال" المستخدم فى print-setup-modal —
+        .modal-overlay أصلاً بتاخد z-index:70، فلازم رقم أعلى منه صراحةً
+        عشان تفضل فوق مودال إصدار/تعديل الوثيقة اللي فاتح تحتها، مش تحته */}
+    <div className="modal-overlay z-[80]" onClick={onClose}>
       <div
         className="modal-content max-w-lg flex flex-col animate-slideUp sm:animate-fadeIn"
         style={{ height: 'min(85dvh, 640px)' }}
