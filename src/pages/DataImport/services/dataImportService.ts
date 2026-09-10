@@ -180,6 +180,26 @@ const POLICY_TYPE_REVERSE = buildReverseMap(POLICY_TYPE_LABELS);
 const PAYMENT_METHOD_REVERSE = buildReverseMap(PAYMENT_METHOD_LABELS);
 const MARITAL_STATUS_REVERSE = buildReverseMap(MARITAL_STATUS_LABELS);
 
+// أسماء شائعة لنوع الوثيقة كما تظهر عادةً في كشوف شركات التأمين.
+// القيمة التي تُحفظ تظل دائماً الكود الرسمي الموجود في POLICY_TYPE_LABELS.
+const POLICY_TYPE_ALIASES: Record<string, string> = {
+  'رباعية': 'quadruple',
+  'رباعي': 'quadruple',
+  'الرباعي': 'quadruple',
+  'حمايه واستثمار': 'protection_investment',
+  'حماية و استثمار': 'protection_investment',
+  'مختلطة': 'mixed',
+  'المختلط': 'mixed',
+  'اقساط': 'installments',
+  'قسط': 'installments',
+  'تقسيط': 'installments',
+  'ذو اقساط': 'installments',
+  'معاش و اطمئنان': 'pension_peace',
+};
+Object.entries(POLICY_TYPE_ALIASES).forEach(([alias, code]) => {
+  POLICY_TYPE_REVERSE.set(normalizeLookupText(alias), code);
+});
+
 interface DateNativeOverrides {
   birth_date?: any;
   start_date?: any;
@@ -226,12 +246,12 @@ export function buildParsedRow(
   if (!policyNumber) errors.push('رقم الوثيقة مطلوب');
 
   const policyTypeInput = normalizeText(get('policy_type'));
-  const policyType = policyTypeInput ? POLICY_TYPE_REVERSE.get(normalizeText(policyTypeInput)) : undefined;
+  const policyType = policyTypeInput ? POLICY_TYPE_REVERSE.get(normalizeLookupText(policyTypeInput)) : undefined;
   if (!policyTypeInput) errors.push('نوع الوثيقة مطلوب');
   else if (!policyType) errors.push(`نوع الوثيقة غير معروف: "${policyTypeInput}"`);
 
   const paymentMethodInput = normalizeText(get('payment_method'));
-  const paymentMethod = paymentMethodInput ? PAYMENT_METHOD_REVERSE.get(normalizeText(paymentMethodInput)) : undefined;
+  const paymentMethod = paymentMethodInput ? PAYMENT_METHOD_REVERSE.get(normalizeLookupText(paymentMethodInput)) : undefined;
   if (!paymentMethodInput) errors.push('طريقة السداد مطلوبة');
   else if (!paymentMethod) errors.push(`طريقة السداد غير معروفة: "${paymentMethodInput}"`);
 
@@ -256,7 +276,7 @@ export function buildParsedRow(
   const maritalStatusInput = normalizeText(get('marital_status'));
   let maritalStatus: string | undefined;
   if (maritalStatusInput) {
-    maritalStatus = MARITAL_STATUS_REVERSE.get(normalizeText(maritalStatusInput));
+    maritalStatus = MARITAL_STATUS_REVERSE.get(normalizeLookupText(maritalStatusInput));
     if (!maritalStatus) errors.push(`الحالة الاجتماعية غير معروفة: "${maritalStatusInput}"`);
   }
 
@@ -303,14 +323,27 @@ export function revalidateRow(row: ParsedRow, agents: ImportAgent[] = []): Parse
 function buildReverseMap(labels: Record<string, string>): Map<string, string> {
   const map = new Map<string, string>();
   Object.entries(labels).forEach(([code, label]) => {
-    map.set(normalizeText(label), code);
-    map.set(normalizeText(code), code); // يسمح أيضاً بكتابة القيمة الإنجليزية للكود مباشرة
+    map.set(normalizeLookupText(label), code);
+    map.set(normalizeLookupText(code), code); // يسمح أيضاً بكتابة القيمة الإنجليزية للكود مباشرة
   });
   return map;
 }
 
 function normalizeText(value: any): string {
   return String(value ?? '').trim().replace(/\s+/g, ' ');
+}
+
+function normalizeLookupText(value: any): string {
+  return normalizeText(value)
+    .normalize('NFKC')
+    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/[ى]/g, 'ي')
+    .replace(/[ة]/g, 'ه')
+    .replace(/ـ/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
 }
 
 function normalizeDigitsText(value: any): string {
