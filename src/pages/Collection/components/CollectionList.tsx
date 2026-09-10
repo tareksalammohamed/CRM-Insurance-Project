@@ -3,6 +3,8 @@ import type { InstallmentWithRelations } from '../types';
 import { LoadingState } from './LoadingState';
 import { EmptyState } from './EmptyState';
 import { CollectionCard } from './CollectionCard';
+import { CollectionGroupCard } from './CollectionGroupCard';
+import { groupInstallmentsForDisplay } from '../business/collectionGrouping';
 import { Pagination } from '../../../components/ui/Pagination';
 import type { ActionMenuAnchor } from '../../../components/ui/AppBottomSheet';
 
@@ -12,6 +14,7 @@ interface CollectionListProps {
   hasActiveFilters: boolean;
   onResetSearchAndFilters: () => void;
   onPay: (installment: InstallmentWithRelations) => void;
+  onPayGroup: (members: InstallmentWithRelations[]) => void;
   onCancel: (installment: InstallmentWithRelations) => void;
   onMore: (installment: InstallmentWithRelations, anchor: ActionMenuAnchor) => void;
   page: number;
@@ -27,12 +30,17 @@ interface CollectionListProps {
 // القائمة الحالية ظاهرة مع مؤشر تحديث بسيط بدل ما تختفي الشاشة
 // بالكامل وتظهر Skeleton من جديد (وده كان سبب الرعشة عند كل
 // تغيير فلتر أو صفحة).
+//
+// أقساط الوثائق الناتجة عن التقسيم التلقائي لوثيقة "حماية واستثمار" (نفس
+// المجموعة + نفس تاريخ الاستحقاق) بتتجمّع فى كارت واحد (CollectionGroupCard)
+// بدل ما تظهر كأقساط منفصلة — راجع business/collectionGrouping.ts
 function CollectionListImpl({
   isInitialLoading,
   installments,
   hasActiveFilters,
   onResetSearchAndFilters,
   onPay,
+  onPayGroup,
   onCancel,
   onMore,
   page,
@@ -55,19 +63,25 @@ function CollectionListImpl({
     return <EmptyState hasActiveFilters={hasActiveFilters} onResetSearchAndFilters={onResetSearchAndFilters} />;
   }
 
+  const entries = groupInstallmentsForDisplay(installments);
+
   return (
     <>
       <div className="col-list">
-        {installments.map((installment) => (
-          <CollectionCard
-            key={installment.id}
-            installment={installment}
-            onPay={onPay}
-            onCancel={onCancel}
-            onMore={onMore}
-            highlighted={installment.id === highlightId}
-          />
-        ))}
+        {entries.map((entry) =>
+          entry.kind === 'group' ? (
+            <CollectionGroupCard key={entry.key} members={entry.members} onPayGroup={onPayGroup} />
+          ) : (
+            <CollectionCard
+              key={entry.key}
+              installment={entry.installment}
+              onPay={onPay}
+              onCancel={onCancel}
+              onMore={onMore}
+              highlighted={entry.installment.id === highlightId}
+            />
+          )
+        )}
       </div>
 
       <Pagination page={page} totalPages={totalPages} onPageChange={onPageChange} />

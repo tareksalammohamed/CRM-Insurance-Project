@@ -1,9 +1,12 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import type { Policy } from '../../../lib/supabase';
 import { Pagination } from '../../../components/ui/Pagination';
 import { LoadingState } from './LoadingState';
 import { EmptyState } from './EmptyState';
 import { PolicyCard } from './PolicyCard';
+import { GroupedPolicyCard } from './GroupedPolicyCard';
+import { PolicyGroupMembersDialog } from './dialogs/PolicyGroupMembersDialog';
+import { groupPoliciesForDisplay } from '../business/policyGrouping';
 import type { ActionMenuAnchor } from '../../../components/ui/AppBottomSheet';
 
 interface PoliciesListProps {
@@ -31,6 +34,11 @@ function PoliciesListImpl({
   setPage,
   totalPages,
 }: PoliciesListProps) {
+  // الوثيقة/الوثائق المعروضة حالياً فى مودال "عرض كل الوثائق" لمجموعة تقسيم
+  // تلقائي (وثيقة "حماية واستثمار" بمبلغ تأمين > 50,000) — راجع
+  // business/policyGrouping.ts
+  const [openGroupMembers, setOpenGroupMembers] = useState<Policy[] | null>(null);
+
   if (isInitialLoading) {
     return <LoadingState />;
   }
@@ -45,20 +53,41 @@ function PoliciesListImpl({
     );
   }
 
+  const entries = groupPoliciesForDisplay(policies);
+
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {policies.map((policy) => (
-          <PolicyCard
-            key={policy.id}
-            policy={policy}
-            onOpenDetails={onOpenDetails}
-            onOpenMoreMenu={onOpenMoreMenu}
-          />
-        ))}
+        {entries.map((entry) =>
+          entry.kind === 'group' ? (
+            <GroupedPolicyCard
+              key={entry.key}
+              members={entry.members}
+              onOpenMembers={setOpenGroupMembers}
+            />
+          ) : (
+            <PolicyCard
+              key={entry.key}
+              policy={entry.policy}
+              onOpenDetails={onOpenDetails}
+              onOpenMoreMenu={onOpenMoreMenu}
+            />
+          )
+        )}
       </div>
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+
+      {openGroupMembers && (
+        <PolicyGroupMembersDialog
+          members={openGroupMembers}
+          onClose={() => setOpenGroupMembers(null)}
+          onOpenDetails={(policy) => {
+            setOpenGroupMembers(null);
+            onOpenDetails(policy);
+          }}
+        />
+      )}
     </>
   );
 }

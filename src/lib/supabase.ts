@@ -90,6 +90,13 @@ export type Policy = {
   updated_at: string;
   customer?: Customer;
   owner?: User;
+  // تقسيم وثائق "الحماية والاستثمار" تلقائياً عند تجاوز مبلغ التأمين 50,000
+  // جنيه — راجع pages/Policies/business/policySplit.ts. policy_group_id
+  // فاضي (undefined/null) لأي وثيقة عادية غير مقسّمة.
+  policy_group_id?: string;
+  group_sequence?: number;
+  group_size?: number;
+  group_total_sum_assured?: number;
 };
 
 export type PolicyType =

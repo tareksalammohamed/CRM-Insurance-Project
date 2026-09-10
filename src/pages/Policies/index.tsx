@@ -41,7 +41,7 @@ export function Policies() {
   const [moreMenuAnchor, setMoreMenuAnchor] = useState<ActionMenuAnchor | null>(null);
   const {
     showModal, editingPolicy, saving, handleOpenModal, handleCloseModal, onSubmit,
-    register, handleSubmit, setValue, errors,
+    register, handleSubmit, setValue, watch, errors,
     deleteConfirm, setDeleteConfirm, deleting, handleDeletePolicy,
     moreMenuPolicy, setMoreMenuPolicy, handleStatusChange, handlePrintPolicy,
     presetCustomerId, selectedCustomer, showCustomerPicker, setShowCustomerPicker, handleSelectCustomer,
@@ -140,6 +140,7 @@ export function Policies() {
           onSubmit={onSubmit}
           errors={errors}
           setValue={setValue}
+          watch={watch}
           saving={saving}
           onClose={handleCloseModal}
         />

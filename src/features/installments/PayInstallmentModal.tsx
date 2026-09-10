@@ -21,6 +21,12 @@ interface PayInstallmentModalProps {
   processing: boolean;
   onConfirm: () => void;
   onClose: () => void;
+  // موجودة فقط عند تأكيد سداد مجموعة وثائق مجمّعة دفعة واحدة (كارت التحصيل
+  // المجمّع لوثائق "حماية واستثمار" المقسَّمة تلقائياً) — بتغيّر نص وعرض
+  // المودال ليوضّح إنه سداد جماعي، بدل قسط واحد. installment هنا بيمثّل أول
+  // وثيقة فى المجموعة فقط للعرض، والمبلغ المعروض بيبقى إجمالي المجموعة.
+  groupCount?: number;
+  groupTotalAmount?: number;
 }
 
 export function PayInstallmentModal({
@@ -31,7 +37,10 @@ export function PayInstallmentModal({
   processing,
   onConfirm,
   onClose,
+  groupCount,
+  groupTotalAmount,
 }: PayInstallmentModalProps) {
+  const isGroup = !!groupCount && groupCount > 1;
 
   // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
   useDialogBehavior(onClose);
@@ -43,7 +52,9 @@ export function PayInstallmentModal({
           role="dialog"
           aria-modal="true" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-between p-6 border-b border-secondary-200">
-            <h3 className="text-lg font-semibold text-secondary-900">تأكيد السداد</h3>
+            <h3 className="text-lg font-semibold text-secondary-900">
+              {isGroup ? `تأكيد سداد ${groupCount} وثائق مجمّعة` : 'تأكيد السداد'}
+            </h3>
             <button onClick={onClose} className="p-2 rounded-lg hover:bg-secondary-100">
               <X className="w-5 h-5 text-secondary-600" />
             </button>
@@ -91,17 +102,26 @@ export function PayInstallmentModal({
                   <span className="font-medium">{contextLabel.customerName}</span>
                 </div>
               )}
-              <div className="flex justify-between text-sm">
-                <span className="text-secondary-500">رقم القسط</span>
-                <span className="font-medium">{installment.installment_number}</span>
-              </div>
+              {isGroup ? (
+                <div className="flex justify-between text-sm">
+                  <span className="text-secondary-500">عدد الوثائق</span>
+                  <span className="font-medium">{groupCount}</span>
+                </div>
+              ) : (
+                <div className="flex justify-between text-sm">
+                  <span className="text-secondary-500">رقم القسط</span>
+                  <span className="font-medium">{installment.installment_number}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-secondary-500">تاريخ الاستحقاق</span>
                 <span className="font-medium">{format(new Date(installment.due_date), 'dd/MM/yyyy')}</span>
               </div>
               <div className="flex justify-between text-sm border-t border-secondary-200 pt-3">
-                <span className="text-secondary-700 font-semibold">المبلغ المستحق</span>
-                <span className="font-bold text-primary-700 text-base">{formatCurrency(installment.amount)}</span>
+                <span className="text-secondary-700 font-semibold">{isGroup ? 'إجمالي المبلغ المستحق' : 'المبلغ المستحق'}</span>
+                <span className="font-bold text-primary-700 text-base">
+                  {formatCurrency(isGroup ? (groupTotalAmount ?? installment.amount) : installment.amount)}
+                </span>
               </div>
             </div>
           </div>

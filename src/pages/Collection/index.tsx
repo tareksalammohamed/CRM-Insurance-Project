@@ -106,8 +106,9 @@ export function Collection() {
 
   const {
     showPaymentModal,
-    setShowPaymentModal,
+    closePaymentModal,
     selectedInstallment,
+    selectedGroupInstallments,
     paymentDateStr,
     setPaymentDateStr,
     processingPayment,
@@ -116,6 +117,7 @@ export function Collection() {
     cancelReason,
     setCancelReason,
     handleOpenPayment,
+    handleOpenGroupPayment,
     handleProcessPayment,
     handleOpenCancel,
     handleCancelPayment,
@@ -224,6 +226,7 @@ export function Collection() {
               hasActiveFilters={hasActiveFilters}
               onResetSearchAndFilters={() => { setLocalSearch(''); handleResetFilters(); }}
               onPay={handleOpenPayment}
+              onPayGroup={handleOpenGroupPayment}
               onCancel={handleOpenCancel}
               onMore={(installment, anchor) => {
                 setMoreMenuAnchor(anchor);
@@ -243,14 +246,16 @@ export function Collection() {
         <PayInstallmentModal
           installment={selectedInstallment}
           contextLabel={{
-            policyNumber: selectedInstallment.policy?.policy_number,
+            policyNumber: selectedGroupInstallments ? undefined : selectedInstallment.policy?.policy_number,
             customerName: selectedInstallment.policy?.customer?.name,
           }}
+          groupCount={selectedGroupInstallments?.length}
+          groupTotalAmount={selectedGroupInstallments?.reduce((sum, i) => sum + Number(i.amount), 0)}
           paymentDateStr={paymentDateStr}
           onPaymentDateChange={setPaymentDateStr}
           processing={processingPayment}
           onConfirm={handleProcessPayment}
-          onClose={() => setShowPaymentModal(false)}
+          onClose={closePaymentModal}
         />
       )}
 

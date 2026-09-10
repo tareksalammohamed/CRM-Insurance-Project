@@ -1,13 +1,15 @@
 import { useRef } from 'react';
 import clsx from 'clsx';
-import { X, ChevronDown, Phone, AlertCircle, FileText, Wallet, StickyNote } from 'lucide-react';
-import type { UseFormRegister, UseFormHandleSubmit, UseFormSetValue, FieldErrors } from 'react-hook-form';
+import { X, ChevronDown, Phone, AlertCircle, FileText, Wallet, StickyNote, Layers } from 'lucide-react';
+import type { UseFormRegister, UseFormHandleSubmit, UseFormSetValue, UseFormWatch, FieldErrors } from 'react-hook-form';
 import { POLICY_TYPE_LABELS, PAYMENT_METHOD_LABELS, type Policy } from '../../../../lib/supabase';
 import type { PolicyFormData } from '../../types';
 import type { CustomerPickerItem } from '../../services/policiesService';
 import { ExtractPolicyDataButton } from '../../../../features/policyDocumentExtraction/components/ExtractPolicyDataButton';
 import { useDialogBehavior } from '../../../../hooks/useDialogBehavior';
 import { DialogPortal } from '../../../../components/ui/DialogPortal';
+import { computeProtectionInvestmentSplit, policyRequiresSplit } from '../../business/policySplit';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 interface PolicyFormDialogProps {
   editingPolicy: Policy | null;
@@ -23,6 +25,7 @@ interface PolicyFormDialogProps {
   onSubmit: (data: PolicyFormData) => void | Promise<void>;
   errors: FieldErrors<PolicyFormData>;
   setValue: UseFormSetValue<PolicyFormData>;
+  watch: UseFormWatch<PolicyFormData>;
   saving: boolean;
   onClose: () => void;
 }
@@ -43,11 +46,20 @@ export function PolicyFormDialog({
   onSubmit,
   errors,
   setValue,
+  watch,
   saving,
   onClose,
 }: PolicyFormDialogProps) {
   const formRef = useRef<HTMLFormElement>(null);
 
+  // معاينة تقسيم وثيقة "الحماية والاستثمار" تلقائياً — بتتحدّث لحظياً مع
+  // تغيير نوع الوثيقة أو مبلغ التأمين، وتظهر فقط عند إصدار وثيقة جديدة
+  // (مش عند التعديل) ولمّا المبلغ يتجاوز 50,000 (راجع business/policySplit.ts)
+  const watchedPolicyType = watch('policy_type');
+  const watchedSumAssured = watch('sum_assured');
+  const showSplitPreview = !editingPolicy && policyRequiresSplit(watchedPolicyType, watchedSumAssured);
+  const splitChunks = showSplitPreview ? computeProtectionInvestmentSplit(watchedSumAssured as number) : [];
+  const splitHasRemainder = splitChunks.length > 0 && !splitChunks[splitChunks.length - 1].isFullUnit;
 
   // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
   useDialogBehavior(onClose);
@@ -212,7 +224,9 @@ export function PolicyFormDialog({
                 </div>
 
                 <div className="form-group">
-                  <label className="input-label" htmlFor="pf-premium">قيمة القسط الصافي *</label>
+                  <label className="input-label" htmlFor="pf-premium">
+                    {showSplitPreview ? 'قيمة القسط الصافي للوثائق المتساوية (50,000) *' : 'قيمة القسط الصافي *'}
+                  </label>
                   <div className="relative">
                     <input
                       id="pf-premium"
@@ -226,6 +240,9 @@ export function PolicyFormDialog({
                     />
                     <span className="input-suffix">جنيه</span>
                   </div>
+                  {showSplitPreview && (
+                    <span className="input-hint">نفس القيمة هتتطبّق على كل الوثائق الفرعية بمبلغ تأمين 50,000</span>
+                  )}
                   {errors.premium_amount && (
                     <p className="input-error" role="alert">
                       <AlertCircle />
@@ -233,6 +250,33 @@ export function PolicyFormDialog({
                     </p>
                   )}
                 </div>
+
+                {showSplitPreview && splitHasRemainder && (
+                  <div className="form-group">
+                    <label className="input-label" htmlFor="pf-remainder-premium">
+                      قيمة القسط الصافي لوثيقة الباقي ({formatCurrency(splitChunks[splitChunks.length - 1].sumAssured)}) *
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="pf-remainder-premium"
+                        {...register('remainder_premium_amount', { valueAsNumber: true })}
+                        type="number"
+                        min="0"
+                        inputMode="numeric"
+                        aria-invalid={!!errors.remainder_premium_amount}
+                        className={clsx('input-field pl-14', errors.remainder_premium_amount && 'border-error-500')}
+                        placeholder="أدخل قيمة القسط الصافي لوثيقة الباقي"
+                      />
+                      <span className="input-suffix">جنيه</span>
+                    </div>
+                    {errors.remainder_premium_amount && (
+                      <p className="input-error" role="alert">
+                        <AlertCircle />
+                        {errors.remainder_premium_amount.message}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div className="form-group form-col-full">
                   <label className="input-label" htmlFor="pf-sum">
@@ -275,6 +319,35 @@ export function PolicyFormDialog({
                 </div>
               </div>
             </div>
+
+            {/* ===== مجموعة: معاينة التقسيم التلقائي ===== */}
+            {showSplitPreview && (
+              <div className="form-section">
+                <div className="form-section-head">
+                  <p className="form-section-title">
+                    <Layers />
+                    تقسيم تلقائي على {splitChunks.length} وثيقة
+                  </p>
+                  <p className="form-section-note">
+                    مبلغ التأمين {formatCurrency(watchedSumAssured as number)} يتجاوز الحد الأقصى للوثيقة الواحدة (50,000
+                    جنيه)، فهيتم إصدار {splitChunks.length} وثائق مرتبطة ببعض تلقائياً وتظهر فى كارت واحد بصفحة الوثائق
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  {splitChunks.map((chunk) => (
+                    <div
+                      key={chunk.index}
+                      className="flex items-center justify-between rounded-lg bg-secondary-50 px-3 py-2 text-[12px]"
+                    >
+                      <span className="font-semibold text-secondary-600">
+                        الوثيقة {chunk.index} من {splitChunks.length} {!chunk.isFullUnit && '(الباقي)'}
+                      </span>
+                      <span className="font-mono font-bold text-secondary-900">{formatCurrency(chunk.sumAssured)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* ===== مجموعة: ملاحظات ===== */}
             <div className="form-section">

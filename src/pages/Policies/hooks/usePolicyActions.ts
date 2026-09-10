@@ -6,10 +6,11 @@ import type { Policy, PolicyType, PaymentMethod, User } from '../../../lib/supab
 
 import { policySchema, type PolicyFormData } from '../types';
 import {
-  fetchPolicyById, countPaidInstallments, updatePolicy, createPolicy,
+  fetchPolicyById, countPaidInstallments, updatePolicy, createPolicy, createPolicyGroup,
   deletePolicySafe, changePolicyStatus, fetchCustomerForPicker, type CustomerPickerItem,
 } from '../services/policiesService';
 import { computeDefaultPolicyStartDate } from '../business/policyDateDefaults';
+import { policyRequiresSplit } from '../business/policySplit';
 import { buildPolicyPrintHtml } from '../services/policyHelpers';
 import { useNotify } from '../../../lib/notify';
 import { getErrorCode, getErrorMessage } from '../../../lib/errorMessages';
@@ -55,6 +56,7 @@ export function usePolicyActions({
     handleSubmit,
     reset,
     setValue,
+    watch,
     formState: { errors }
   } = useForm<PolicyFormData>({
     resolver: zodResolver(policySchema)
@@ -246,7 +248,14 @@ export function usePolicyActions({
       } else {
         const policyOwnerId = selectedCustomer?.owner_id || user.id;
 
-        await createPolicy(data, policyOwnerId, user.id);
+        // وثيقة "حماية واستثمار" بمبلغ تأمين إجمالي أكبر من 50,000 —
+        // بتتقسم تلقائياً على عدة وثائق فرعية مربوطة بمجموعة واحدة
+        // (راجع business/policySplit.ts وcreatePolicyGroup)
+        if (policyRequiresSplit(data.policy_type, data.sum_assured)) {
+          await createPolicyGroup(data, policyOwnerId);
+        } else {
+          await createPolicy(data, policyOwnerId, user.id);
+        }
       }
 
       handleCloseModal();
@@ -325,6 +334,7 @@ export function usePolicyActions({
     register,
     handleSubmit,
     setValue,
+    watch,
     errors,
 
     deleteConfirm,

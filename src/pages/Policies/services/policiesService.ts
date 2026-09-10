@@ -422,6 +422,45 @@ export async function createPolicyOnline(
   }
 }
 
+// إصدار مجموعة وثائق "حماية واستثمار" ناتجة عن التقسيم التلقائي (مبلغ
+// التأمين الإجمالي > 50,000) دفعة واحدة عبر create_policy_group_op — كل
+// الوثائق الفرعية بتتربط بـ policy_group_id واحد جوه معاملة واحدة (atomic)
+// فى قاعدة البيانات نفسها. بخلاف createPolicy، النداء ده لا يمر بطابور
+// العمل بدون اتصال (offlineQueue) نظراً لطبيعته المركّبة (إنشاء عدة وثائق فى
+// نفس العملية) — لازم اتصال بالإنترنت وقت إصدار وثيقة "حماية واستثمار" بمبلغ
+// تأمين يتجاوز 50,000.
+export async function createPolicyGroup(
+  data: PolicyFormData,
+  ownerId: string,
+  operationId: string = crypto.randomUUID(),
+): Promise<{ policyGroupId: string; count: number }> {
+  const { isEditingPolicy, remainder_premium_amount, ...policyData } = data;
+  const { data: result, error } = await supabase.rpc('create_policy_group_op', {
+    p_operation_id: operationId,
+    p_policy_number: policyData.policy_number,
+    p_customer_id: policyData.customer_id,
+    p_policy_type: policyData.policy_type,
+    p_start_date: policyData.start_date,
+    p_payment_method: policyData.payment_method,
+    p_premium_amount: policyData.premium_amount,
+    p_remainder_premium_amount: remainder_premium_amount ?? null,
+    p_sum_assured: policyData.sum_assured ?? null,
+    p_notes: policyData.notes || null,
+    p_owner_id: ownerId,
+  });
+
+  if (error) throw error;
+
+  const res = result as { error?: string; conflict?: boolean; policy_group_id?: string; count?: number } | null;
+  if (res?.error) {
+    const err = new Error(res.error) as Error & { code?: string };
+    if (res.conflict) err.code = '23505';
+    throw err;
+  }
+
+  return { policyGroupId: res?.policy_group_id || '', count: res?.count || 0 };
+}
+
 export async function computeDeletablePolicyIds(policyList: Policy[]): Promise<Set<string>> {
   if (policyList.length === 0) return new Set();
 
