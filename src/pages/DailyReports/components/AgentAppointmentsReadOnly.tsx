@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2, MapPin, Clock, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Loader2, Clock, CheckCircle2, ExternalLink } from 'lucide-react';
 
 import { fetchAgentAppointments } from '../services/appointmentCheckinsService';
 import type { AgentAppointmentCheckin } from '../types';

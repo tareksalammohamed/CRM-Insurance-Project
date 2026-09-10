@@ -49,6 +49,13 @@ export function InstallmentsTable({
   emptyMessage = 'لا توجد أقساط لهذه الوثيقة',
   highlightId = null,
 }: InstallmentsTableProps) {
+  // تمرير وتمييز القسط المستهدف تلقائياً (لو موجود ضمن القائمة الحالية)
+  useEffect(() => {
+    if (!highlightId) return;
+    const el = document.getElementById(`installment-row-${highlightId}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlightId, installments]);
+
   if (loading) {
     return (
       <div className="stack-list" role="status" aria-live="polite">
@@ -81,13 +88,6 @@ export function InstallmentsTable({
   }
 
   const payAllowed = (inst: Installment) => canPay(inst) && (policyStatus ? policyStatus === 'active' : true);
-
-  // تمرير وتمييز القسط المستهدف تلقائياً (لو موجود ضمن القائمة الحالية)
-  useEffect(() => {
-    if (!highlightId) return;
-    const el = document.getElementById(`installment-row-${highlightId}`);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [highlightId, installments]);
 
   const renderAction = (inst: Installment) => {
     if (inst.status === 'paid') {
