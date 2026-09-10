@@ -32,6 +32,13 @@ export function groupPoliciesForDisplay(policies: Policy[]): PolicyListEntry[] {
       .filter((p) => p.policy_group_id === groupId)
       .sort((a, b) => (a.group_sequence ?? 0) - (b.group_sequence ?? 0));
 
+    // حماية إضافية للبيانات القديمة: المجموعة لا تكون صالحة إذا احتوت وثيقة
+    // أكبر من الحد الأقصى، حتى لو كانت بيانات الربط القديمة موجودة.
+    if (members.some((member) => Number(member.sum_assured || 0) > 50000)) {
+      entries.push({ kind: 'single', key: policy.id, policy });
+      continue;
+    }
+
     // احتياطاً: لو لأي سبب اتفلترت وثيقة واحدة بس من المجموعة فى هذه الصفحة
     // (نادر جداً)، بتُعرض كوثيقة مفردة عادية بدل كارت مجموعة من عنصر واحد
     if (members.length <= 1) {

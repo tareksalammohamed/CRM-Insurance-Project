@@ -41,6 +41,11 @@ export function groupInstallmentsForDisplay(installments: InstallmentWithRelatio
       (i) => i.policy.policy_group_id === groupId && i.due_date === installment.due_date
     );
 
+    if (members.some((member) => Number(member.policy.sum_assured || 0) > 50000)) {
+      members.forEach((member) => entries.push({ kind: 'single', key: member.id, installment: member }));
+      continue;
+    }
+
     if (members.length <= 1) {
       entries.push({ kind: 'single', key: installment.id, installment });
     } else {
