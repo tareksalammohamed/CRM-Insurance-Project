@@ -97,6 +97,10 @@ export type Policy = {
   group_sequence?: number;
   group_size?: number;
   group_total_sum_assured?: number;
+  // تتبّع الوثائق القديمة اللي اتقسمت رجعياً (backfill) بعد ما كانت
+  // مسجّلة كوثيقة واحدة بمبلغ تأمين > 50,000 قبل وجود ميزة التقسيم
+  split_from_policy_id?: string;
+  split_into_group_id?: string;
 };
 
 export type PolicyType =
