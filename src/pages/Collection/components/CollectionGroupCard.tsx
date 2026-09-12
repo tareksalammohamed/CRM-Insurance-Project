@@ -105,7 +105,7 @@ function CollectionGroupCardImpl({ members, onPayGroup }: CollectionGroupCardPro
         <div className="space-y-1.5 pt-1">
           {members
             .slice()
-            .sort((a, b) => (a.policy.group_sequence ?? 0) - (b.policy.group_sequence ?? 0))
+            .sort((a, b) => a.policy.policy_number.localeCompare(b.policy.policy_number))
             .map((m) => (
               <div key={m.id} className="flex items-center justify-between rounded-lg bg-secondary-50 px-3 py-2 text-[12px]">
                 <span className="font-mono text-secondary-600" dir="ltr">{m.policy.policy_number}</span>

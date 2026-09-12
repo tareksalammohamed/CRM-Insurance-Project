@@ -429,31 +429,33 @@ export async function createPolicyOnline(
   }
 }
 
-// إصدار مجموعة وثائق "حماية واستثمار" ناتجة عن التقسيم التلقائي (مبلغ
-// التأمين الإجمالي > 50,000) دفعة واحدة عبر create_policy_group_op — كل
-// الوثائق الفرعية بتتربط بـ policy_group_id واحد جوه معاملة واحدة (atomic)
-// فى قاعدة البيانات نفسها. بخلاف createPolicy، النداء ده لا يمر بطابور
-// العمل بدون اتصال (offlineQueue) نظراً لطبيعته المركّبة (إنشاء عدة وثائق فى
-// نفس العملية) — لازم اتصال بالإنترنت وقت إصدار وثيقة "حماية واستثمار" بمبلغ
-// تأمين يتجاوز 50,000.
+// إصدار مجموعة وثائق "حماية واستثمار" ناتجة عن تقسيم مبلغ تأمين إجمالي أكبر
+// من 50,000 دفعة واحدة عبر create_policy_group_op — كل الوثائق الفرعية
+// بتتربط بـ policy_group_id واحد جوه معاملة واحدة (atomic) فى قاعدة البيانات
+// نفسها. عدد الوثائق الفرعية، ورقم ومبلغ تأمين وقسط كل وحدة منها، كلهم من
+// إدخال المستخدم بالكامل (data.split_chunks) — لا يوجد أي حساب أو تقسيم
+// تلقائي هنا أو فى الدالة على قاعدة البيانات، والتحقق من صحة المجموع يتم فى
+// الطرفين (Zod هنا، وconstraints داخل create_policy_group_op). بخلاف
+// createPolicy، النداء ده لا يمر بطابور العمل بدون اتصال (offlineQueue) نظراً
+// لطبيعته المركّبة (إنشاء عدة وثائق فى نفس العملية) — لازم اتصال بالإنترنت
+// وقت إصدار وثيقة "حماية واستثمار" بمبلغ تأمين يتجاوز 50,000.
 export async function createPolicyGroup(
   data: PolicyFormData,
   ownerId: string,
   operationId: string = crypto.randomUUID(),
 ): Promise<{ policyGroupId: string; count: number }> {
-  const { isEditingPolicy, remainder_premium_amount, ...policyData } = data;
-  const policyNumbers = [policyData.policy_number, ...(policyData.policy_numbers || [])];
+  const chunks = data.split_chunks || [];
   const { data: result, error } = await supabase.rpc('create_policy_group_op', {
     p_operation_id: operationId,
-    p_policy_numbers: policyNumbers,
-    p_customer_id: policyData.customer_id,
-    p_policy_type: policyData.policy_type,
-    p_start_date: policyData.start_date,
-    p_payment_method: policyData.payment_method,
-    p_premium_amount: policyData.premium_amount,
-    p_remainder_premium_amount: remainder_premium_amount ?? null,
-    p_sum_assured: policyData.sum_assured ?? null,
-    p_notes: policyData.notes || null,
+    p_policy_numbers: chunks.map((c) => c.policy_number),
+    p_sum_assured_chunks: chunks.map((c) => c.sum_assured),
+    p_premium_amounts: chunks.map((c) => c.premium_amount),
+    p_customer_id: data.customer_id,
+    p_policy_type: data.policy_type,
+    p_start_date: data.start_date,
+    p_payment_method: data.payment_method,
+    p_sum_assured: data.sum_assured ?? null,
+    p_notes: data.notes || null,
     p_owner_id: ownerId,
   });
 

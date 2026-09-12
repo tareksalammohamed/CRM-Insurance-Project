@@ -1,14 +1,18 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import clsx from 'clsx';
-import { X, ChevronDown, Phone, AlertCircle, FileText, Wallet, StickyNote, Layers } from 'lucide-react';
+import { X, ChevronDown, Phone, AlertCircle, FileText, Wallet, StickyNote, Layers, Plus, Trash2 } from 'lucide-react';
 import type { UseFormRegister, UseFormHandleSubmit, UseFormSetValue, UseFormWatch, FieldErrors } from 'react-hook-form';
 import { POLICY_TYPE_LABELS, PAYMENT_METHOD_LABELS, type Policy } from '../../../../lib/supabase';
-import type { PolicyFormData } from '../../types';
+import type { PolicyFormData, PolicySplitChunkFormData } from '../../types';
 import type { CustomerPickerItem } from '../../services/policiesService';
 import { ExtractPolicyDataButton } from '../../../../features/policyDocumentExtraction/components/ExtractPolicyDataButton';
 import { useDialogBehavior } from '../../../../hooks/useDialogBehavior';
 import { DialogPortal } from '../../../../components/ui/DialogPortal';
-import { computeProtectionInvestmentSplit, policyRequiresSplit } from '../../business/policySplit';
+import {
+  suggestProtectionInvestmentSplitAmounts,
+  policyRequiresSplit,
+  PROTECTION_INVESTMENT_MAX_SUM_ASSURED_PER_POLICY,
+} from '../../business/policySplit';
 import { formatCurrency } from '../../utils/formatCurrency';
 
 interface PolicyFormDialogProps {
@@ -52,14 +56,56 @@ export function PolicyFormDialog({
 }: PolicyFormDialogProps) {
   const formRef = useRef<HTMLFormElement>(null);
 
-  // معاينة تقسيم وثيقة "الحماية والاستثمار" تلقائياً — بتتحدّث لحظياً مع
-  // تغيير نوع الوثيقة أو مبلغ التأمين، وتظهر فقط عند إصدار وثيقة جديدة
-  // (مش عند التعديل) ولمّا المبلغ يتجاوز 50,000 (راجع business/policySplit.ts)
+  // تقسيم وثيقة "الحماية والاستثمار" — بيظهر فقط عند إصدار وثيقة جديدة (مش
+  // عند التعديل) ولمّا مبلغ التأمين الإجمالي يتجاوز 50,000 (راجع
+  // business/policySplit.ts). عدد الوثائق الفرعية ومبلغ ورقم وقسط كل وحدة
+  // منها بيدخلهم المستخدم بنفسه بالكامل — مفيش أي توليد أو تقسيم تلقائي؛
+  // بنعرض تقسيم مقترح افتراضي (وحدات 50,000 + الباقي) كنقطة بداية بس.
   const watchedPolicyType = watch('policy_type');
   const watchedSumAssured = watch('sum_assured');
+  const watchedSplitChunks = watch('split_chunks') || [];
   const showSplitPreview = !editingPolicy && policyRequiresSplit(watchedPolicyType, watchedSumAssured);
-  const splitChunks = showSplitPreview ? computeProtectionInvestmentSplit(watchedSumAssured as number) : [];
-  const splitHasRemainder = splitChunks.length > 0 && !splitChunks[splitChunks.length - 1].isFullUnit;
+
+  const splitTargetTotal = Math.round(((watchedSumAssured as number) || 0) * 100) / 100;
+  const splitEnteredTotal = Math.round(
+    watchedSplitChunks.reduce((sum, c) => sum + (Number(c?.sum_assured) || 0), 0) * 100
+  ) / 100;
+  const splitTotalsMatch = watchedSplitChunks.length > 0 && splitEnteredTotal === splitTargetTotal;
+
+  // إعادة ضبط التقسيم المقترح فقط لما مفيش تقسيم مُدخَل أصلاً، أو لما مجموع
+  // الوحدات الحالي مبقاش بيطابق مبلغ التأمين الإجمالي الجديد (يعني المستخدم
+  // غيّر المبلغ الإجمالي بعد ما كان عدّل التقسيم) — أي تعديل يدوي للمستخدم
+  // على عدد الوثائق أو مبلغ أي وحدة بيفضل زي ما هو طالما المجموع لسه مطابق
+  useEffect(() => {
+    if (!showSplitPreview) return;
+    if (watchedSplitChunks.length > 0 && splitEnteredTotal === splitTargetTotal) return;
+
+    const suggested = suggestProtectionInvestmentSplitAmounts(watchedSumAssured as number);
+    setValue(
+      'split_chunks',
+      suggested.map((amount) => ({ policy_number: '', sum_assured: amount, premium_amount: undefined as unknown as number })),
+      { shouldValidate: false }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showSplitPreview, splitTargetTotal]);
+
+  const updateSplitChunk = (index: number, patch: Partial<PolicySplitChunkFormData>) => {
+    const next = watchedSplitChunks.map((c, i) => (i === index ? { ...c, ...patch } : c));
+    setValue('split_chunks', next, { shouldValidate: true });
+  };
+
+  const addSplitChunk = () => {
+    setValue(
+      'split_chunks',
+      [...watchedSplitChunks, { policy_number: '', sum_assured: undefined as unknown as number, premium_amount: undefined as unknown as number }],
+      { shouldValidate: true }
+    );
+  };
+
+  const removeSplitChunk = (index: number) => {
+    if (watchedSplitChunks.length <= 2) return; // حد أدنى وثيقتين عند التقسيم
+    setValue('split_chunks', watchedSplitChunks.filter((_, i) => i !== index), { shouldValidate: true });
+  };
 
   // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
   useDialogBehavior(onClose);
@@ -101,48 +147,24 @@ export function PolicyFormDialog({
               </div>
 
               <div className="form-grid">
-                <div className="form-group">
-                  <label className="input-label" htmlFor="pf-number">رقم الوثيقة {showSplitPreview ? '1' : ''} *</label>
-                  <input
-                    id="pf-number"
-                    {...register('policy_number')}
-                    dir="ltr"
-                    aria-invalid={!!errors.policy_number}
-                    className={clsx('input-field font-mono', errors.policy_number && 'border-error-500')}
-                    placeholder="أدخل رقم الوثيقة"
-                  />
-                  {errors.policy_number && (
-                    <p className="input-error" role="alert">
-                      <AlertCircle />
-                      {errors.policy_number.message}
-                    </p>
-                  )}
-                </div>
-
-                {showSplitPreview && splitChunks.slice(1).map((chunk, index) => {
-                  const numberIndex = index + 1;
-                  return (
-                    <div className="form-group" key={`split-policy-number-${numberIndex}`}>
-                      <label className="input-label" htmlFor={`pf-number-${numberIndex}`}>
-                        رقم الوثيقة {numberIndex + 1} ({formatCurrency(chunk.sumAssured)}) *
-                      </label>
-                      <input
-                        id={`pf-number-${numberIndex}`}
-                        {...register(`policy_numbers.${index}` as const)}
-                        dir="ltr"
-                        aria-invalid={!!errors.policy_numbers}
-                        className={clsx('input-field font-mono', errors.policy_numbers && 'border-error-500')}
-                        placeholder={`أدخل رقم الوثيقة ${numberIndex + 1}`}
-                      />
-                    </div>
-                  );
-                })}
-
-                {showSplitPreview && errors.policy_numbers && (
-                  <p className="input-error form-col-full" role="alert">
-                    <AlertCircle />
-                    {String(errors.policy_numbers.message || 'راجع أرقام وثائق المجموعة')}
-                  </p>
+                {!showSplitPreview && (
+                  <div className="form-group">
+                    <label className="input-label" htmlFor="pf-number">رقم الوثيقة *</label>
+                    <input
+                      id="pf-number"
+                      {...register('policy_number')}
+                      dir="ltr"
+                      aria-invalid={!!errors.policy_number}
+                      className={clsx('input-field font-mono', errors.policy_number && 'border-error-500')}
+                      placeholder="أدخل رقم الوثيقة"
+                    />
+                    {errors.policy_number && (
+                      <p className="input-error" role="alert">
+                        <AlertCircle />
+                        {errors.policy_number.message}
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 <div className="form-group">
@@ -249,56 +271,26 @@ export function PolicyFormDialog({
                   )}
                 </div>
 
-                <div className="form-group">
-                  <label className="input-label" htmlFor="pf-premium">
-                    {showSplitPreview ? 'قيمة القسط الصافي للوثائق المتساوية (50,000) *' : 'قيمة القسط الصافي *'}
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="pf-premium"
-                      {...register('premium_amount', { valueAsNumber: true })}
-                      type="number"
-                      min="0"
-                      inputMode="numeric"
-                      aria-invalid={!!errors.premium_amount}
-                      className={clsx('input-field pl-14', errors.premium_amount && 'border-error-500')}
-                      placeholder="أدخل قيمة القسط الصافي"
-                    />
-                    <span className="input-suffix">جنيه</span>
-                  </div>
-                  {showSplitPreview && (
-                    <span className="input-hint">نفس القيمة هتتطبّق على كل الوثائق الفرعية بمبلغ تأمين 50,000</span>
-                  )}
-                  {errors.premium_amount && (
-                    <p className="input-error" role="alert">
-                      <AlertCircle />
-                      {errors.premium_amount.message}
-                    </p>
-                  )}
-                </div>
-
-                {showSplitPreview && splitHasRemainder && (
+                {!showSplitPreview && (
                   <div className="form-group">
-                    <label className="input-label" htmlFor="pf-remainder-premium">
-                      قيمة القسط الصافي لوثيقة الباقي ({formatCurrency(splitChunks[splitChunks.length - 1].sumAssured)}) *
-                    </label>
+                    <label className="input-label" htmlFor="pf-premium">قيمة القسط الصافي *</label>
                     <div className="relative">
                       <input
-                        id="pf-remainder-premium"
-                        {...register('remainder_premium_amount', { valueAsNumber: true })}
+                        id="pf-premium"
+                        {...register('premium_amount', { valueAsNumber: true })}
                         type="number"
                         min="0"
                         inputMode="numeric"
-                        aria-invalid={!!errors.remainder_premium_amount}
-                        className={clsx('input-field pl-14', errors.remainder_premium_amount && 'border-error-500')}
-                        placeholder="أدخل قيمة القسط الصافي لوثيقة الباقي"
+                        aria-invalid={!!errors.premium_amount}
+                        className={clsx('input-field pl-14', errors.premium_amount && 'border-error-500')}
+                        placeholder="أدخل قيمة القسط الصافي"
                       />
                       <span className="input-suffix">جنيه</span>
                     </div>
-                    {errors.remainder_premium_amount && (
+                    {errors.premium_amount && (
                       <p className="input-error" role="alert">
                         <AlertCircle />
-                        {errors.remainder_premium_amount.message}
+                        {errors.premium_amount.message}
                       </p>
                     )}
                   </div>
@@ -306,7 +298,7 @@ export function PolicyFormDialog({
 
                 <div className="form-group form-col-full">
                   <label className="input-label" htmlFor="pf-sum">
-                    مبلغ التأمين {!editingPolicy && '*'}
+                    {showSplitPreview ? 'مبلغ التأمين الإجمالي' : 'مبلغ التأمين'} {!editingPolicy && '*'}
                   </label>
                   {customerDefaultsLocked ? (
                     <>
@@ -346,32 +338,115 @@ export function PolicyFormDialog({
               </div>
             </div>
 
-            {/* ===== مجموعة: معاينة التقسيم التلقائي ===== */}
+            {/* ===== مجموعة: تقسيم الوثيقة ===== */}
             {showSplitPreview && (
               <div className="form-section">
                 <div className="form-section-head">
                   <p className="form-section-title">
                     <Layers />
-                    تقسيم تلقائي على {splitChunks.length} وثيقة
+                    تقسيم الوثيقة على {watchedSplitChunks.length} وثيقة
                   </p>
                   <p className="form-section-note">
-                    مبلغ التأمين {formatCurrency(watchedSumAssured as number)} يتجاوز الحد الأقصى للوثيقة الواحدة (50,000
-                    جنيه)، فهيتم إصدار {splitChunks.length} وثائق مرتبطة ببعض تلقائياً وتظهر فى كارت واحد بصفحة الوثائق
+                    مبلغ التأمين الإجمالي {formatCurrency(watchedSumAssured as number)} يتجاوز الحد الأقصى للوثيقة الواحدة
+                    (50,000 جنيه). حدّد بنفسك عدد الوثائق الفرعية ورقم ومبلغ تأمين وقسط كل وحدة — بشرط ألا يتجاوز مبلغ
+                    أي وثيقة فرعية 50,000 جنيه، وأن يساوي مجموعها مبلغ التأمين الإجمالي بالضبط.
                   </p>
                 </div>
-                <div className="space-y-1.5">
-                  {splitChunks.map((chunk) => (
+
+                <div className="space-y-2.5">
+                  {watchedSplitChunks.map((chunk, index) => (
                     <div
-                      key={chunk.index}
-                      className="flex items-center justify-between rounded-lg bg-secondary-50 px-3 py-2 text-[12px]"
+                      key={`split-chunk-${index}`}
+                      className="rounded-lg border border-secondary-200 bg-secondary-50 p-2.5 space-y-2"
                     >
-                      <span className="font-semibold text-secondary-600">
-                        الوثيقة {chunk.index} من {splitChunks.length} {!chunk.isFullUnit && '(الباقي)'}
-                      </span>
-                      <span className="font-mono font-bold text-secondary-900">{formatCurrency(chunk.sumAssured)}</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-secondary-500">
+                          الوثيقة {index + 1} من {watchedSplitChunks.length}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeSplitChunk(index)}
+                          disabled={watchedSplitChunks.length <= 2}
+                          className="icon-button !min-w-8 !min-h-8 disabled:opacity-30 disabled:cursor-not-allowed"
+                          aria-label={`حذف الوثيقة ${index + 1}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div className="form-group">
+                          <label className="input-label" htmlFor={`pf-split-number-${index}`}>رقم الوثيقة *</label>
+                          <input
+                            id={`pf-split-number-${index}`}
+                            value={chunk?.policy_number ?? ''}
+                            onChange={(e) => updateSplitChunk(index, { policy_number: e.target.value })}
+                            dir="ltr"
+                            className="input-field font-mono"
+                            placeholder="أدخل رقم الوثيقة"
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label className="input-label" htmlFor={`pf-split-sum-${index}`}>مبلغ التأمين *</label>
+                          <div className="relative">
+                            <input
+                              id={`pf-split-sum-${index}`}
+                              value={Number.isFinite(chunk?.sum_assured) ? chunk.sum_assured : ''}
+                              onChange={(e) => updateSplitChunk(index, { sum_assured: e.target.valueAsNumber })}
+                              type="number"
+                              min="0"
+                              max={PROTECTION_INVESTMENT_MAX_SUM_ASSURED_PER_POLICY}
+                              inputMode="numeric"
+                              className="input-field pl-12"
+                              placeholder="مثلاً 40000"
+                            />
+                            <span className="input-suffix">جنيه</span>
+                          </div>
+                        </div>
+
+                        <div className="form-group">
+                          <label className="input-label" htmlFor={`pf-split-premium-${index}`}>القسط الصافي *</label>
+                          <div className="relative">
+                            <input
+                              id={`pf-split-premium-${index}`}
+                              value={Number.isFinite(chunk?.premium_amount) ? chunk.premium_amount : ''}
+                              onChange={(e) => updateSplitChunk(index, { premium_amount: e.target.valueAsNumber })}
+                              type="number"
+                              min="0"
+                              inputMode="numeric"
+                              className="input-field pl-12"
+                              placeholder="أدخل القسط"
+                            />
+                            <span className="input-suffix">جنيه</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
+
+                <button type="button" onClick={addSplitChunk} className="btn btn-secondary btn-sm mt-2.5">
+                  <Plus className="w-3.5 h-3.5" />
+                  إضافة وثيقة
+                </button>
+
+                <div
+                  className={clsx(
+                    'flex items-center justify-between rounded-lg px-3 py-2 text-[12px] font-bold mt-2.5',
+                    splitTotalsMatch ? 'bg-success-50 text-success-700' : 'bg-error-50 text-error-600'
+                  )}
+                >
+                  <span>الإجمالي المُدخل من مبلغ التأمين الكلي المطلوب ({formatCurrency(watchedSumAssured as number)})</span>
+                  <span className="font-mono">{formatCurrency(splitEnteredTotal)}</span>
+                </div>
+
+                {errors.split_chunks && (
+                  <p className="input-error" role="alert">
+                    <AlertCircle />
+                    {String(errors.split_chunks.message || 'راجع بيانات الوثائق الفرعية')}
+                  </p>
+                )}
               </div>
             )}
 

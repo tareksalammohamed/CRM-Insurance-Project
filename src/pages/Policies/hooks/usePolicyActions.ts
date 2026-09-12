@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Policy, PolicyType, PaymentMethod, User } from '../../../lib/supabase';
 
@@ -59,7 +59,10 @@ export function usePolicyActions({
     watch,
     formState: { errors }
   } = useForm<PolicyFormData>({
-    resolver: zodResolver(policySchema)
+    // z.preprocess fields intentionally accept raw form values (including
+    // empty strings) while the submitted data uses the normalized schema type.
+    // Keep the form API on the normalized PolicyFormData contract.
+    resolver: zodResolver(policySchema) as unknown as Resolver<PolicyFormData>
   });
 
   // فتح مودال التعديل تلقائياً لو الرابط جاي من صفحة تفاصيل الوثيقة بزرار

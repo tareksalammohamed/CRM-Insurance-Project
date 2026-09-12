@@ -13,14 +13,16 @@ interface PolicyGroupMembersDialogProps {
   onOpenDetails: (policy: Policy) => void;
 }
 
-// مودال "عرض كل الوثائق" — بيعرض كل الوثائق الفرعية الناتجة عن التقسيم
-// التلقائي لوثيقة "حماية واستثمار" بالترتيب (1، 2، 3...) زي ما طلب طارق
-// بالضبط، مع إمكانية فتح تفاصيل أي وثيقة فرعية منفردة.
+// مودال "عرض كل الوثائق" — بيعرض كل وثائق "حماية واستثمار" لنفس العميل ونفس
+// الوكيل بالترتيب الزمني (الأقدم فالأحدث)، مع إمكانية فتح تفاصيل أي وثيقة
+// منفردة منها.
 export function PolicyGroupMembersDialog({ members, onClose, onOpenDetails }: PolicyGroupMembersDialogProps) {
   useDialogBehavior(onClose);
 
-  const sorted = [...members].sort((a, b) => (a.group_sequence ?? 0) - (b.group_sequence ?? 0));
-  const totalSumAssured = sorted[0]?.group_total_sum_assured ?? sorted.reduce((sum, p) => sum + (p.sum_assured || 0), 0);
+  const sorted = [...members].sort(
+    (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime() || a.policy_number.localeCompare(b.policy_number)
+  );
+  const totalSumAssured = sorted.reduce((sum, p) => sum + (p.sum_assured || 0), 0);
 
   return (
     <DialogPortal>
@@ -46,7 +48,7 @@ export function PolicyGroupMembersDialog({ members, onClose, onOpenDetails }: Po
           </div>
 
           <div className="p-4 md:p-5 space-y-2 max-h-[70vh] overflow-y-auto">
-            {sorted.map((policy) => (
+            {sorted.map((policy, index) => (
               <button
                 key={policy.id}
                 type="button"
@@ -59,7 +61,7 @@ export function PolicyGroupMembersDialog({ members, onClose, onOpenDetails }: Po
                   </span>
                   <div className="min-w-0">
                     <p className="text-[12px] font-bold text-secondary-900">
-                      الوثيقة {policy.group_sequence} من {policy.group_size}
+                      الوثيقة {index + 1} من {sorted.length}
                     </p>
                     <p className="text-[11px] font-mono text-secondary-500 truncate" dir="ltr">
                       {policy.policy_number}

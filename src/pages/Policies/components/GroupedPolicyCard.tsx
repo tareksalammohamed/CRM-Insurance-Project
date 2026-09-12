@@ -10,15 +10,18 @@ interface GroupedPolicyCardProps {
 }
 
 function GroupedPolicyCardImpl({ members, onOpenMembers }: GroupedPolicyCardProps) {
-  const first = members[0];
-  const totalSumAssured = first.group_total_sum_assured ?? members.reduce((sum, p) => sum + (p.sum_assured || 0), 0);
+  const sorted = [...members].sort(
+    (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime() || a.policy_number.localeCompare(b.policy_number)
+  );
+  const first = sorted[0];
+  const totalSumAssured = members.reduce((sum, p) => sum + (p.sum_assured || 0), 0);
   const totalPremium = members.reduce((sum, p) => sum + Number(p.premium_amount || 0), 0);
   const activeCount = members.filter((p) => p.status === 'active').length;
   const cancelledCount = members.length - activeCount;
 
   return (
     <div
-      onClick={() => onOpenMembers(members)}
+      onClick={() => onOpenMembers(sorted)}
       className="crm-data-card policy-data-card card pressable cursor-pointer"
     >
       <div className="crm-data-card-header flex items-start justify-between gap-2.5">
@@ -33,7 +36,8 @@ function GroupedPolicyCardImpl({ members, onOpenMembers }: GroupedPolicyCardProp
             <p className="data-card-ident" dir="ltr">
               <Layers />
               <span className="truncate font-mono">
-                {first.policy_number.replace(/-\d+$/, '')}-1…{members.length}
+                {first.policy_number}
+                {members.length > 1 && ` +${members.length - 1} أخرى`}
               </span>
             </p>
           </div>
@@ -81,7 +85,7 @@ function GroupedPolicyCardImpl({ members, onOpenMembers }: GroupedPolicyCardProp
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            onOpenMembers(members);
+            onOpenMembers(sorted);
           }}
           className="btn btn-secondary btn-sm flex-1"
         >

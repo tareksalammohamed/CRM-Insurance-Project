@@ -1,50 +1,47 @@
 import type { Policy } from '../../../lib/supabase';
 
 // عنصر واحد فى قائمة عرض الوثائق: إما وثيقة عادية مفردة، أو مجموعة وثائق
-// ناتجة عن التقسيم التلقائي لوثيقة "حماية واستثمار" (مبلغ تأمين > 50,000)
-// بتُعرض كلها فى كارت واحد ذكي بدل ما تتفرّق كبطاقات منفصلة.
-//
-// ملحوظة: التجميع بيتم فقط بين الوثائق المحمّلة فعلياً فى الصفحة الحالية
-// (نفس صفحة القائمة المقسَّمة/paginated) — لو مجموعة وثائق كبيرة (مثلاً 20
-// وثيقة لمليون جنيه) اتقسمت بين صفحتين، هيظهر جزء منها فى كل صفحة. عملياً
-// نادر الحدوث لأن كل وثائق المجموعة بتتسجل دفعة واحدة بنفس اللحظة فبيبقوا
-// متتاليين فى الترتيب.
+// "حماية واستثمار" لنفس العميل ونفس الوكيل بتُعرض كلها فى كارت واحد ذكي بدل
+// ما تتفرّق كبطاقات منفصلة.
 export type PolicyListEntry =
   | { kind: 'single'; key: string; policy: Policy }
   | { kind: 'group'; key: string; groupId: string; members: Policy[] };
 
+// قاعدة التجميع: أي وثائق من نوع "حماية واستثمار" تخص نفس العميل ونفس
+// الوكيل بتتحسب مجموعة واحدة وتُعرض مع بعض تلقائياً — مفيش مفهوم "وثيقة
+// أساسية ووثائق فرعية"، ومفيش شرط إنها اتصدرت مع بعض فى نفس اللحظة أو عن
+// طريق نفس المصدر (إصدار يدوي أو استيراد بيانات) — العلاقة بس هي: نفس
+// العميل + نفس الوكيل + نفس النوع.
+function protectionInvestmentGroupKey(policy: Policy): string | null {
+  if (policy.policy_type !== 'protection_investment') return null;
+  if (!policy.customer_id || !policy.owner_id) return null;
+  return `${policy.customer_id}:${policy.owner_id}`;
+}
+
+// ملحوظة: التجميع بيتم فقط بين الوثائق المحمّلة فعلياً فى الصفحة الحالية
+// (نفس صفحة القائمة المقسَّمة/paginated) — لو وثائق نفس العميل والوكيل
+// اتفرّقت بين صفحتين، هيظهر جزء منها فى كل صفحة.
 export function groupPoliciesForDisplay(policies: Policy[]): PolicyListEntry[] {
-  const handledGroupIds = new Set<string>();
+  const handledGroupKeys = new Set<string>();
   const entries: PolicyListEntry[] = [];
 
   for (const policy of policies) {
-    const groupId = policy.policy_group_id;
+    const groupKey = protectionInvestmentGroupKey(policy);
 
-    if (!groupId) {
+    if (!groupKey) {
       entries.push({ kind: 'single', key: policy.id, policy });
       continue;
     }
 
-    if (handledGroupIds.has(groupId)) continue;
-    handledGroupIds.add(groupId);
+    if (handledGroupKeys.has(groupKey)) continue;
+    handledGroupKeys.add(groupKey);
 
-    const members = policies
-      .filter((p) => p.policy_group_id === groupId)
-      .sort((a, b) => (a.group_sequence ?? 0) - (b.group_sequence ?? 0));
+    const members = policies.filter((p) => protectionInvestmentGroupKey(p) === groupKey);
 
-    // حماية إضافية للبيانات القديمة: المجموعة لا تكون صالحة إذا احتوت وثيقة
-    // أكبر من الحد الأقصى، حتى لو كانت بيانات الربط القديمة موجودة.
-    if (members.some((member) => Number(member.sum_assured || 0) > 50000)) {
-      entries.push({ kind: 'single', key: policy.id, policy });
-      continue;
-    }
-
-    // احتياطاً: لو لأي سبب اتفلترت وثيقة واحدة بس من المجموعة فى هذه الصفحة
-    // (نادر جداً)، بتُعرض كوثيقة مفردة عادية بدل كارت مجموعة من عنصر واحد
     if (members.length <= 1) {
       entries.push({ kind: 'single', key: policy.id, policy });
     } else {
-      entries.push({ kind: 'group', key: groupId, groupId, members });
+      entries.push({ kind: 'group', key: groupKey, groupId: groupKey, members });
     }
   }
 
