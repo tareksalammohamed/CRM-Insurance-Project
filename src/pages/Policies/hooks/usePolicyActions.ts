@@ -59,9 +59,8 @@ export function usePolicyActions({
     watch,
     formState: { errors }
   } = useForm<PolicyFormData>({
-    // z.preprocess fields intentionally accept raw form values (including
-    // empty strings) while the submitted data uses the normalized schema type.
-    // Keep the form API on the normalized PolicyFormData contract.
+    // z.preprocess accepts raw empty form values; keep the public form API
+    // aligned with the normalized PolicyFormData type.
     resolver: zodResolver(policySchema) as unknown as Resolver<PolicyFormData>
   });
 
