@@ -67,7 +67,17 @@ function classifyYear2Status(startDate: string, lastPaidMonth: string | null, no
 
 // وثيقة تعتبر "دخلت السنة الثانية" فقط لو مر عليها سنة كاملة من start_date.
 // أي وثيقة لسه في السنة الأولى (أقل من سنة) لا تظهر هنا إطلاقاً.
+// رقم السنة التأمينية الحالية للوثيقة اعتماداً على عدد الشهور الكاملة منذ
+// بداية التأمين (كل 12 شهر = سنة جديدة) — 2 يعني دخلت سنتها الثانية بالظبط
+// حتى لو لسه معهاش تحصيل فيها، 3 يعني سنة ثالثة... إلخ. لا تُستخدم هذه
+// القيمة فى أي شرط أهلية أو حساب آخر، فقط لعرضها على الكارت.
+function computePolicyYearNumber(startDate: string, now: Date): number {
+  const months = differenceInCalendarMonths(startOfMonth(now), startOfMonth(new Date(startDate)));
+  return Math.floor(Math.max(months, 0) / 12) + 1;
+}
+
 export async function fetchYear2EligiblePolicies(
+
   { page, searchQuery, branchId = null, quickFilter }: FetchYear2PoliciesParams
 ): Promise<FetchYear2PoliciesResult> {
   const oneYearAgoStr = format(subYears(new Date(), 1), 'yyyy-MM-dd');
@@ -151,24 +161,58 @@ export async function fetchYear2EligiblePolicies(
         }
       }
 
-      // إجمالي المحصل لكل وثيقة في السنة الثانية (استعلام واحد على الوثائق
-      // المعروضة بالصفحة الحالية فقط)
+      // إجمالي المحصل لكل وثيقة في السنة الثانية + عدد مرات التحصيل فيها +
+      // آخر شهر مُحصَّل فعلياً (لتصنيف الحالة) — كله من استعلام واحد على
+      // الوثائق المعروضة بالصفحة الحالية فقط
       if (policies.length > 0) {
         const ids = policies.map((p) => p.id);
         const { data: paymentsData, error: paymentsError } = await supabase
           .from('year2_payments')
-          .select('policy_id, amount')
+          .select('policy_id, amount, payment_month')
           .in('policy_id', ids)
           .eq('is_cancelled', false);
 
         if (paymentsError) throw paymentsError;
 
         const totals = new Map<string, number>();
+        const year2Counts = new Map<string, number>();
+        const lastPaidMonthByPolicy = new Map<string, string>();
         for (const p of paymentsData || []) {
           totals.set(p.policy_id, (totals.get(p.policy_id) || 0) + Number(p.amount));
+          year2Counts.set(p.policy_id, (year2Counts.get(p.policy_id) || 0) + 1);
+          const current = lastPaidMonthByPolicy.get(p.policy_id);
+          if (!current || p.payment_month > current) {
+            lastPaidMonthByPolicy.set(p.policy_id, p.payment_month);
+          }
         }
+
+        // عدد أقساط السنة الأولى المسددة لنفس الوثائق — عشان "كام قسط
+        // مسدد من أول بداية التأمين" يبقى رقم شامل (سنة أولى + سنة ثانية
+        // وما بعدها) مش بس تحصيلات هذا الجدول
+        const { data: year1PaidRows, error: year1Error } = await supabase
+          .from('installments')
+          .select('policy_id')
+          .in('policy_id', ids)
+          .eq('status', 'paid');
+
+        if (year1Error) throw year1Error;
+
+        const year1Counts = new Map<string, number>();
+        for (const row of (year1PaidRows as { policy_id: string }[]) || []) {
+          year1Counts.set(row.policy_id, (year1Counts.get(row.policy_id) || 0) + 1);
+        }
+
+        const nowForYearNumber = new Date();
         for (const policy of policies) {
           policy.year2_total_paid = totals.get(policy.id) || 0;
+          policy.total_paid_installments_count =
+            (year1Counts.get(policy.id) || 0) + (year2Counts.get(policy.id) || 0);
+          policy.policy_year_number = computePolicyYearNumber(policy.start_date, nowForYearNumber);
+          policy.year2_status = classifyYear2Status(
+            policy.start_date,
+            lastPaidMonthByPolicy.get(policy.id) ?? null,
+            nowForYearNumber,
+          );
         }
       }
 

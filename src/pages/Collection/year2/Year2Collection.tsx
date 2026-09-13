@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { useReconnectRefetch } from '../../../hooks/useReconnectRefetch';
 import {
-  Search, CheckCircle, History, Printer, Info,
+  Search, Printer, Info,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useForm } from 'react-hook-form';
@@ -27,6 +27,7 @@ import { AddPaymentModal } from './components/dialogs/AddPaymentModal';
 import { HistoryModal } from './components/dialogs/HistoryModal';
 import { CancelPaymentModal } from './components/dialogs/CancelPaymentModal';
 import { PrintSetupModal } from './components/dialogs/PrintSetupModal';
+import { Year2CollectionCard } from './components/Year2CollectionCard';
 
 interface Year2CollectionProps {
   // الفرع الحالي المختار (BranchProvider العام، مُمرَّر من صفحة التحصيل
@@ -268,41 +269,16 @@ export function Year2Collection({ branchId = null }: Year2CollectionProps) {
         ) : (
           <>
             <p className="text-xs text-secondary-400 mb-3">إجمالي النتائج: {totalCount}</p>
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th scope="col">رقم الوثيقة</th>
-                    <th scope="col">العميل</th>
-                    <th scope="col">تاريخ البداية</th>
-                    <th scope="col">المسؤول</th>
-                    <th scope="col">إجمالي المحصل (السنوات اللاحقة)</th>
-                    <th scope="col">إجراءات</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {policies.map((policy) => (
-                    <tr key={policy.id}>
-                      <td className="font-medium">{policy.policy_number}</td>
-                      <td>{policy.customer?.name || '-'}</td>
-                      <td>{format(new Date(policy.start_date), 'dd/MM/yyyy')}</td>
-                      <td>{policy.owner?.name || '-'}</td>
-                      <td className="font-semibold">{formatCurrency(policy.year2_total_paid || 0)}</td>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => openHistory(policy)} className="btn btn-ghost btn-sm" title="سجل التحصيل">
-                            <History className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => openAdd(policy)} className="btn btn-primary btn-sm">
-                            <CheckCircle className="w-4 h-4" />
-                            <span>تسجيل تحصيل</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="space-y-3">
+              {policies.map((policy) => (
+                <Year2CollectionCard
+                  key={policy.id}
+                  policy={policy}
+                  formatCurrency={formatCurrency}
+                  onHistory={openHistory}
+                  onAddPayment={openAdd}
+                />
+              ))}
             </div>
 
             <Pagination
