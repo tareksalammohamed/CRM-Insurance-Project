@@ -2245,6 +2245,68 @@ body {
   }
   @media (min-width: 768px) { .col-row-amount-value { font-size: 1.1875rem; } }
 
+  /* ===== نسخة مقسومة من شريط المبلغ (بطاقة القسط المفرد): القسط الصافي +
+     عدد الأقساط المسددة جنب بعض فى نفس الشريط، بدل ما ياخد المبلغ العرض
+     كله لوحده ===== */
+  .col-row-amount--split {
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 0;
+    background: linear-gradient(180deg, var(--brand-softer), var(--surface) 130%);
+  }
+  .col-row-amount-primary {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.125rem;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .col-row-amount-primary .col-row-amount-value { text-align: start; }
+  /* فاصل رفيع بين المبلغ وعدد الأقساط — بلون العلامة بشفافية خفيفة، مش خط جاف */
+  .col-row-amount-divider {
+    flex-shrink: 0;
+    align-self: stretch;
+    width: 1px;
+    margin-inline: 0.75rem;
+    background: linear-gradient(180deg, transparent, rgb(8 127 91 / 0.22) 20%, rgb(8 127 91 / 0.22) 80%, transparent);
+  }
+  .col-row-amount-secondary {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+  .col-row-amount-secondary-label {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--muted-ink);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+  .col-row-amount-secondary-label svg { width: 0.75rem; height: 0.75rem; flex-shrink: 0; opacity: 0.75; }
+  /* عدد الأقساط المسددة كشارة مميزة بلون العلامة — تُقرأ كإنجاز لا كرقم عادي */
+  .col-row-amount-secondary-value {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.625rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 999px;
+    background: var(--brand-soft);
+    border: 1px solid rgb(8 127 91 / 0.18);
+    color: var(--brand-ink);
+    font-size: 0.8125rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.4;
+  }
+
   /* شبكة تفاصيل: عمودان على 320px بمساحة كافية، بدون قصّ */
   .col-row-grid {
     display: grid;

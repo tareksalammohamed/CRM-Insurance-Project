@@ -32,6 +32,11 @@ export type CollectionPolicy = Policy & {
 // إن الأقساط المحمّلة من مسارات تانية (بدون علاقات) نوعها مختلف فعلاً.
 export type InstallmentWithRelations = Installment & {
   policy: CollectionPolicy;
+  // عدد الأقساط المسددة لنفس الوثيقة حتى الآن — مُحسَّب فى خدمة الجلب لصفوف
+  // الصفحة الحالية فقط (مش عمود فى قاعدة البيانات)، وبيُعرض جنب "القسط
+  // الصافي" فى بطاقة التحصيل. اختياري لأن بعض مسارات التحميل (تفاصيل وثيقة
+  // معيّنة مثلاً) قد لا تحسبه.
+  paid_installments_count?: number;
 };
 
 export const QUICK_FILTERS: { id: QuickFilter; label: string }[] = [

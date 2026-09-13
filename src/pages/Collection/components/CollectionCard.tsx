@@ -8,11 +8,14 @@ import {
   CheckCircle2,
   AlertTriangle,
   Clock3,
+  CreditCard,
+  ListChecks,
 } from 'lucide-react';
 import type { InstallmentWithRelations } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getInstallmentDisplayInfo } from '../utils/installmentDisplay';
 import { CollectionActions } from './CollectionActions';
+import { PAYMENT_METHOD_LABELS } from '../../../lib/supabase';
 import type { ActionMenuAnchor } from '../../../components/ui/AppBottomSheet';
 
 interface CollectionCardProps {
@@ -67,10 +70,25 @@ function CollectionCardImpl({ installment, onPay, onCancel, onMore, highlighted 
         </span>
       </div>
 
-      {/* ===== المبلغ الحاكم — أبرز رقم فى البطاقة، فى سطر مستقل ===== */}
-      <div className="col-row-amount">
-        <span className="col-row-amount-label">قيمة القسط الصافي</span>
-        <span className="col-row-amount-value">{formatCurrency(installment.amount)}</span>
+      {/* ===== المبلغ الحاكم + عدد الأقساط المسددة، جنب بعض فى نفس الشريط ===== */}
+      <div className="col-row-amount col-row-amount--split">
+        <div className="col-row-amount-primary">
+          <span className="col-row-amount-label">قيمة القسط الصافي</span>
+          <span className="col-row-amount-value">{formatCurrency(installment.amount)}</span>
+        </div>
+
+        {typeof installment.paid_installments_count === 'number' && (
+          <>
+            <span className="col-row-amount-divider" aria-hidden="true" />
+            <div className="col-row-amount-secondary">
+              <span className="col-row-amount-secondary-label">
+                <ListChecks aria-hidden="true" />
+                <span>أقساط مسددة</span>
+              </span>
+              <span className="col-row-amount-secondary-value">{installment.paid_installments_count}</span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* ===== تفاصيل تشغيلية ===== */}
@@ -102,13 +120,23 @@ function CollectionCardImpl({ installment, onPay, onCancel, onMore, highlighted 
           </p>
         </div>
 
-        <div className="col-cell col-cell--wide">
+        <div className="col-cell">
           <p className="col-cell-label">
             <UserRound aria-hidden="true" />
             <span>اسم الوكيل</span>
           </p>
           <p className="col-cell-value col-cell-value--muted">
             {installment.policy.owner?.name || '-'}
+          </p>
+        </div>
+
+        <div className="col-cell">
+          <p className="col-cell-label">
+            <CreditCard aria-hidden="true" />
+            <span>طريقة السداد</span>
+          </p>
+          <p className="col-cell-value col-cell-value--muted">
+            {PAYMENT_METHOD_LABELS[installment.policy.payment_method]}
           </p>
         </div>
       </div>

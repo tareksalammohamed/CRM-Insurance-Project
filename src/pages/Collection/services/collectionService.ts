@@ -301,8 +301,28 @@ async function fetchInstallmentsOnline({ quickFilter, subType, ownerFilter, page
     entry.kind === 'group' ? entry.members : [entry.installment]
   );
 
+  // عدد الأقساط المسددة لكل وثيقة — يُحسب فقط لوثائق الصفحة الحالية (بعد
+  // التقسيم لصفحات أعلاه)، مش كل الوثائق فى النظام، عشان يفضل الاستعلام خفيف
+  const pagePolicyIds = [...new Set(pageInstallments.map((i) => i.policy_id))];
+  const paidCountByPolicy = new Map<string, number>();
+  if (pagePolicyIds.length > 0) {
+    const { data: paidRows, error: paidCountError } = await supabase
+      .from('installments')
+      .select('policy_id')
+      .eq('status', 'paid')
+      .in('policy_id', pagePolicyIds);
+    if (paidCountError) throw paidCountError;
+    for (const row of (paidRows as { policy_id: string }[]) || []) {
+      paidCountByPolicy.set(row.policy_id, (paidCountByPolicy.get(row.policy_id) || 0) + 1);
+    }
+  }
+  const enrichedInstallments = pageInstallments.map((inst) => ({
+    ...inst,
+    paid_installments_count: paidCountByPolicy.get(inst.policy_id) || 0,
+  }));
+
   return {
-    installments: pageInstallments,
+    installments: enrichedInstallments,
     totalCount: entries.length,
     totalPages: Math.max(1, Math.ceil(entries.length / PAGE_SIZE)),
   };
