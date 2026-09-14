@@ -1,10 +1,11 @@
 import { memo, useState } from 'react';
 import { format } from 'date-fns';
 import clsx from 'clsx';
-import { Layers, Hash, UserRound, CalendarDays, CheckCircle2, ChevronDown, CheckCircle } from 'lucide-react';
+import { Layers, Hash, UserRound, CalendarDays, CheckCircle2, ChevronDown, CheckCircle, CreditCard, ListChecks } from 'lucide-react';
 import type { InstallmentWithRelations } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getInstallmentDisplayInfo } from '../utils/installmentDisplay';
+import { PAYMENT_METHOD_LABELS } from '../../../lib/supabase';
 
 interface CollectionGroupCardProps {
   members: InstallmentWithRelations[];
@@ -23,6 +24,7 @@ function CollectionGroupCardImpl({ members, onPayGroup }: CollectionGroupCardPro
   const [expanded, setExpanded] = useState(false);
 
   const first = members[0];
+  const sortedMembers = [...members].sort((a, b) => a.policy.policy_number.localeCompare(b.policy.policy_number));
   const { dueDate, isOverdue, dayLabel } = getInstallmentDisplayInfo(first);
   const unpaidMembers = members.filter((m) => m.status !== 'paid');
   const allPaid = unpaidMembers.length === 0;
@@ -31,6 +33,12 @@ function CollectionGroupCardImpl({ members, onPayGroup }: CollectionGroupCardPro
 
   const tone = allPaid ? 'col-tone-paid' : isOverdue ? 'col-tone-overdue' : 'col-tone-due';
   const customerName = first.policy.customer?.name || '-';
+  // إجمالي عدد الأقساط المسددة عبر كل الوثائق الفرعية فى المجموعة مجمّعة —
+  // كل وثيقة فرعية ليها جدولها الخاص، فبنجمع عدد المسدد من كل واحدة فيهم
+  const hasPaidCounts = members.every((m) => typeof m.paid_installments_count === 'number');
+  const totalPaidCount = hasPaidCounts
+    ? members.reduce((sum, m) => sum + (m.paid_installments_count || 0), 0)
+    : undefined;
 
   return (
     <div className={clsx('col-row', tone)}>
@@ -46,7 +54,10 @@ function CollectionGroupCardImpl({ members, onPayGroup }: CollectionGroupCardPro
           <div className="col-row-sub">
             <span className="col-row-policy" dir="ltr">
               <Hash aria-hidden="true" />
-              <span>{first.policy.policy_number.replace(/-\d+$/, '')}-1…{members.length}</span>
+              <span className="font-mono">
+                {sortedMembers[0].policy.policy_number}
+                {members.length > 1 && ` +${members.length - 1} أخرى`}
+              </span>
             </span>
           </div>
         </div>
@@ -57,11 +68,26 @@ function CollectionGroupCardImpl({ members, onPayGroup }: CollectionGroupCardPro
         </span>
       </div>
 
-      <div className="col-row-amount">
-        <span className="col-row-amount-label">
-          {allPaid ? 'إجمالي القسط الصافي (مسدد بالكامل)' : `إجمالي القسط الصافي المستحق (${unpaidMembers.length} من ${members.length})`}
-        </span>
-        <span className="col-row-amount-value">{formatCurrency(allPaid ? totalAmount : unpaidAmount)}</span>
+      <div className="col-row-amount col-row-amount--split">
+        <div className="col-row-amount-primary">
+          <span className="col-row-amount-label">
+            {allPaid ? 'إجمالي القسط الصافي (مسدد بالكامل)' : `إجمالي القسط الصافي المستحق (${unpaidMembers.length} من ${members.length})`}
+          </span>
+          <span className="col-row-amount-value">{formatCurrency(allPaid ? totalAmount : unpaidAmount)}</span>
+        </div>
+
+        {typeof totalPaidCount === 'number' && (
+          <>
+            <span className="col-row-amount-divider" aria-hidden="true" />
+            <div className="col-row-amount-secondary">
+              <span className="col-row-amount-secondary-label">
+                <ListChecks aria-hidden="true" />
+                <span>أقساط مسددة</span>
+              </span>
+              <span className="col-row-amount-secondary-value">{totalPaidCount}</span>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="col-row-grid">
@@ -83,12 +109,22 @@ function CollectionGroupCardImpl({ members, onPayGroup }: CollectionGroupCardPro
           </p>
         </div>
 
-        <div className="col-cell col-cell--wide">
+        <div className="col-cell">
           <p className="col-cell-label">
             <UserRound aria-hidden="true" />
             <span>اسم الوكيل</span>
           </p>
           <p className="col-cell-value col-cell-value--muted">{first.policy.owner?.name || '-'}</p>
+        </div>
+
+        <div className="col-cell">
+          <p className="col-cell-label">
+            <CreditCard aria-hidden="true" />
+            <span>طريقة السداد</span>
+          </p>
+          <p className="col-cell-value col-cell-value--muted">
+            {PAYMENT_METHOD_LABELS[first.policy.payment_method]}
+          </p>
         </div>
       </div>
 
@@ -103,10 +139,7 @@ function CollectionGroupCardImpl({ members, onPayGroup }: CollectionGroupCardPro
 
       {expanded && (
         <div className="space-y-1.5 pt-1">
-          {members
-            .slice()
-            .sort((a, b) => a.policy.policy_number.localeCompare(b.policy.policy_number))
-            .map((m) => (
+          {sortedMembers.map((m) => (
               <div key={m.id} className="flex items-center justify-between rounded-lg bg-secondary-50 px-3 py-2 text-[12px]">
                 <span className="font-mono text-secondary-600" dir="ltr">{m.policy.policy_number}</span>
                 <span className="font-bold text-secondary-900">{formatCurrency(m.amount)}</span>

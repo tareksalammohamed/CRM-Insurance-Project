@@ -8,14 +8,16 @@ export type PolicyListEntry =
   | { kind: 'group'; key: string; groupId: string; members: Policy[] };
 
 // قاعدة التجميع: أي وثائق من نوع "حماية واستثمار" تخص نفس العميل ونفس
-// الوكيل بتتحسب مجموعة واحدة وتُعرض مع بعض تلقائياً — مفيش مفهوم "وثيقة
-// أساسية ووثائق فرعية"، ومفيش شرط إنها اتصدرت مع بعض فى نفس اللحظة أو عن
-// طريق نفس المصدر (إصدار يدوي أو استيراد بيانات) — العلاقة بس هي: نفس
-// العميل + نفس الوكيل + نفس النوع.
+// الوكيل ونفس تاريخ بداية التأمين بتتحسب مجموعة واحدة وتُعرض مع بعض
+// تلقائياً — مفيش مفهوم "وثيقة أساسية ووثائق فرعية"، ومفيش شرط إنها اتصدرت
+// مع بعض فى نفس اللحظة أو عن طريق نفس المصدر (إصدار يدوي أو استيراد
+// بيانات) — العلاقة بس هي: نفس العميل + نفس الوكيل + نفس بداية التأمين.
+// شرط تاريخ البداية بيمنع دمج وثائق حماية واستثمار مستقلة حقيقية لنفس
+// العميل صدرت فى أوقات مختلفة (مش من نفس عملية التقسيم).
 function protectionInvestmentGroupKey(policy: Policy): string | null {
   if (policy.policy_type !== 'protection_investment') return null;
-  if (!policy.customer_id || !policy.owner_id) return null;
-  return `${policy.customer_id}:${policy.owner_id}`;
+  if (!policy.customer_id || !policy.owner_id || !policy.start_date) return null;
+  return `${policy.customer_id}:${policy.owner_id}:${policy.start_date}`;
 }
 
 // ملحوظة: التجميع بيتم فقط بين الوثائق المحمّلة فعلياً فى الصفحة الحالية

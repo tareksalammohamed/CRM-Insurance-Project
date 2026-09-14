@@ -17,8 +17,8 @@ export type CollectionListEntry =
 function protectionInvestmentGroupKey(installment: InstallmentWithRelations): string | null {
   const policy = installment.policy;
   if (!policy || policy.policy_type !== 'protection_investment') return null;
-  if (!policy.customer_id || !policy.owner_id) return null;
-  return `${policy.customer_id}:${policy.owner_id}`;
+  if (!policy.customer_id || !policy.owner_id || !policy.start_date) return null;
+  return `${policy.customer_id}:${policy.owner_id}:${policy.start_date}`;
 }
 
 // التجميع بيتم فقط بين الأقساط المحمّلة فعلياً فى الصفحة الحالية من قائمة
