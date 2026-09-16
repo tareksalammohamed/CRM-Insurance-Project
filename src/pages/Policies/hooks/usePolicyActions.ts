@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useForm, type Resolver } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Policy, PolicyType, PaymentMethod, User } from '../../../lib/supabase';
 
@@ -59,9 +59,7 @@ export function usePolicyActions({
     watch,
     formState: { errors }
   } = useForm<PolicyFormData>({
-    // z.preprocess accepts raw empty form values; keep the public form API
-    // aligned with the normalized PolicyFormData type.
-    resolver: zodResolver(policySchema) as unknown as Resolver<PolicyFormData>
+    resolver: zodResolver(policySchema)
   });
 
   // فتح مودال التعديل تلقائياً لو الرابط جاي من صفحة تفاصيل الوثيقة بزرار
@@ -267,10 +265,13 @@ export function usePolicyActions({
       console.error('Error saving policy:', error);
       const msg = getErrorMessage(error);
       const code = getErrorCode(error);
-      if (code === '23505' && msg.includes('policy_number')) {
-        notify.error('رقم الوثيقة مسجل مسبقاً');
-      } else if (code === '23505') {
-        notify.error('حدث تعارض في البيانات أثناء الحفظ، برجاء المحاولة مرة أخرى');
+      if (code === '23505') {
+        // الخادم بيرجّع دايماً الرسالة العربي "رقم الوثيقة مستخدم بالفعل"
+        // (راجع create_policy_op / create_policy_group_op)، ومفيش أي كود
+        // 23505 تاني ممكن يوصل من هنا غير تكرار رقم الوثيقة (القيد الفريد
+        // الوحيد على جدول policies غير المفتاح الأساسي هو policy_number)،
+        // فمفيش داعي لفحص نص الرسالة قبل عرض الرسالة الواضحة للمستخدم.
+        notify.error('رقم الوثيقة مسجل مسبقاً، برجاء استخدام رقم مختلف');
       } else {
         notify.error(msg || 'حدث خطأ أثناء الحفظ');
       }
