@@ -97,8 +97,8 @@ Deno.serve(async (req: Request) => {
       body: notification.message,
       notification_id: notification.id,
       url: getNotificationUrl(notification.entity_type, notification.entity_id),
-      icon: "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
+      icon: "/icons/insurance-crm-icon-192.png",
+      badge: "/icons/insurance-crm-icon-192.png",
       tag: `crm-notification-${notification.id}`,
     });
 
