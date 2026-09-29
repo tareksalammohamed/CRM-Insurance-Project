@@ -108,6 +108,7 @@ export function Collection() {
     showPaymentModal,
     closePaymentModal,
     selectedInstallment,
+    cancelGroupCount,
     selectedGroupInstallments,
     paymentDateStr,
     setPaymentDateStr,
@@ -120,6 +121,7 @@ export function Collection() {
     handleOpenGroupPayment,
     handleProcessPayment,
     handleOpenCancel,
+    handleOpenCancelGroup,
     handleCancelPayment,
   } = useInstallmentPaymentActions({
     user,
@@ -164,7 +166,11 @@ export function Collection() {
             <Gauge aria-hidden="true" />
             <span>مؤشرات التحصيل</span>
           </h2>
-          <CollectionStats quickStats={quickStats} quickStatsLoading={quickStatsLoading} />
+          <CollectionStats
+            quickStats={quickStats}
+            quickStatsLoading={quickStatsLoading}
+            onOpenYear2={() => setYearMode('year2')}
+          />
         </section>
       )}
 
@@ -227,6 +233,7 @@ export function Collection() {
               onResetSearchAndFilters={() => { setLocalSearch(''); handleResetFilters(); }}
               onPay={handleOpenPayment}
               onPayGroup={handleOpenGroupPayment}
+              onCancelGroup={handleOpenCancelGroup}
               onCancel={handleOpenCancel}
               onMore={(installment, anchor) => {
                 setMoreMenuAnchor(anchor);
@@ -267,6 +274,7 @@ export function Collection() {
           cancelReason={cancelReason}
           onCancelReasonChange={setCancelReason}
           processing={processingPayment}
+          groupCount={cancelGroupCount}
           onConfirm={handleCancelPayment}
           onClose={() => setShowCancelModal(false)}
         />

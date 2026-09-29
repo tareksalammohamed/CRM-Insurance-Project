@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { CalendarClock, BadgeCheck, Banknote, ListChecks } from 'lucide-react';
+import { CalendarClock, BadgeCheck, Banknote, ListChecks, Layers, ArrowUpRight } from 'lucide-react';
 import type { CollectionQuickStats } from '../services/collectionService';
 import { formatCurrency } from '../utils/formatCurrency';
 import { KpiTile } from './KpiTile';
@@ -8,6 +8,7 @@ import { buildCollectionDrillDownUrl } from '../../Dashboard/utils';
 interface CollectionStatsProps {
   quickStats: CollectionQuickStats | null;
   quickStatsLoading: boolean;
+  onOpenYear2?: () => void;
 }
 
 // هيكل تحميل مطابق لأبعاد البلاطة الحقيقية — يمنع أى \"قفزة\" فى التخطيط
@@ -37,7 +38,7 @@ function BoardSkeleton() {
 // جديد وبدون أى تغيير فى الاستعلامات أو الحسابات أو قاعدة البيانات.
 //
 // كل القيم المعروضة تأتى كما هى من quickStats — لا حساب ولا اشتقاق جديد هنا.
-export function CollectionStats({ quickStats, quickStatsLoading }: CollectionStatsProps) {
+export function CollectionStats({ quickStats, quickStatsLoading, onOpenYear2 }: CollectionStatsProps) {
   const navigate = useNavigate();
   const openFiltered = (quickFilter: 'month' | 'overdue' | 'paid') => {
     navigate(buildCollectionDrillDownUrl({ quickFilter }));
@@ -107,6 +108,26 @@ export function CollectionStats({ quickStats, quickStatsLoading }: CollectionSta
             onClick={() => openFiltered('paid')}
             ariaLabel="عرض عدد الأقساط المحصلة اليوم"
             footer={<span>عدد عمليات السداد المسجَّلة</span>}
+          />
+
+          <KpiTile
+            label="وثائق السنة الثانية"
+            value={quickStats?.year2EligiblePoliciesCount ?? 0}
+            icon={Layers}
+            tone="info"
+            onClick={onOpenYear2}
+            ariaLabel="فتح تحصيلات السنة الثانية"
+            footer={<span className="inline-flex items-center gap-1">راجع التحصيلات اللاحقة <ArrowUpRight className="w-3 h-3" /></span>}
+          />
+
+          <KpiTile
+            label="محصل السنة الثانية هذا الشهر"
+            value={formatCurrency(quickStats?.year2CollectedMonthAmount || 0)}
+            icon={Banknote}
+            tone="paid"
+            onClick={onOpenYear2}
+            ariaLabel="فتح تحصيلات السنة الثانية"
+            footer={<span>{quickStats?.year2CollectedMonthCount ?? 0} عملية تحصيل</span>}
           />
         </>
       )}

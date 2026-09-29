@@ -208,6 +208,10 @@ async function fetchInstallmentsOnline({ quickFilter, subType, ownerFilter, page
         { count: 'exact' },
       );
 
+  // الوثيقة الملغاة لا تُعرض في أي من قوائم التحصيل، حتى لو بقيت أقساط
+  // قديمة مرتبطة بها في قاعدة البيانات.
+  query = query.neq('policy.status', 'cancelled');
+
   // فلتر الفرع الحالي (BranchProvider العام) — فاضي/null يعني بدون فلترة
   // إضافية (السلوك القديم، معتمد على RLS بس)
   if (branchId) {
@@ -348,6 +352,10 @@ export interface CollectionQuickStats {
   // "إجمالي المسدد خلال الشهر الحالي" — قيمة الأقساط التي تم سدادها فعلياً
   // خلال الشهر الحالي (حسب payment_month)، بنفس منطق فلتر "تم السداد" تماماً.
   collectedMonthAmount: number;
+  // مؤشرات تذكيرية لتحصيلات السنة الثانية وما بعدها — مستقلة عن السنة الأولى.
+  year2EligiblePoliciesCount: number;
+  year2CollectedMonthAmount: number;
+  year2CollectedMonthCount: number;
 }
 
 const EMPTY_COLLECTION_QUICK_STATS: CollectionQuickStats = {
@@ -357,6 +365,9 @@ const EMPTY_COLLECTION_QUICK_STATS: CollectionQuickStats = {
   collectedTodayAmount: 0,
   collectedTodayCount: 0,
   collectedMonthAmount: 0,
+  year2EligiblePoliciesCount: 0,
+  year2CollectedMonthAmount: 0,
+  year2CollectedMonthCount: 0,
 };
 
 export async function fetchCollectionQuickStats(branchId: string | null = null): Promise<CollectionQuickStats> {
@@ -376,21 +387,37 @@ export async function fetchCollectionQuickStats(branchId: string | null = null):
       // installment.policy) ونفلتر النتيجة فى الجافاسكريبت — أبسط وأضمن من
       // فلتر PostgREST متداخل على علاقتين، ونفس أسلوب الفلترة المستخدم أصلاً
       // فى باقي النظام
-      const installmentsBranchSelect = branchId ? ', policy:policy_id!inner(branch_id)' : '';
-      const paymentsBranchSelect = branchId ? ', installment:installment_id!inner(policy:policy_id!inner(branch_id))' : '';
+      const installmentsBranchSelect = branchId ? ', policy:policy_id!inner(branch_id,status)' : ', policy:policy_id!inner(status)';
+      const paymentsBranchSelect = branchId ? ', installment:installment_id!inner(policy:policy_id!inner(branch_id,status))' : ', installment:installment_id!inner(policy:policy_id!inner(status))';
       const matchesBranch = (row: any, path: 'policy' | 'installment'): boolean => {
         if (!branchId) return true;
         const branch = path === 'policy' ? row.policy?.branch_id : row.installment?.policy?.branch_id;
         return branch === branchId;
       };
 
-      const [dueRes, totalDueRes, collectedRes, collectedMonthRes] = await Promise.all([
+      let year2PoliciesQuery = supabase
+        .from('policies')
+        .select('id')
+        .eq('status', 'active')
+        .lte('start_date', format(subMonths(now, 12), 'yyyy-MM-dd'));
+      if (branchId) year2PoliciesQuery = year2PoliciesQuery.eq('branch_id', branchId);
+
+      let year2PaymentsQuery = supabase
+        .from('year2_payments')
+        .select('amount, policy:policy_id!inner(start_date,status,branch_id)')
+        .eq('is_cancelled', false)
+        .eq('policy.status', 'active')
+        .eq('payment_month', monthStartStr);
+      if (branchId) year2PaymentsQuery = year2PaymentsQuery.eq('policy.branch_id', branchId);
+
+      const [dueRes, totalDueRes, collectedRes, collectedMonthRes, year2PoliciesRes, year2PaymentsRes] = await Promise.all([
         // نفس منطق فلتر "الشهر" السريع بالضبط: status='pending' وتاريخ الاستحقاق
         // خلال الشهر الحالي بالكامل (إنتاج جديد + تحصيل دوري معاً)
         supabase
           .from('installments')
           .select(`amount${installmentsBranchSelect}`)
           .eq('status', 'pending')
+          .eq('policy.status', 'active')
           .gte('due_date', monthStartStr)
           .lte('due_date', monthEndStr),
         // نفس النطاق الزمني لكن بدون فلتر الحالة — كل قسط تاريخ استحقاقه هذا
@@ -398,12 +425,14 @@ export async function fetchCollectionQuickStats(branchId: string | null = null):
         supabase
           .from('installments')
           .select(`amount${installmentsBranchSelect}`)
+          .eq('policy.status', 'active')
           .gte('due_date', monthStartStr)
           .lte('due_date', monthEndStr),
         supabase
           .from('payments')
           .select(`amount${paymentsBranchSelect}`)
           .eq('is_cancelled', false)
+          .eq('installment.policy.status', 'active')
           .gte('paid_at', dayStartIso)
           .lte('paid_at', dayEndIso),
         // نفس منطق فلتر "تم السداد" بالضبط: مسدد فعلياً خلال الشهر الحالي حسب
@@ -412,13 +441,18 @@ export async function fetchCollectionQuickStats(branchId: string | null = null):
           .from('payments')
           .select(`amount${paymentsBranchSelect}`)
           .eq('is_cancelled', false)
+          .eq('installment.policy.status', 'active')
           .eq('payment_month', monthStartStr),
+        year2PoliciesQuery,
+        year2PaymentsQuery,
       ]);
 
       if (dueRes.error) throw dueRes.error;
       if (totalDueRes.error) throw totalDueRes.error;
       if (collectedRes.error) throw collectedRes.error;
       if (collectedMonthRes.error) throw collectedMonthRes.error;
+      if (year2PoliciesRes.error) throw year2PoliciesRes.error;
+      if (year2PaymentsRes.error) throw year2PaymentsRes.error;
 
       const dueRows = (dueRes.data || []).filter((r: any) => matchesBranch(r, 'policy'));
       const totalDueRows = (totalDueRes.data || []).filter((r: any) => matchesBranch(r, 'policy'));
@@ -429,6 +463,8 @@ export async function fetchCollectionQuickStats(branchId: string | null = null):
       const totalDueMonthAmount = totalDueRows.reduce((sum, r: any) => sum + Number(r.amount), 0);
       const collectedTodayAmount = collectedRows.reduce((sum, r: any) => sum + Number(r.amount), 0);
       const collectedMonthAmount = collectedMonthRows.reduce((sum, r: any) => sum + Number(r.amount), 0);
+      const year2CollectedMonthRows = (year2PaymentsRes.data || []) as any[];
+      const year2CollectedMonthAmount = year2CollectedMonthRows.reduce((sum, r) => sum + Number(r.amount), 0);
 
       return {
         dueMonthAmount,
@@ -437,6 +473,9 @@ export async function fetchCollectionQuickStats(branchId: string | null = null):
         collectedTodayAmount,
         collectedTodayCount: collectedRows.length,
         collectedMonthAmount,
+        year2EligiblePoliciesCount: year2PoliciesRes.data?.length || 0,
+        year2CollectedMonthAmount,
+        year2CollectedMonthCount: year2CollectedMonthRows.length,
       };
     },
     { emptyValue: EMPTY_COLLECTION_QUICK_STATS },

@@ -92,6 +92,7 @@ export async function fetchYear2EligiblePolicies(
       let baseQuery = supabase
         .from('policies')
         .select('*, customer:customer_id(name), owner:owner_id(name)', { count: 'exact' })
+        .eq('status', 'active')
         .lte('start_date', oneYearAgoStr);
 
       if (branchId) {

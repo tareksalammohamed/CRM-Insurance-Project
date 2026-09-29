@@ -38,6 +38,7 @@ export function useInstallmentPaymentActions({
   const [processingPayment, setProcessingPayment] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [selectedCancelGroup, setSelectedCancelGroup] = useState<Installment[] | null>(null);
 
   const handleOpenPayment = useCallback((installment: Installment) => {
     setSelectedInstallment(installment);
@@ -113,6 +114,16 @@ export function useInstallmentPaymentActions({
 
   const handleOpenCancel = useCallback((installment: Installment) => {
     setSelectedInstallment(installment);
+    setSelectedCancelGroup(null);
+    setCancelReason('');
+    setShowCancelModal(true);
+  }, []);
+
+  const handleOpenCancelGroup = useCallback((members: Installment[]) => {
+    const paidMembers = members.filter((member) => member.status === 'paid');
+    if (paidMembers.length === 0) return;
+    setSelectedInstallment(paidMembers[0]);
+    setSelectedCancelGroup(paidMembers);
     setCancelReason('');
     setShowCancelModal(true);
   }, []);
@@ -124,15 +135,18 @@ export function useInstallmentPaymentActions({
     if (!selectedInstallment || !user) return;
     setProcessingPayment(true);
     try {
-      const { error } = await cancelPayment(selectedInstallment, user.id, cancelReason);
-
-      if (error) {
-        notify.error(error);
-        return;
+      const group = selectedCancelGroup || [selectedInstallment];
+      for (const installment of group) {
+        const { error } = await cancelPayment(installment, user.id, cancelReason);
+        if (error) {
+          notify.error(error);
+          return;
+        }
       }
 
       setShowCancelModal(false);
       setSelectedInstallment(null);
+      setSelectedCancelGroup(null);
       setCancelReason('');
       loadInstallments();
       loadQuickStats();
@@ -150,6 +164,7 @@ export function useInstallmentPaymentActions({
   const closePaymentModal = useCallback(() => {
     setShowPaymentModal(false);
     setSelectedGroupInstallments(null);
+    setSelectedCancelGroup(null);
   }, []);
 
   return {
@@ -157,6 +172,7 @@ export function useInstallmentPaymentActions({
     setShowPaymentModal,
     closePaymentModal,
     selectedInstallment,
+    cancelGroupCount: selectedCancelGroup?.length ?? 1,
     selectedGroupInstallments,
     paymentDateStr,
     setPaymentDateStr,
@@ -169,6 +185,7 @@ export function useInstallmentPaymentActions({
     handleOpenGroupPayment,
     handleProcessPayment,
     handleOpenCancel,
+    handleOpenCancelGroup,
     handleCancelPayment,
   };
 }

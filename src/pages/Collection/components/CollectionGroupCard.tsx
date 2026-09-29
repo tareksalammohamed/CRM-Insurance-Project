@@ -1,7 +1,7 @@
 import { memo, useState } from 'react';
 import { format } from 'date-fns';
 import clsx from 'clsx';
-import { Layers, Hash, UserRound, CalendarDays, CheckCircle2, ChevronDown, CheckCircle, CreditCard, ListChecks } from 'lucide-react';
+import { Layers, Hash, UserRound, CalendarDays, CheckCircle2, ChevronDown, CheckCircle, CreditCard, ListChecks, XCircle } from 'lucide-react';
 import type { InstallmentWithRelations } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getInstallmentDisplayInfo } from '../utils/installmentDisplay';
@@ -10,6 +10,7 @@ import { PAYMENT_METHOD_LABELS } from '../../../lib/supabase';
 interface CollectionGroupCardProps {
   members: InstallmentWithRelations[];
   onPayGroup: (members: InstallmentWithRelations[]) => void;
+  onCancelGroup: (members: InstallmentWithRelations[]) => void;
 }
 
 function initialOf(name: string | undefined): string {
@@ -20,7 +21,7 @@ function initialOf(name: string | undefined): string {
 // كارت مجمّع لأقساط أكثر من وثيقة ناتجة عن التقسيم التلقائي لوثيقة "حماية
 // واستثمار" (نفس المجموعة + نفس تاريخ الاستحقاق) — بدل ما يظهروا كأقساط
 // منفصلة يضطر المستخدم يسدّدها وثيقة وثيقة، بيتجمّعوا هنا وبيتسددوا بزرار واحد.
-function CollectionGroupCardImpl({ members, onPayGroup }: CollectionGroupCardProps) {
+function CollectionGroupCardImpl({ members, onPayGroup, onCancelGroup }: CollectionGroupCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const first = members[0];
@@ -161,6 +162,16 @@ function CollectionGroupCardImpl({ members, onPayGroup }: CollectionGroupCardPro
           <button onClick={() => onPayGroup(unpaidMembers)} className="btn btn-primary btn-sm flex-1">
             <CheckCircle className="w-4 h-4" />
             <span>تسجيل سداد كل الوثائق ({unpaidMembers.length})</span>
+          </button>
+        )}
+        {members.some((m) => m.status === 'paid') && (
+          <button
+            onClick={() => onCancelGroup(members.filter((m) => m.status === 'paid'))}
+            className="btn btn-secondary btn-sm flex-1"
+            title="إلغاء سداد كل الوثائق المسددة"
+          >
+            <XCircle className="w-4 h-4" />
+            <span>إلغاء سداد الكل</span>
           </button>
         )}
       </div>

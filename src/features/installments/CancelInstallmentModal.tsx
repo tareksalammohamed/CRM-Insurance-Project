@@ -16,6 +16,7 @@ interface CancelInstallmentModalProps {
   cancelReason: string;
   onCancelReasonChange: (value: string) => void;
   processing: boolean;
+  groupCount?: number;
   onConfirm: () => void;
   onClose: () => void;
 }
@@ -26,6 +27,7 @@ export function CancelInstallmentModal({
   cancelReason,
   onCancelReasonChange,
   processing,
+  groupCount,
   onConfirm,
   onClose,
 }: CancelInstallmentModalProps) {
@@ -48,17 +50,23 @@ export function CancelInstallmentModal({
 
           <div className="p-6">
             <div className="bg-error-50 rounded-lg p-4 mb-4 space-y-2">
-              <p className="text-sm text-error-700 font-medium">هل أنت متأكد من إلغاء هذا السداد؟</p>
+              <p className="text-sm text-error-700 font-medium">
+                {groupCount && groupCount > 1
+                  ? `هل أنت متأكد من إلغاء سداد كل الوثائق (${groupCount})؟`
+                  : 'هل أنت متأكد من إلغاء هذا السداد؟'}
+              </p>
               {contextLabel?.policyNumber && (
                 <div className="flex justify-between text-sm">
                   <span className="text-secondary-600">رقم الوثيقة</span>
                   <span className="font-medium">{contextLabel.policyNumber}</span>
                 </div>
               )}
-              <div className="flex justify-between text-sm">
-                <span className="text-secondary-600">القسط رقم</span>
-                <span className="font-medium">{installment.installment_number}</span>
-              </div>
+              {!(groupCount && groupCount > 1) && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-secondary-600">القسط رقم</span>
+                  <span className="font-medium">{installment.installment_number}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-secondary-600">تاريخ الاستحقاق</span>
                 <span className="font-medium">{format(new Date(installment.due_date), 'dd/MM/yyyy')}</span>
