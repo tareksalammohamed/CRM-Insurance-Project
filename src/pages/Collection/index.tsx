@@ -18,6 +18,7 @@ import { useInstallmentPaymentActions } from './hooks/useInstallmentPaymentActio
 
 import { CollectionHeader } from './components/CollectionHeader';
 import { CollectionStats } from './components/CollectionStats';
+import { Year2CollectionStats } from './components/Year2CollectionStats';
 import { CollectionTabs } from './components/CollectionTabs';
 import { CollectionSearch } from './components/CollectionSearch';
 import { CollectionFilters } from './components/CollectionFilters';
@@ -160,18 +161,16 @@ export function Collection() {
       </section>
 
       {/* ===== لوح المؤشرات المالية ===== */}
-      {yearMode === 'year1' && (
+      {yearMode === 'year1' ? (
         <section aria-label="مؤشرات التحصيل" className="space-y-2.5">
           <h2 className="col-panel-title px-0.5">
             <Gauge aria-hidden="true" />
             <span>مؤشرات التحصيل</span>
           </h2>
-          <CollectionStats
-            quickStats={quickStats}
-            quickStatsLoading={quickStatsLoading}
-            onOpenYear2={() => setYearMode('year2')}
-          />
+          <CollectionStats quickStats={quickStats} quickStatsLoading={quickStatsLoading} />
         </section>
+      ) : (
+        <Year2CollectionStats quickStats={quickStats} quickStatsLoading={quickStatsLoading} />
       )}
 
       {yearMode === 'year2' ? (

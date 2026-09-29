@@ -356,6 +356,7 @@ export interface CollectionQuickStats {
   year2EligiblePoliciesCount: number;
   year2CollectedMonthAmount: number;
   year2CollectedMonthCount: number;
+  year2TotalCollectedAmount: number;
 }
 
 const EMPTY_COLLECTION_QUICK_STATS: CollectionQuickStats = {
@@ -368,6 +369,7 @@ const EMPTY_COLLECTION_QUICK_STATS: CollectionQuickStats = {
   year2EligiblePoliciesCount: 0,
   year2CollectedMonthAmount: 0,
   year2CollectedMonthCount: 0,
+  year2TotalCollectedAmount: 0,
 };
 
 export async function fetchCollectionQuickStats(branchId: string | null = null): Promise<CollectionQuickStats> {
@@ -404,10 +406,10 @@ export async function fetchCollectionQuickStats(branchId: string | null = null):
 
       let year2PaymentsQuery = supabase
         .from('year2_payments')
-        .select('amount, policy:policy_id!inner(start_date,status,branch_id)')
+        .select('amount, payment_month, policy:policy_id!inner(start_date,status,branch_id)')
         .eq('is_cancelled', false)
         .eq('policy.status', 'active')
-        .eq('payment_month', monthStartStr);
+        .lte('policy.start_date', format(subMonths(now, 12), 'yyyy-MM-dd'));
       if (branchId) year2PaymentsQuery = year2PaymentsQuery.eq('policy.branch_id', branchId);
 
       const [dueRes, totalDueRes, collectedRes, collectedMonthRes, year2PoliciesRes, year2PaymentsRes] = await Promise.all([
@@ -464,7 +466,11 @@ export async function fetchCollectionQuickStats(branchId: string | null = null):
       const collectedTodayAmount = collectedRows.reduce((sum, r: any) => sum + Number(r.amount), 0);
       const collectedMonthAmount = collectedMonthRows.reduce((sum, r: any) => sum + Number(r.amount), 0);
       const year2CollectedMonthRows = (year2PaymentsRes.data || []) as any[];
-      const year2CollectedMonthAmount = year2CollectedMonthRows.reduce((sum, r) => sum + Number(r.amount), 0);
+      const year2CollectedMonthRowsForCurrentMonth = year2CollectedMonthRows.filter(
+        (row) => row.payment_month === monthStartStr,
+      );
+      const year2CollectedMonthAmount = year2CollectedMonthRowsForCurrentMonth.reduce((sum, r) => sum + Number(r.amount), 0);
+      const year2TotalCollectedAmount = year2CollectedMonthRows.reduce((sum, r) => sum + Number(r.amount), 0);
 
       return {
         dueMonthAmount,
@@ -475,7 +481,8 @@ export async function fetchCollectionQuickStats(branchId: string | null = null):
         collectedMonthAmount,
         year2EligiblePoliciesCount: year2PoliciesRes.data?.length || 0,
         year2CollectedMonthAmount,
-        year2CollectedMonthCount: year2CollectedMonthRows.length,
+        year2CollectedMonthCount: year2CollectedMonthRowsForCurrentMonth.length,
+        year2TotalCollectedAmount,
       };
     },
     { emptyValue: EMPTY_COLLECTION_QUICK_STATS },
