@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Policy, PolicyType, PaymentMethod, User } from '../../../lib/supabase';
 
@@ -59,7 +59,11 @@ export function usePolicyActions({
     watch,
     formState: { errors }
   } = useForm<PolicyFormData>({
-    resolver: zodResolver(policySchema)
+    // z.preprocess يجعل نوع الإدخال الداخلي للـresolver أوسع من نوع القيم
+    // التي يديرها النموذج فعلياً (خصوصاً الحقول الرقمية الفارغة). نثبت هنا
+    // عقد النموذج: الإدخال/الإخراج الممرران للواجهة هما PolicyFormData، مع
+    // بقاء التحقق والتحويل الفعليين داخل zodResolver.
+    resolver: zodResolver(policySchema) as unknown as Resolver<PolicyFormData, unknown, PolicyFormData>
   });
 
   // فتح مودال التعديل تلقائياً لو الرابط جاي من صفحة تفاصيل الوثيقة بزرار
