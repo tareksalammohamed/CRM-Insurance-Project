@@ -138,7 +138,7 @@ export function Year2Collection({ branchId = null }: Year2CollectionProps) {
 
   const openAdd = (policy: Year2EligiblePolicy) => {
     setSelectedPolicy(policy);
-    resetPaymentForm({ amount: undefined, paymentDate: format(new Date(), 'yyyy-MM-dd'), notes: '' });
+    resetPaymentForm({ paymentDate: format(new Date(), 'yyyy-MM-dd'), notes: '' });
     setShowAddModal(true);
   };
 
@@ -146,7 +146,7 @@ export function Year2Collection({ branchId = null }: Year2CollectionProps) {
     if (!selectedPolicy || !user) return;
     setSaving(true);
     try {
-      await addYear2Payment(selectedPolicy.id, data.amount, new Date(data.paymentDate), user.id, data.notes || '');
+      await addYear2Payment(selectedPolicy.id, Number(selectedPolicy.premium_amount), new Date(data.paymentDate), user.id, data.notes || '');
       setShowAddModal(false);
       loadPolicies();
       if (showHistoryModal) openHistory(selectedPolicy);

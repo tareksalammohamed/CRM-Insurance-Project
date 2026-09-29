@@ -255,6 +255,9 @@ export async function addYear2Payment(
   userId: string,
   notes: string,
 ): Promise<void> {
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error('لا يمكن تسجيل التحصيل لأن قيمة القسط في الوثيقة غير صالحة');
+  }
   const paymentMonth = format(startOfMonth(paymentDate), 'yyyy-MM-dd');
   const paymentDateStr = format(paymentDate, 'yyyy-MM-dd');
 

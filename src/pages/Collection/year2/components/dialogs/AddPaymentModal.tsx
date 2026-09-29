@@ -48,18 +48,10 @@ export function AddPaymentModal({
                 <span className="text-sm text-secondary-600">العميل</span>
                 <span className="font-semibold">{policy.customer?.name}</span>
               </div>
-            </div>
-
-            <div className="form-group mb-4">
-              <label className="input-label">المبلغ المحصل</label>
-              <input
-                {...register('amount')}
-                type="number"
-                className={clsx('input-field', errors.amount && 'border-error-500')}
-                placeholder="0"
-                min="0"
-              />
-              {errors.amount && <p className="text-sm text-error-600 mt-1">{errors.amount.message}</p>}
+              <div className="flex items-center justify-between border-t border-primary-100 pt-2">
+                <span className="text-sm text-secondary-600">قيمة القسط</span>
+                <span className="font-semibold">{new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP', minimumFractionDigits: 0 }).format(Number(policy.premium_amount) || 0)}</span>
+              </div>
             </div>
 
             <div className="form-group mb-4">
