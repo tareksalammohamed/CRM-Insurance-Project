@@ -142,13 +142,13 @@ export function Collection() {
   const [detailsView, setDetailsView] = useState<{ installment: InstallmentWithRelations; view: 'customer' | 'policy' } | null>(null);
 
   return (
-    <div className="col-page space-y-4 md:space-y-5 animate-fadeIn pb-2">
+    <div className="workspace-page workspace-page-collection col-page space-y-4 md:space-y-5 animate-fadeIn pb-2">
 
       <CollectionHeader />
 
       {/* ===== مسار التحصيل ===== */}
       {/* نفس زر التبديل الأصلي ونفس السلوك — الإطار بقى لوحًا معنونًا. */}
-      <section aria-label="اختيار مسار التحصيل" className="col-panel">
+      <section aria-label="اختيار مسار التحصيل" className="col-panel collection-route-panel">
         <div className="col-panel-head">
           <h2 className="col-panel-title">
             <Route aria-hidden="true" />
@@ -178,7 +178,7 @@ export function Collection() {
       ) : (
         <>
           {/* ===== البحث والفلاتر ===== */}
-          <section aria-label="البحث والفلاتر" className="col-panel">
+          <section aria-label="البحث والفلاتر" className="col-panel collection-filter-panel">
             <div className="col-panel-head">
               <h2 className="col-panel-title">
                 <SlidersHorizontal aria-hidden="true" />
