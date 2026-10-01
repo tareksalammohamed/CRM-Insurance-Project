@@ -4571,3 +4571,225 @@ html.dark .price-action-bar {
   background: rgb(7 20 17 / 0.9);
   border-color: rgb(143 212 183 / 0.10);
 }
+
+
+/* ============================================================================
+   UX POLISH — PHASE 2
+   Customers + Policies + Collection
+============================================================================ */
+
+.workspace-page {
+  position: relative;
+}
+
+.workspace-section {
+  position: relative;
+}
+
+.workspace-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+  padding-inline: 0.15rem;
+}
+
+.workspace-section-head.compact {
+  align-items: center;
+  margin-bottom: 0.65rem;
+}
+
+.workspace-section-head h2 {
+  margin-top: 0.12rem;
+  font-size: 1.02rem;
+  font-weight: 900;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+.workspace-section-kicker {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 0.16rem 0.45rem;
+  border-radius: 999px;
+  background: #eaf6f0;
+  color: var(--brand-ink);
+  font-size: 0.66rem;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.workspace-section-meta,
+.workspace-filter-count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.8rem;
+  padding-inline: 0.65rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.workspace-section-meta {
+  border: 1px solid var(--line);
+  background: rgb(255 255 255 / 0.72);
+  color: var(--muted-ink);
+}
+
+.workspace-filter-count {
+  border: 1px solid rgb(8 127 91 / 0.12);
+  background: var(--brand-soft);
+  color: var(--brand-ink);
+}
+
+.workspace-toolbar-section {
+  padding: 0.9rem;
+  border: 1px solid rgb(13 59 51 / 0.07);
+  border-radius: 1.1rem;
+  background:
+    linear-gradient(160deg, rgb(255 255 255 / 0.92), rgb(248 251 249 / 0.84));
+  box-shadow: 0 10px 26px -24px rgb(13 59 51 / 0.24);
+}
+
+.workspace-toolbar-section .surface-toolbar {
+  margin: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+/* Customers: pipeline feel */
+.workspace-page-customers .workspace-section:first-of-type .kpi-card {
+  min-height: 7.4rem;
+}
+
+.workspace-page-customers .workspace-toolbar-section {
+  border-inline-start: 3px solid rgb(59 130 246 / 0.40);
+}
+
+/* Policies: portfolio feel */
+.workspace-page-policies .workspace-section:first-of-type .kpi-card {
+  min-height: 7.4rem;
+}
+
+.workspace-page-policies .workspace-toolbar-section {
+  border-inline-start: 3px solid rgb(13 148 136 / 0.42);
+}
+
+/* Collection: operations board */
+.workspace-page-collection .col-panel {
+  border: 1px solid rgb(13 59 51 / 0.08) !important;
+  border-radius: 1.1rem !important;
+  background: rgb(255 255 255 / 0.94) !important;
+  box-shadow: 0 9px 24px -22px rgb(13 59 51 / 0.28);
+  overflow: hidden;
+}
+
+.workspace-page-collection .collection-route-panel {
+  background:
+    radial-gradient(circle at 100% 0%, rgb(8 127 91 / 0.055), transparent 15rem),
+    rgb(255 255 255 / 0.96) !important;
+}
+
+.workspace-page-collection .collection-filter-panel {
+  border-inline-start: 3px solid rgb(245 158 11 / 0.42) !important;
+}
+
+.workspace-page-collection .col-panel-head {
+  min-height: 3.2rem;
+  padding-inline: 1rem;
+  border-bottom: 1px solid rgb(13 59 51 / 0.06);
+  background: linear-gradient(180deg, rgb(249 252 250 / 0.96), rgb(246 250 248 / 0.78));
+}
+
+.workspace-page-collection .col-panel-title {
+  font-weight: 900;
+  letter-spacing: -0.018em;
+}
+
+.workspace-page-collection .col-panel-title svg {
+  color: var(--brand);
+}
+
+.workspace-page-collection .col-board {
+  gap: 0.8rem !important;
+}
+
+.workspace-page-collection .col-kpi {
+  border-radius: 1rem !important;
+  box-shadow: 0 9px 24px -22px rgb(13 59 51 / 0.30) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .workspace-page-collection .col-kpi:hover {
+    transform: translateY(-2px);
+  }
+}
+
+/* Search/list density and hierarchy */
+.workspace-page-customers .surface-toolbar,
+.workspace-page-policies .surface-toolbar {
+  position: relative;
+}
+
+.workspace-page-customers .surface-toolbar::before,
+.workspace-page-policies .surface-toolbar::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: -0.55rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(13 59 51 / 0.08), transparent);
+}
+
+@media (max-width: 767px) {
+  .workspace-section-head {
+    align-items: flex-start;
+    gap: 0.65rem;
+  }
+
+  .workspace-section-head h2 {
+    font-size: 0.96rem;
+  }
+
+  .workspace-toolbar-section {
+    padding: 0.75rem;
+    border-radius: 1rem;
+  }
+
+  .workspace-section-meta,
+  .workspace-filter-count {
+    min-height: 1.65rem;
+    padding-inline: 0.5rem;
+    font-size: 0.64rem;
+  }
+
+  .workspace-page-collection .col-panel-head {
+    padding-inline: 0.8rem;
+  }
+}
+
+html.dark .workspace-section-kicker {
+  background: rgb(22 161 115 / 0.10);
+  color: #8fd4b7;
+}
+
+html.dark .workspace-section-meta {
+  background: rgb(16 36 31 / 0.72);
+  border-color: rgb(143 212 183 / 0.10);
+}
+
+html.dark .workspace-toolbar-section,
+html.dark .workspace-page-collection .col-panel {
+  background: rgb(13 29 25 / 0.94) !important;
+  border-color: rgb(143 212 183 / 0.09) !important;
+}
+
+html.dark .workspace-page-collection .col-panel-head {
+  background: linear-gradient(180deg, rgb(16 36 31 / 0.96), rgb(13 29 25 / 0.82));
+  border-bottom-color: rgb(143 212 183 / 0.08);
+}
