@@ -17,6 +17,9 @@ import {
   DEATH_BENEFIT_NOTICE,
   ACCIDENT_DOUBLING_NOTICE,
   QUATERNARY_DEATH_NOTICE,
+  PENSION_TRIGGER_NOTICE,
+  PENSION_DURATION_NOTICE,
+  type PensionCashPercent,
 } from './PolicyBenefits';
 
 // ─── عرض سعر تسويقى قابل للطباعة / حفظ PDF (يظهر فقط عند الطباعة) ───
@@ -49,17 +52,19 @@ export function PrintQuote({
   forceVisible,
   containerRef,
   logoOverrideSrc,
+  pensionCashPercent,
 }: {
   result: CalculationResult;
   forceVisible?: boolean;
   containerRef?: Ref<HTMLDivElement>;
+  pensionCashPercent?: PensionCashPercent;
   // أثناء "حفظ كصورة" بنستبدل شعار الشركة (لو من دومين خارجي) بنسخة Base64
   // من نفس المصدر، عشان الـ canvas ميتحسبش "ملوّث" (tainted) بسبب قيود CORS
   // فيطلع الناتج صورة بيضاء بدل المحتوى الحقيقي.
   logoOverrideSrc?: string | null;
 }) {
   const { branding } = useSettings();
-  const benefit = calculatePolicyBenefit(result);
+  const benefit = calculatePolicyBenefit(result, pensionCashPercent);
   // فى وضع التصوير (forceVisible) بنستخدم بس نسخة الـ Base64 (لو اتجهزت)
   // ولو مش موجودة بنستغني عن الشعار خالص، وميتفتحش الرابط الأصلي للشركة أبداً
   // وقت التصوير — عشان نضمن إن الـ canvas ميبقاش "ملوّث" مهما كانت إعدادات
@@ -209,7 +214,7 @@ export function PrintQuote({
               <div className="value">{result.variant.label}</div>
             </div>
           </div>
-          {benefit.kind === 'flat_profit' && (
+          {(benefit.kind === 'flat_profit' || benefit.kind === 'pension') && (
             <div className="pq-offer-item">
               <Clock3 className="icon" size={12} />
               <div>
@@ -288,6 +293,37 @@ export function PrintQuote({
             </>
           )}
 
+          {benefit.kind === 'pension' && (
+            <>
+              <div className="pq-feature-list">
+                <div className="pq-feature"><CheckCircle2 className="icon" size={11} /><span>تبدأ الاستحقاقات عند نهاية مدة التأمين أو عند حدوث وفاة أثناء مدة الوثيقة.</span></div>
+                <div className="pq-feature"><CheckCircle2 className="icon" size={11} /><span>صرف المعاش لمدة 120 شهراً كاملة (10 سنوات).</span></div>
+                <div className="pq-feature"><CheckCircle2 className="icon" size={11} /><span>اختيار العميل: {benefit.cashPercent}% مكافأة نقدية و{benefit.pensionPercent}% معاش.</span></div>
+                <div className="pq-feature"><CheckCircle2 className="icon" size={11} /><span>قيمة المعاش الشهرية محسوبة على معامل 89 وفق خيار الصرف.</span></div>
+              </div>
+
+              <div className="pq-benefit-grid">
+                <div className="pq-benefit-box gold">
+                  <div className="label">المكافأة النقدية</div>
+                  <div className="value">
+                    {benefit.cashPercent === 0 ? 'لا توجد' : formatCurrency(benefit.cashReward)}
+                  </div>
+                </div>
+                <div className="pq-benefit-box">
+                  <div className="label">الجزء المخصص للمعاش</div>
+                  <div className="value">{formatCurrency(benefit.pensionBaseAmount)}</div>
+                </div>
+                <div className="pq-benefit-box highlight">
+                  <div className="label">المعاش الشهري</div>
+                  <div className="value">{formatCurrency(benefit.monthlyPension)}</div>
+                </div>
+              </div>
+
+              <div className="pq-notice"><AlertTriangle className="icon" size={11} /><span>{PENSION_TRIGGER_NOTICE}</span></div>
+              <div className="pq-notice"><AlertTriangle className="icon" size={11} /><span>{PENSION_DURATION_NOTICE}</span></div>
+            </>
+          )}
+
           {benefit.kind === 'quaternary' && (
             <>
               <div className="pq-feature-list">
@@ -307,26 +343,30 @@ export function PrintQuote({
           )}
 
           {/* ===== قسم المقابل المالي ===== */}
-          <div className="pq-section-title">
-            <Wallet size={12} />
-            المقابل المالي
-          </div>
-          <div className="pq-benefit-grid">
-            <div className="pq-benefit-box">
-              <div className="label">مبلغ التأمين</div>
-              <div className="value">{formatCurrency(result.sumInsured)}</div>
-            </div>
-            <div className="pq-benefit-box gold">
-              <div className="label">{benefit.kind === 'quaternary' ? 'الدفعة كل 5 سنوات' : 'الأرباح المتوقعة'}</div>
-              <div className="value">
-                {formatCurrency(benefit.kind === 'quaternary' ? benefit.periodicPayout : benefit.totalProfit)}
+          {benefit.kind !== 'pension' && (
+            <>
+              <div className="pq-section-title">
+                <Wallet size={12} />
+                المقابل المالي
               </div>
-            </div>
-            <div className="pq-benefit-box highlight">
-              <div className="label">المتوقع في نهاية المدة</div>
-              <div className="value">{formatCurrency(benefit.maturityAmount)}</div>
-            </div>
-          </div>
+              <div className="pq-benefit-grid">
+                <div className="pq-benefit-box">
+                  <div className="label">مبلغ التأمين</div>
+                  <div className="value">{formatCurrency(result.sumInsured)}</div>
+                </div>
+                <div className="pq-benefit-box gold">
+                  <div className="label">{benefit.kind === 'quaternary' ? 'الدفعة كل 5 سنوات' : 'الأرباح المتوقعة'}</div>
+                  <div className="value">
+                    {formatCurrency(benefit.kind === 'quaternary' ? benefit.periodicPayout : benefit.totalProfit)}
+                  </div>
+                </div>
+                <div className="pq-benefit-box highlight">
+                  <div className="label">المتوقع في نهاية المدة</div>
+                  <div className="value">{formatCurrency(benefit.maturityAmount)}</div>
+                </div>
+              </div>
+            </>
+          )}
         </>
       )}
 
@@ -355,7 +395,12 @@ export function PrintQuote({
       <div className="pq-section-title pq-section-title-sub">ملاحظات مهمة</div>
       <ul className="pq-remarks">
         <li>جميع القيم الواردة بهذا التقرير هي قيم تقديرية طبقاً لبيانات الإدخال.</li>
-        <li>الأرباح السنوية متغيرة ويتم إصدار شهادة الأرباح السنوية من {branding.company_name} وفقاً للنتائج الفعلية.</li>
+        {benefit.kind !== 'pension' && (
+          <li>الأرباح السنوية متغيرة ويتم إصدار شهادة الأرباح السنوية من {branding.company_name} وفقاً للنتائج الفعلية.</li>
+        )}
+        {benefit.kind === 'pension' && (
+          <li>خيار الصرف الموضح في العرض هو الخيار الذي حدده العميل عند إعداد الحساب.</li>
+        )}
         <li>يخضع إصدار الوثيقة لموافقة الشركة والشروط والأحكام المعتمدة.</li>
         <li>قد تختلف بعض المزايا طبقاً لشروط الإصدار النهائية.</li>
       </ul>
