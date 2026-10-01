@@ -281,7 +281,7 @@ export function PolicyDetail() {
   // الواجهة
   // ===================================
   return (
-    <div className="space-y-6 animate-fadeIn" dir="rtl">
+    <div className="workspace-page workspace-page-policy-detail space-y-6 animate-fadeIn" dir="rtl">
 
       {/* ===== رأس ملخّص الوثيقة =====
           كل ما يحتاجه المستخدم للتعرّف على الوثيقة (رقمها، عميلها، نوعها،

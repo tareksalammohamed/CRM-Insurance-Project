@@ -333,7 +333,7 @@ export function MonthlyClosing() {
   }
 
   return (
-    <div className="space-y-6 animate-fadeIn" ref={printRef}>
+    <div className="workspace-page workspace-page-monthly-closing space-y-6 animate-fadeIn" ref={printRef}>
 
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

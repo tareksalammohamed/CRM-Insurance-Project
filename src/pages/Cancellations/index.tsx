@@ -125,7 +125,7 @@ export function Cancellations() {
   ];
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="workspace-page workspace-page-cancellations space-y-6 animate-fadeIn">
       <div className="flex items-center gap-3">
         <button
           type="button"
