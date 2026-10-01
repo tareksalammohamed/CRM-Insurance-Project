@@ -1,16 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-
-type Theme = 'light' | 'dark';
-
-interface ThemeContextValue {
-  theme: Theme;
-  isDark: boolean;
-  toggleTheme: () => void;
-  setTheme: (theme: Theme) => void;
-}
-
-const STORAGE_KEY = 'insurance-crm-theme';
-const ThemeContext = createContext<ThemeContextValue | null>(null);
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { STORAGE_KEY, ThemeContext, type Theme } from './themeContext';
 
 function getInitialTheme(): Theme {
   if (typeof window === 'undefined') return 'light';
@@ -32,7 +21,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(STORAGE_KEY, theme);
   }, [theme]);
 
-  const value = useMemo<ThemeContextValue>(() => ({
+  const value = useMemo(() => ({
     theme,
     isDark: theme === 'dark',
     toggleTheme: () => setThemeState((current) => (current === 'dark' ? 'light' : 'dark')),
@@ -40,10 +29,4 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }), [theme]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
-}
-
-export function useTheme(): ThemeContextValue {
-  const context = useContext(ThemeContext);
-  if (!context) throw new Error('useTheme must be used inside ThemeProvider');
-  return context;
 }

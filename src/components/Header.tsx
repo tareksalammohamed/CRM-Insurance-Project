@@ -144,7 +144,7 @@ export function Header() {
         .select('policy:policy_id(policy_number)')
         .eq('id', n.entity_id)
         .maybeSingle();
-      const policyNumber = (data as any)?.policy?.policy_number as string | undefined;
+      const policyNumber = (data as { policy?: { policy_number?: string | null } | null } | null)?.policy?.policy_number ?? undefined;
       const quickFilterParam = n.type === 'payment_received' ? '&quickFilter=paid' : '';
       if (!error && policyNumber) {
         navigate(`/collection?search=${encodeURIComponent(policyNumber)}&installment=${n.entity_id}${quickFilterParam}`);
