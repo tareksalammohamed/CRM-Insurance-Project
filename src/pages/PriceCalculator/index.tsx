@@ -10,7 +10,7 @@ import { useRef, useState, type KeyboardEvent } from 'react';
 import { toPng } from 'html-to-image';
 import {
   Calculator, RotateCcw, PlusCircle, Copy, Printer, Check, AlertCircle,
-  DollarSign, Percent, ImageDown, Loader2,
+  DollarSign, Percent, ImageDown, Loader2, ShieldCheck, BadgeCheck, ArrowLeft,
 } from 'lucide-react';
 
 import { PageHeader } from '../../components/layout/PageHeader';
@@ -266,20 +266,26 @@ export function PriceCalculator() {
       />
 
       {/* ===== بطاقة المدخلات ===== */}
-      <div className="card print:hidden space-y-4 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-40 h-40 bg-primary-50 rounded-full -translate-y-1/2 translate-x-1/3 pointer-events-none" />
+      <div className="price-calculator-shell card print:hidden space-y-5 relative overflow-hidden">
+        <div className="price-calculator-orb pointer-events-none" />
 
-        <div className="flex items-center gap-2.5 relative">
+        <div className="price-calculator-card-head relative">
+          <div className="flex items-center gap-2.5">
           <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary-600 text-white flex-shrink-0 shadow-sm">
             <Calculator className="w-5 h-5" />
           </span>
-          <div>
-            <h3 className="text-base font-bold text-secondary-900">بيانات الحساب</h3>
-            <p className="text-xs text-secondary-500">أدخل بيانات العميل للحصول على السعر فوراً</p>
+            <div>
+              <h3 className="text-base font-bold text-secondary-900">بيانات العرض</h3>
+              <p className="text-xs text-secondary-500">أدخل البيانات الأساسية وسيتم تجهيز السعر والمزايا فوراً</p>
+            </div>
           </div>
+          <span className="price-calculator-secure-note">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            حساب محلي بدون حفظ بيانات
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative">
+        <div className="price-calculator-form-grid grid grid-cols-1 md:grid-cols-3 gap-4 relative">
           <div className="form-group mb-0">
             <label className="input-label">السن</label>
             <input
@@ -371,15 +377,21 @@ export function PriceCalculator() {
           </div>
         )}
 
-        <button onClick={handleCalculate} className="btn btn-primary w-full md:w-auto relative">
-          <Calculator className="w-4 h-4" />
-          احسب السعر
-        </button>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 relative">
+          <button onClick={handleCalculate} className="btn btn-primary w-full sm:w-auto min-w-[10rem]">
+            <Calculator className="w-4 h-4" />
+            احسب السعر
+          </button>
+          <p className="text-xs text-secondary-500 flex items-center gap-1.5">
+            <BadgeCheck className="w-3.5 h-3.5 text-primary-600" />
+            النتيجة تشمل القسط حسب دورية السداد ومزايا الوثيقة
+          </p>
+        </div>
       </div>
 
       {/* ===== بطاقة النتائج ===== */}
       {result && (
-        <div className="card animate-fadeIn print:hidden space-y-5 border-primary-100">
+        <div className="price-result-card card animate-fadeIn print:hidden space-y-5 border-primary-100">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary-50 text-primary-600 flex-shrink-0">
@@ -390,10 +402,16 @@ export function PriceCalculator() {
                 <p className="text-sm text-secondary-500 mt-0.5">{result.variant.label}</p>
               </div>
             </div>
-            <span className="badge badge-info self-start sm:self-auto flex items-center gap-1">
-              <Percent className="w-3 h-3" />
-              السعر لكل ألف: {formatNumber(result.rate)}
-            </span>
+            <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+              <span className="badge badge-info flex items-center gap-1">
+                <Percent className="w-3 h-3" />
+                السعر لكل ألف: {formatNumber(result.rate)}
+              </span>
+              <span className="price-result-ready">
+                <Check className="w-3 h-3" />
+                العرض جاهز
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -435,7 +453,7 @@ export function PriceCalculator() {
 
       {/* ===== أزرار الإجراءات: تحت النتائج ومزايا الوثيقة ===== */}
       {result && (
-        <div className="flex flex-wrap gap-2 print:hidden">
+        <div className="price-action-bar flex flex-wrap gap-2 print:hidden">
           <button onClick={handleNewCalculation} className="btn btn-outline btn-sm">
             <PlusCircle className="w-4 h-4" /> حساب جديد
           </button>
@@ -453,6 +471,10 @@ export function PriceCalculator() {
             {savingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageDown className="w-4 h-4" />}
             {savingImage ? 'جارٍ حفظ الصورة...' : 'حفظ كصورة'}
           </button>
+          <span className="hidden lg:inline-flex items-center gap-1.5 text-xs text-secondary-400 mr-auto">
+            <ArrowLeft className="w-3.5 h-3.5" />
+            استخدم PDF أو الصورة لمشاركة العرض مع العميل
+          </span>
         </div>
       )}
 
