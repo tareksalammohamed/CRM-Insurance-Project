@@ -87,15 +87,32 @@ export function Customers() {
   };
 
   return (
-    <div className="space-y-5 md:space-y-6 animate-fadeIn pb-6">
+    <div className="workspace-page workspace-page-customers space-y-5 md:space-y-6 animate-fadeIn pb-6">
       {/* ===== أعلى الصفحة ===== */}
       <CustomersHeader onAddCustomer={openAddCustomerModal} />
 
       {/* ===== بطاقات إحصائية ===== */}
-      <CustomerStatsCards stats={stats} statsLoading={statsLoading} />
+      <section className="workspace-section" aria-label="ملخص العملاء">
+        <div className="workspace-section-head">
+          <div>
+            <span className="workspace-section-kicker">نظرة سريعة</span>
+            <h2>ملخص طلبات التأمين والعملاء</h2>
+          </div>
+          {!statsLoading && <span className="workspace-section-meta">{totalCount} عميل</span>}
+        </div>
+        <CustomerStatsCards stats={stats} statsLoading={statsLoading} />
+      </section>
 
       {/* ===== البحث والفلاتر ===== */}
-      <div className="surface-toolbar">
+      <section className="workspace-section workspace-toolbar-section" aria-label="البحث والتصفية">
+        <div className="workspace-section-head compact">
+          <div>
+            <span className="workspace-section-kicker">الوصول السريع</span>
+            <h2>البحث والتصفية</h2>
+          </div>
+          {activeFilterCount > 0 && <span className="workspace-filter-count">{activeFilterCount} فلتر نشط</span>}
+        </div>
+        <div className="surface-toolbar">
         <CustomerSearch
           localSearch={localSearch}
           onLocalSearchChange={setLocalSearch}
@@ -125,7 +142,8 @@ export function Customers() {
             />
           )}
         />
-      </div>
+        </div>
+      </section>
 
       {/* ===== قائمة العملاء ===== */}
       <CustomerList
