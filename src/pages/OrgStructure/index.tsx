@@ -52,7 +52,7 @@ export function OrgStructure() {
 
   return (
     <>
-    <div className="space-y-4 animate-fadeIn">
+    <div className="workspace-page workspace-page-org space-y-4 animate-fadeIn">
       <OrgHeader />
 
       {loading ? (
