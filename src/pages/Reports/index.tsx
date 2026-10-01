@@ -539,7 +539,7 @@ export function Reports() {
         </div>
       )}
 
-      {(reportType === 'collection' || reportType === 'production_collection') && (
+      {(reportType === 'production' || reportType === 'collection' || reportType === 'production_collection') && (
         <div className="card print:hidden">
           <div className="flex flex-wrap gap-4">
             <div>
@@ -863,4 +863,3 @@ export function Reports() {
     </div>
   );
 }
-
