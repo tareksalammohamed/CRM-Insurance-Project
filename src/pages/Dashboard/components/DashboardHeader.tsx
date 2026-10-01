@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
-import { ChevronRight, ChevronLeft, RefreshCw, RotateCcw } from 'lucide-react';
+import { ChevronRight, ChevronLeft, RefreshCw, RotateCcw, CalendarRange, Sparkles } from 'lucide-react';
 
 interface DashboardHeaderProps {
   selectedMonth: Date;
@@ -33,10 +33,14 @@ export function DashboardHeader({
     <div className="dashboard-header">
       <div className="dashboard-intro">
         <div className="dashboard-intro-copy">
-          <span className="dashboard-kicker">{greeting}، {displayName}</span>
+          <span className="dashboard-kicker"><Sparkles className="w-3.5 h-3.5" /> {greeting}، {displayName}</span>
           {/* عنوان الصفحة الأساسى — h1 واحد لكل شاشة (ترتيب عناوين سليم لقارئات الشاشة) */}
           <h1>مركز القيادة</h1>
-          <p>إحصائيات شهر {monthLabel}</p>
+          <p>صورة تنفيذية سريعة لأداء الفرع خلال <strong>{monthLabel}</strong></p>
+          <div className="dashboard-context-chip">
+            <CalendarRange className="w-3.5 h-3.5" />
+            <span>الفترة المعروضة: {monthLabel}</span>
+          </div>
         </div>
 
         <div className="dashboard-toolbar dashboard-toolbar-inline">
