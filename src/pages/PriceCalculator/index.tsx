@@ -18,6 +18,7 @@ import { ProductPicker } from './ProductPicker';
 import {
   calculatePrice,
   validateInputs,
+  getVariant,
   formatCurrency,
   formatNumber,
   type CalculationResult,
@@ -25,6 +26,7 @@ import {
 } from './pricingEngine';
 import { PrintQuote } from './PrintQuote';
 import { PolicyBenefits } from './PolicyBenefitsCard';
+import type { PensionCashPercent } from './PolicyBenefits';
 import { printWithTitle } from '../../lib/printWithTitle';
 import { useNotify } from '../../lib/notify';
 import { useSettings } from '../../hooks/useSettings';
@@ -109,16 +111,43 @@ export function PriceCalculator() {
   const [copied, setCopied] = useState(false);
   const [savingImage, setSavingImage] = useState(false);
   const [imageLogoSrc, setImageLogoSrc] = useState<string | null>(null);
+  const [pensionCashPercent, setPensionCashPercent] = useState<PensionCashPercent | null>(null);
+  const [calculatedPensionCashPercent, setCalculatedPensionCashPercent] = useState<PensionCashPercent | undefined>(undefined);
+  const [pensionOptionError, setPensionOptionError] = useState('');
   const { branding } = useSettings();
   const notify = useNotify();
 
   const ageInputRef = useRef<HTMLInputElement>(null);
   const printQuoteRef = useRef<HTMLDivElement>(null);
 
+  const selectedVariant = variantKey ? getVariant(variantKey) : undefined;
+  const isPensionVariant = selectedVariant?.family === 'pension_reassurance';
+
+  function handleVariantChange(nextVariantKey: string) {
+    setVariantKey(nextVariantKey);
+    const nextVariant = getVariant(nextVariantKey);
+    if (nextVariant?.family !== 'pension_reassurance') {
+      setPensionCashPercent(null);
+      setPensionOptionError('');
+    }
+  }
+
+  function handlePensionOptionChange(value: PensionCashPercent) {
+    setPensionCashPercent(value);
+    setPensionOptionError('');
+  }
 
   function handleCalculate() {
     const validationErrors = validateInputs(age, variantKey, sumInsured);
     setErrors(validationErrors);
+
+    if (isPensionVariant && pensionCashPercent === null) {
+      setPensionOptionError('يرجى اختيار طريقة صرف الوثيقة');
+      setResult(null);
+      return;
+    }
+
+    setPensionOptionError('');
     if (Object.keys(validationErrors).length > 0) {
       setResult(null);
       return;
@@ -130,6 +159,11 @@ export function PriceCalculator() {
         sumInsured: Number(sumInsured),
       });
       setResult(calculated);
+      setCalculatedPensionCashPercent(
+        calculated.variant.family === 'pension_reassurance'
+          ? (pensionCashPercent ?? undefined)
+          : undefined
+      );
     } catch (err) {
       setErrors({ variantKey: friendlyError(err, 'حدث خطأ فى الحساب') });
       setResult(null);
@@ -143,6 +177,9 @@ export function PriceCalculator() {
     setErrors({});
     setResult(null);
     setCopied(false);
+    setPensionCashPercent(null);
+    setCalculatedPensionCashPercent(undefined);
+    setPensionOptionError('');
   }
 
   function handleNewCalculation() {
@@ -281,9 +318,58 @@ export function PriceCalculator() {
 
           <div className="form-group mb-0">
             <label className="input-label">نوع الوثيقة</label>
-            <ProductPicker value={variantKey} onChange={setVariantKey} error={errors.variantKey} />
+            <ProductPicker value={variantKey} onChange={handleVariantChange} error={errors.variantKey} />
           </div>
         </div>
+
+        {isPensionVariant && (
+          <div className="relative rounded-xl border border-primary-100 bg-primary-50/40 p-4 space-y-3">
+            <div>
+              <p className="text-sm font-bold text-secondary-900">طريقة صرف وثيقة معاش واطمئنان</p>
+              <p className="text-xs text-secondary-500 mt-1">
+                يحدد العميل طريقة الصرف من بداية الوثيقة، ويُحسب المعاش الشهري على الجزء المخصص للمعاش.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {([
+                { cash: 0 as const, title: '100% معاش', description: 'بدون مكافأة نقدية' },
+                { cash: 25 as const, title: '25% مكافأة + 75% معاش', description: 'ربع مبلغ التأمين مكافأة نقدية' },
+                { cash: 50 as const, title: '50% مكافأة + 50% معاش', description: 'نصف مبلغ التأمين مكافأة نقدية' },
+              ]).map((option) => {
+                const active = pensionCashPercent === option.cash;
+                return (
+                  <button
+                    key={option.cash}
+                    type="button"
+                    onClick={() => handlePensionOptionChange(option.cash)}
+                    className={`text-right rounded-xl border p-3 transition-all ${
+                      active
+                        ? 'border-primary-500 bg-white ring-2 ring-primary-100 shadow-sm'
+                        : 'border-secondary-200 bg-white hover:border-primary-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                        active ? 'border-primary-600' : 'border-secondary-300'
+                      }`}>
+                        {active && <span className="w-2 h-2 rounded-full bg-primary-600" />}
+                      </span>
+                      <span className="text-sm font-bold text-secondary-900">{option.title}</span>
+                    </div>
+                    <p className="text-xs text-secondary-500 mt-1.5 mr-6">{option.description}</p>
+                  </button>
+                );
+              })}
+            </div>
+
+            {pensionOptionError && (
+              <p className="text-xs text-error-600 flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5" /> {pensionOptionError}
+              </p>
+            )}
+          </div>
+        )}
 
         <button onClick={handleCalculate} className="btn btn-primary w-full md:w-auto relative">
           <Calculator className="w-4 h-4" />
@@ -340,7 +426,12 @@ export function PriceCalculator() {
       )}
 
       {/* ===== مزايا الوثيقة (تختلف حسب نوع الوثيقة) ===== */}
-      {result && <PolicyBenefits result={result} />}
+      {result && (
+        <PolicyBenefits
+          result={result}
+          pensionCashPercent={calculatedPensionCashPercent}
+        />
+      )}
 
       {/* ===== أزرار الإجراءات: تحت النتائج ومزايا الوثيقة ===== */}
       {result && (
@@ -371,6 +462,7 @@ export function PriceCalculator() {
           forceVisible={savingImage}
           containerRef={printQuoteRef}
           logoOverrideSrc={imageLogoSrc}
+          pensionCashPercent={calculatedPensionCashPercent}
         />
       )}
     </div>

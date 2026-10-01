@@ -8,13 +8,21 @@ import {
   ACCIDENT_DOUBLING_NOTICE,
   QUARTERLY_WITHDRAWAL_NOTICE,
   QUATERNARY_DEATH_NOTICE,
+  PENSION_TRIGGER_NOTICE,
+  PENSION_DURATION_NOTICE,
+  type PensionCashPercent,
 } from './PolicyBenefits';
 
 // ─── قسم "مزايا الوثيقة" — يظهر أسفل نتائج القسط مباشرة، ويختلف تلقائياً
-// حسب نوع الوثيقة المختارة. لا يظهر إطلاقاً لمنتجات لا تملك مزايا محددة
-// فى نطاق هذا التطوير (مثل معاش واطمئنان) حتى لا نعرض بيانات غير مؤكدة.
-export function PolicyBenefits({ result }: { result: CalculationResult }) {
-  const benefit = calculatePolicyBenefit(result);
+// حسب نوع الوثيقة المختارة.
+export function PolicyBenefits({
+  result,
+  pensionCashPercent,
+}: {
+  result: CalculationResult;
+  pensionCashPercent?: PensionCashPercent;
+}) {
+  const benefit = calculatePolicyBenefit(result, pensionCashPercent);
 
   if (benefit.kind === 'none') return null;
 
@@ -82,6 +90,57 @@ export function PolicyBenefits({ result }: { result: CalculationResult }) {
               <span>{ACCIDENT_DOUBLING_NOTICE}</span>
             </div>
           )}
+        </>
+      )}
+
+      {benefit.kind === 'pension' && (
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="badge badge-primary flex items-center gap-1">
+              <Wallet className="w-3.5 h-3.5" />
+              مكافأة نقدية: {benefit.cashPercent}%
+            </span>
+            <span className="badge badge-secondary flex items-center gap-1">
+              <TrendingUp className="w-3.5 h-3.5" />
+              معاش: {benefit.pensionPercent}%
+            </span>
+            <span className="badge badge-secondary flex items-center gap-1">
+              <CalendarClock className="w-3.5 h-3.5" />
+              مدة الوثيقة: {benefit.termYears} سنة
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="kpi-card !p-4">
+              <p className="text-xs text-secondary-500 mb-1">المكافأة النقدية</p>
+              <p className="text-lg md:text-xl font-bold text-secondary-900">
+                {benefit.cashPercent === 0 ? 'بدون مكافأة نقدية' : formatCurrency(benefit.cashReward)}
+              </p>
+            </div>
+            <div className="kpi-card !p-4 ring-1 ring-primary-100 bg-primary-50/40">
+              <p className="text-xs text-primary-700 mb-1 font-medium">المعاش الشهري</p>
+              <p className="text-lg md:text-xl font-bold text-primary-700">
+                {formatCurrency(benefit.monthlyPension)}
+              </p>
+            </div>
+            <div className="kpi-card !p-4">
+              <p className="text-xs text-secondary-500 mb-1">مدة صرف المعاش</p>
+              <p className="text-lg md:text-xl font-bold text-secondary-900">
+                {benefit.pensionMonths} شهر
+              </p>
+              <p className="text-xs text-secondary-400 mt-1">10 سنوات</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2.5 bg-info-50 border border-info-100 rounded-lg p-3 text-sm text-info-800">
+            <CalendarClock className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span>{PENSION_TRIGGER_NOTICE}</span>
+          </div>
+
+          <div className="flex items-start gap-2.5 bg-warning-50 border border-warning-100 rounded-lg p-3 text-sm text-warning-800">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span>{PENSION_DURATION_NOTICE}</span>
+          </div>
         </>
       )}
 
