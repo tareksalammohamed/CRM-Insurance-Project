@@ -76,15 +76,32 @@ export function Policies() {
   };
 
   return (
-    <div className="space-y-5 md:space-y-6 animate-fadeIn pb-6">
+    <div className="workspace-page workspace-page-policies space-y-5 md:space-y-6 animate-fadeIn pb-6">
       {/* ===== أعلى الصفحة ===== */}
       <PoliciesHeader onAddPolicy={openAddPolicyModal} />
 
       {/* ===== بطاقات إحصائية ===== */}
-      <PoliciesStats stats={stats} statsLoading={statsLoading} />
+      <section className="workspace-section" aria-label="ملخص الوثائق">
+        <div className="workspace-section-head">
+          <div>
+            <span className="workspace-section-kicker">المحفظة التأمينية</span>
+            <h2>ملخص الوثائق والحالات</h2>
+          </div>
+          {!statsLoading && <span className="workspace-section-meta">{totalCount} وثيقة</span>}
+        </div>
+        <PoliciesStats stats={stats} statsLoading={statsLoading} />
+      </section>
 
       {/* ===== البحث والفلاتر ===== */}
-      <div className="surface-toolbar">
+      <section className="workspace-section workspace-toolbar-section" aria-label="البحث والتصفية">
+        <div className="workspace-section-head compact">
+          <div>
+            <span className="workspace-section-kicker">إدارة المحفظة</span>
+            <h2>البحث والتصفية</h2>
+          </div>
+          {activeFilterCount > 0 && <span className="workspace-filter-count">{activeFilterCount} فلتر نشط</span>}
+        </div>
+        <div className="surface-toolbar">
         <PoliciesSearch
           localSearch={localSearch}
           onLocalSearchChange={setLocalSearch}
@@ -108,7 +125,8 @@ export function Policies() {
             />
           )}
         />
-      </div>
+        </div>
+      </section>
 
       {/* ===== قائمة الوثائق ===== */}
       <PoliciesList
