@@ -209,7 +209,7 @@ export function Login() {
   };
 
   return (
-    <div className="login-shell relative min-h-screen overflow-hidden bg-secondary-50 flex items-center justify-center p-4 sm:p-6">
+    <div className="login-shell login-shell-premium relative min-h-screen overflow-hidden bg-secondary-50 flex items-center justify-center p-4 sm:p-6">
       <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-primary-100/70 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-32 -right-24 h-80 w-80 rounded-full bg-success-100/70 blur-3xl" />
       <div className="login-brand-panel hidden lg:flex">
@@ -221,7 +221,7 @@ export function Login() {
         </div>
       </div>
       <div className="relative z-10 w-full max-w-md">
-        <div className="card border-secondary-100/80 bg-white/95 p-6 shadow-elevated backdrop-blur-sm sm:p-8 animate-fadeIn">
+        <div className="login-card card border-secondary-100/80 bg-white/95 p-6 shadow-elevated backdrop-blur-sm sm:p-8 animate-fadeIn">
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-primary-100 rounded-2xl flex items-center justify-center mx-auto mb-4 overflow-hidden">
               {branding.company_logo_url
