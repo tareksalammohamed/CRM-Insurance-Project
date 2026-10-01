@@ -158,7 +158,7 @@ function AppLayout() {
         // padding أفقي مدمج على 320px ويتوسّع تدريجيًا
         'app-main px-3 sm:px-4 md:px-6 lg:px-8'
       )}>
-        <div key={location.pathname} className="app-content max-w-7xl mx-auto mt-4 md:mt-6 animate-pageEnter">
+        <div key={location.pathname} className="app-content w-full max-w-[96rem] mx-auto mt-4 md:mt-6 animate-pageEnter">
           <ErrorBoundary boundaryName={location.pathname}>
             <Suspense fallback={<LoadingSpinner />}>
               <Routes>
