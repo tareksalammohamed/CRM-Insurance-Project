@@ -15,6 +15,13 @@ import type { CalculationResult } from './pricingEngine';
 export const PROFIT_RATE_MIXED_FIXED_TERM = 0.0474; // 4.74% — مختلط / ذو أقساط
 export const PROFIT_RATE_PROTECTION_INVESTMENT = 0.0575; // 5.75% — حماية واستثمار
 
+// معاش واطمئنان: قيمة المعاش الشهرى تُحسب على معامل 89، بينما الصرف الفعلى
+// يستمر 120 شهراً (10 سنوات) وفق قواعد المنتج.
+export const PENSION_DIVISOR = 89;
+export const PENSION_PAYMENT_MONTHS = 120;
+
+export type PensionCashPercent = 0 | 25 | 50;
+
 /**
  * يستخرج "مدة الوثيقة" (بالسنوات) من مفتاح المنتج نفسه، دون أى إدخال
  * إضافى من المستخدم ودون تغيير واجهة حاسبة الأسعار الحالية:
@@ -57,13 +64,27 @@ export interface QuaternaryBenefit {
   maturityAmount: number; // آخر ربع مستحق + 55% من مبلغ التأمين
 }
 
+export interface PensionBenefit {
+  kind: 'pension';
+  termYears: number;
+  cashPercent: PensionCashPercent;
+  pensionPercent: number;
+  cashReward: number;
+  pensionBaseAmount: number;
+  monthlyPension: number;
+  pensionMonths: number;
+}
+
 export interface NoBenefit {
   kind: 'none';
 }
 
-export type PolicyBenefit = FlatProfitBenefit | QuaternaryBenefit | NoBenefit;
+export type PolicyBenefit = FlatProfitBenefit | QuaternaryBenefit | PensionBenefit | NoBenefit;
 
-export function calculatePolicyBenefit(result: CalculationResult): PolicyBenefit {
+export function calculatePolicyBenefit(
+  result: CalculationResult,
+  pensionCashPercent?: PensionCashPercent
+): PolicyBenefit {
   const { variant, sumInsured, age } = result;
   const family = variant.family;
 
@@ -71,6 +92,29 @@ export function calculatePolicyBenefit(result: CalculationResult): PolicyBenefit
     const periodicPayout = sumInsured * 0.25;
     const maturityAmount = periodicPayout + sumInsured * 0.55;
     return { kind: 'quaternary', periodicPayout, maturityAmount };
+  }
+
+  if (family === 'pension_reassurance') {
+    if (pensionCashPercent === undefined) return { kind: 'none' };
+
+    const termYears = extractTermYears(variant, age);
+    if (!termYears) return { kind: 'none' };
+
+    const pensionPercent = 100 - pensionCashPercent;
+    const cashReward = sumInsured * (pensionCashPercent / 100);
+    const pensionBaseAmount = sumInsured * (pensionPercent / 100);
+    const monthlyPension = pensionBaseAmount / PENSION_DIVISOR;
+
+    return {
+      kind: 'pension',
+      termYears,
+      cashPercent: pensionCashPercent,
+      pensionPercent,
+      cashReward,
+      pensionBaseAmount,
+      monthlyPension,
+      pensionMonths: PENSION_PAYMENT_MONTHS,
+    };
   }
 
   if (family === 'mixed' || family === 'protection_investment') {
@@ -112,3 +156,9 @@ export const QUARTERLY_WITHDRAWAL_NOTICE =
 
 export const QUATERNARY_DEATH_NOTICE =
   'يرجى العلم أنه إذا حدثت وفاة (لا قدر الله) أثناء مدة التأمين يتم صرف مبلغ التأمين بالكامل بالإضافة إلى الأرباح المستحقة حتى تاريخ الوفاة بغض النظر عن الدفعات التى تم صرفها مسبقاً.';
+
+export const PENSION_TRIGGER_NOTICE =
+  'تبدأ استحقاقات الوثيقة عند نهاية مدة التأمين أو عند حدوث وفاة أثناء مدة الوثيقة.';
+
+export const PENSION_DURATION_NOTICE =
+  'يتم صرف المعاش لمدة 120 شهراً كاملة (10 سنوات) وفق خيار الصرف المحدد عند التعاقد.';
