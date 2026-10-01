@@ -356,7 +356,7 @@ export function Reports() {
   const printFileName = `${currentReportLabel ?? 'تقرير'}-${format(periodStart, 'yyyy-MM-dd')}-${format(periodEnd, 'yyyy-MM-dd')}`;
 
   return (
-    <div ref={printReportRef} className="print-report space-y-6 animate-fadeIn print:space-y-3">
+    <div ref={printReportRef} className="workspace-page workspace-page-reports print-report space-y-6 animate-fadeIn print:space-y-3">
       {/* رأس خاص بالطباعة فقط - لا يظهر أثناء الاستخدام العادى */}
       <div className="hidden print:block text-center mb-4">
         <h2 className="text-xl font-bold">{currentReportLabel}</h2>

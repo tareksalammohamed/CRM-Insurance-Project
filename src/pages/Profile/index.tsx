@@ -44,11 +44,12 @@ export function Profile() {
   } = useProfile();
 
   return (
-    <div className="space-y-6 animate-fadeIn" dir="rtl">
+    <div className="workspace-page workspace-page-profile space-y-6 animate-fadeIn" dir="rtl">
 
-      <div>
+      <div className="profile-page-heading">
+        <span className="workspace-section-kicker">حسابك</span>
         <h2 className="text-xl md:text-2xl font-bold text-secondary-900">الملف الشخصي</h2>
-        <p className="text-sm text-secondary-500 mt-0.5">بياناتك الشخصية وأداؤك ضمن الفريق</p>
+        <p className="text-sm text-secondary-500 mt-0.5">بياناتك الشخصية، الأمان، وأداؤك ضمن الفريق</p>
       </div>
 
       <ProfileHeader

@@ -49,8 +49,8 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       const offline = !isOnline();
       return (
-        <div className="min-h-[50vh] flex items-center justify-center p-6">
-          <div className="max-w-sm w-full text-center">
+        <div className="error-state-shell min-h-[50vh] flex items-center justify-center p-6">
+          <div className="error-state-card max-w-sm w-full text-center">
             <div className="w-14 h-14 mx-auto rounded-2xl bg-secondary-100 flex items-center justify-center mb-4">
               {offline ? (
                 <WifiOff className="w-6 h-6 text-secondary-500" />

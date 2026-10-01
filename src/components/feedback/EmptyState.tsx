@@ -15,7 +15,7 @@ interface EmptyStateProps {
  */
 export function EmptyState({ icon: Icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className="card">
+    <div className="card empty-state-card">
       <div className="empty-state">
         <span className="empty-state-icon">
           <Icon className="w-6 h-6" />

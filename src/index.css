@@ -4793,3 +4793,167 @@ html.dark .workspace-page-collection .col-panel-head {
   background: linear-gradient(180deg, rgb(16 36 31 / 0.96), rgb(13 29 25 / 0.82));
   border-bottom-color: rgb(143 212 183 / 0.08);
 }
+
+
+/* ============================================================================
+   UX POLISH — PHASE 3
+   Login + Reports + Users + Profile + Settings + feedback states
+============================================================================ */
+
+.login-shell-premium::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, rgb(255 255 255 / 0.035), transparent 35%),
+    radial-gradient(circle at 72% 18%, rgb(197 237 88 / 0.08), transparent 22rem);
+}
+
+.login-card {
+  position: relative;
+  border-radius: 1.35rem !important;
+  box-shadow: 0 26px 60px -34px rgb(8 45 37 / 0.42) !important;
+  overflow: hidden;
+}
+
+.login-card::before {
+  content: '';
+  position: absolute;
+  inset-inline: 1.5rem;
+  top: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, #087f5b, #c5ed58, transparent);
+}
+
+.login-card .input-field {
+  min-height: 3rem;
+}
+
+.login-card .btn-primary {
+  min-height: 3.1rem;
+}
+
+.workspace-page-profile .profile-page-heading,
+.workspace-page-settings .settings-page-heading {
+  position: relative;
+  padding: 1rem 1.05rem;
+  border: 1px solid rgb(13 59 51 / 0.07);
+  border-radius: 1.1rem;
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.94), rgb(247 251 249 / 0.90));
+  box-shadow: 0 10px 26px -24px rgb(13 59 51 / 0.26);
+}
+
+.workspace-page-profile .profile-page-heading::after,
+.workspace-page-settings .settings-page-heading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  inset-inline-start: 1rem;
+  width: 5rem;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #087f5b, #0d9488);
+}
+
+.workspace-page-settings form > .card,
+.workspace-page-profile .card {
+  border-radius: 1.1rem !important;
+}
+
+.workspace-page-settings form > .card > .flex:first-child {
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgb(13 59 51 / 0.06);
+}
+
+.workspace-page-reports .card,
+.workspace-page-users .card {
+  border-radius: 1.05rem !important;
+}
+
+.workspace-page-reports .print\:hidden.card,
+.workspace-page-reports .card.print\:hidden {
+  background:
+    linear-gradient(155deg, rgb(255 255 255 / 0.96), rgb(247 251 249 / 0.90)) !important;
+}
+
+.workspace-page-users > .card {
+  overflow: hidden;
+}
+
+.empty-state-card {
+  position: relative;
+  overflow: hidden;
+  border-style: dashed !important;
+  border-color: rgb(8 127 91 / 0.16) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgb(8 127 91 / 0.05), transparent 14rem),
+    rgb(255 255 255 / 0.94) !important;
+}
+
+.empty-state-card .empty-state {
+  min-height: 13rem;
+}
+
+.empty-state-icon {
+  border: 1px solid rgb(8 127 91 / 0.11);
+  box-shadow: 0 8px 22px -18px rgb(8 127 91 / 0.45);
+}
+
+.error-state-shell {
+  position: relative;
+}
+
+.error-state-card {
+  position: relative;
+  padding: 1.6rem;
+  border: 1px solid rgb(13 59 51 / 0.09);
+  border-radius: 1.2rem;
+  background: rgb(255 255 255 / 0.94);
+  box-shadow: 0 16px 36px -26px rgb(13 59 51 / 0.36);
+}
+
+.error-state-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  inset-inline: 2rem;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, #f59e0b, transparent);
+}
+
+.skeleton-shimmer {
+  border-color: rgb(13 59 51 / 0.055) !important;
+}
+
+@media (max-width: 767px) {
+  .login-card {
+    border-radius: 1.15rem !important;
+  }
+
+  .workspace-page-profile .profile-page-heading,
+  .workspace-page-settings .settings-page-heading {
+    padding: 0.9rem;
+    border-radius: 1rem;
+  }
+
+  .error-state-card {
+    padding: 1.25rem;
+  }
+}
+
+html.dark .login-card,
+html.dark .workspace-page-profile .profile-page-heading,
+html.dark .workspace-page-settings .settings-page-heading,
+html.dark .error-state-card,
+html.dark .empty-state-card {
+  background: rgb(13 29 25 / 0.95) !important;
+  border-color: rgb(143 212 183 / 0.09) !important;
+}
+
+html.dark .workspace-page-settings form > .card > .flex:first-child {
+  border-bottom-color: rgb(143 212 183 / 0.08);
+}
