@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { BellRing, Search, X, CircleUserRound, Settings2, LogOut, Menu, WalletCards, HelpCircle, Loader2 } from 'lucide-react';
+import { BellRing, Search, X, CircleUserRound, Settings2, LogOut, Menu, WalletCards, HelpCircle, Loader2, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { ROLE_LABELS } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
@@ -15,6 +15,7 @@ import { BranchSelector } from './BranchSelector';
 import { HelpButton } from '../features/help/HelpButton';
 import { useNotify } from '../lib/notify';
 import { subscribeToPush } from '../lib/pushNotifications';
+import { useTheme } from '../hooks/useTheme';
 
 export function Header() {
   const { user, signOut }  = useAuth();
@@ -22,6 +23,7 @@ export function Header() {
   const navigate           = useNavigate();
   const location           = useLocation();
   const { sidebarCollapsed, toggleMobileMenu, closeMobileMenu } = useAppStore();
+  const { isDark, toggleTheme } = useTheme();
 
   const [searchOpen,        setSearchOpen]        = useState(false);
   const [searchQuery,       setSearchQuery]       = useState('');
@@ -220,6 +222,16 @@ export function Header() {
 
           {/* سلكتور الفرع — يظهر بس للمستخدمين اللي عندهم أكتر من فرع */}
           <BranchSelector />
+
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={isDark ? 'تفعيل الوضع الفاتح' : 'تفعيل الوضع الداكن'}
+            title={isDark ? 'الوضع الفاتح' : 'الوضع الداكن'}
+            className="icon-button theme-toggle"
+          >
+            {isDark ? <Sun className="w-[21px] h-[21px]" /> : <Moon className="w-[21px] h-[21px]" />}
+          </button>
 
           {/* بحث — على الديسكتوب حقل مدمج؛ وعلى الموبايل يفتح شريط بحث
               بعرض الشاشة كاملة (مساحة كتابة مريحة بدل حقل ضيق) */}

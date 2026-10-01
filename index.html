@@ -17,6 +17,17 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#0F172A">
 
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('insurance-crm-theme');
+          var dark = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.classList.toggle('dark', dark);
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+        } catch (_) {}
+      }());
+    </script>
+
     <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
   <body>
