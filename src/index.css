@@ -4387,3 +4387,187 @@ html.dark .input-field:focus {
     transform: none !important;
   }
 }
+
+
+/* ============================================================================
+   UX POLISH — PHASE 1
+   Dashboard + Price Calculator
+============================================================================ */
+
+.dashboard-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.dashboard-context-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: fit-content;
+  margin-top: 0.7rem;
+  padding: 0.38rem 0.65rem;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 999px;
+  color: rgb(236 253 245 / 0.82);
+  background: rgb(255 255 255 / 0.07);
+  font-size: 0.72rem;
+  font-weight: 700;
+  backdrop-filter: blur(8px);
+}
+
+.dashboard-intro strong {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.price-calculator-shell {
+  padding: 1.15rem !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgb(8 127 91 / 0.07), transparent 18rem),
+    rgb(255 255 255 / 0.96) !important;
+}
+
+.price-calculator-orb {
+  position: absolute;
+  top: -5rem;
+  right: -4rem;
+  width: 13rem;
+  height: 13rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgb(197 237 88 / 0.18), rgb(8 127 91 / 0.06) 48%, transparent 72%);
+}
+
+.price-calculator-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.price-calculator-secure-note,
+.price-result-ready {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.34rem 0.62rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.price-calculator-secure-note {
+  border: 1px solid rgb(8 127 91 / 0.11);
+  background: rgb(242 250 246 / 0.88);
+  color: var(--brand-ink);
+}
+
+.price-result-ready {
+  border: 1px solid rgb(13 148 136 / 0.13);
+  background: #f0fdfa;
+  color: #0f766e;
+}
+
+.price-calculator-form-grid > .form-group {
+  position: relative;
+  padding: 0.85rem;
+  border: 1px solid rgb(13 59 51 / 0.065);
+  border-radius: 1rem;
+  background: rgb(250 252 251 / 0.78);
+}
+
+.price-calculator-form-grid .input-field {
+  background: #ffffff !important;
+}
+
+.price-result-card {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(155deg, rgb(255 255 255 / 0.98), rgb(246 251 248 / 0.96)) !important;
+}
+
+.price-result-card::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0;
+  width: 0.24rem;
+  height: 100%;
+  background: linear-gradient(180deg, #087f5b, #0d9488);
+  border-radius: 999px;
+}
+
+.price-result-card .kpi-card:first-child {
+  background: linear-gradient(155deg, #effaf4 0%, #ffffff 100%) !important;
+  border-color: rgb(8 127 91 / 0.14) !important;
+}
+
+.price-action-bar {
+  position: sticky;
+  bottom: calc(5.25rem + env(safe-area-inset-bottom));
+  z-index: 12;
+  padding: 0.65rem;
+  border: 1px solid rgb(13 59 51 / 0.09);
+  border-radius: 1rem;
+  background: rgb(250 253 251 / 0.91);
+  box-shadow: 0 16px 36px -26px rgb(8 45 37 / 0.38);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+@media (min-width: 768px) {
+  .price-calculator-shell {
+    padding: 1.35rem !important;
+  }
+
+  .price-action-bar {
+    bottom: 1rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .price-calculator-card-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .price-calculator-secure-note {
+    white-space: normal;
+  }
+
+  .price-calculator-form-grid > .form-group {
+    padding: 0.75rem;
+  }
+
+  .price-action-bar .btn {
+    flex: 1 1 calc(50% - 0.3rem);
+  }
+}
+
+html.dark .price-calculator-shell {
+  background:
+    radial-gradient(circle at 100% 0%, rgb(22 161 115 / 0.10), transparent 18rem),
+    #0d1d19 !important;
+}
+
+html.dark .price-calculator-form-grid > .form-group {
+  border-color: rgb(143 212 183 / 0.08);
+  background: rgb(16 36 31 / 0.72);
+}
+
+html.dark .price-result-card {
+  background: linear-gradient(155deg, #0d1d19, #10241f) !important;
+}
+
+html.dark .price-calculator-secure-note,
+html.dark .price-result-ready {
+  background: rgb(22 161 115 / 0.10);
+  border-color: rgb(143 212 183 / 0.10);
+}
+
+html.dark .price-action-bar {
+  background: rgb(7 20 17 / 0.9);
+  border-color: rgb(143 212 183 / 0.10);
+}
