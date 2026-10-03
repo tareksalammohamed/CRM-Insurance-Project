@@ -72,3 +72,33 @@ export async function testProviderConnection(provider: AIProviderKey): Promise<T
   }
   return result as TestConnectionResult;
 }
+
+
+export interface RefreshProvidersResult {
+  success: boolean;
+  refreshed_at: string;
+  providers_total: number;
+  providers_ok: number;
+  providers_failed: number;
+}
+
+/** تحديث فوري لحالة كل المزودين وقوائم النماذج من الخادم. */
+export async function refreshAllProviders(): Promise<RefreshProvidersResult> {
+  const accessToken = await getAccessToken();
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+  const res = await fetch(`${supabaseUrl}/functions/v1/ai-refresh-models`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({}),
+  });
+
+  const result = await res.json();
+  if (!res.ok || !result?.success) {
+    throw new Error(result?.error || 'فشل تحديث المزودين والنماذج');
+  }
+  return result as RefreshProvidersResult;
+}

@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Sparkles, Loader2, CheckCircle2, XCircle, HelpCircle,
-  Eye, EyeOff, Zap, Clock
+  Eye, EyeOff, Zap, Clock, RefreshCw
 } from 'lucide-react';
 import clsx from 'clsx';
 import { friendlyError } from '../../../lib/errorMessages';
 import { useNotify } from '../../../lib/notify';
 import {
-  fetchAISettings, setAIEnabled, updateProvider, testProviderConnection,
+  fetchAISettings, setAIEnabled, updateProvider, testProviderConnection, refreshAllProviders,
 } from '../services/aiSettingsService';
 import {
   AI_PROVIDER_LABELS, AI_PROVIDER_STATUS_LABELS,
@@ -206,6 +206,7 @@ export function AISettingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [togglingMaster, setTogglingMaster] = useState(false);
+  const [refreshingProviders, setRefreshingProviders] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -234,6 +235,21 @@ export function AISettingsPage() {
       .sort((a, b) => a.priority - b.priority),
     [bundle]
   );
+
+  const handleRefreshProviders = async () => {
+    setRefreshingProviders(true);
+    try {
+      const result = await refreshAllProviders();
+      notify.success(
+        `تم تحديث المزودين والنماذج — ${result.providers_ok} ناجح${result.providers_failed ? `، ${result.providers_failed} به مشكلة` : ''}`
+      );
+      await load();
+    } catch (err) {
+      notify.error(friendlyError(err, 'فشل تحديث المزودين والنماذج'));
+    } finally {
+      setRefreshingProviders(false);
+    }
+  };
 
   const handleToggleMaster = async () => {
     if (!bundle) return;
@@ -288,6 +304,21 @@ export function AISettingsPage() {
               className="w-5 h-5 accent-primary-600"
             />
           </label>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-4">
+          <p className="text-xs text-secondary-500">
+            يتم فحص المزودين وتحديث قوائم النماذج تلقائياً كل 6 ساعات للحفاظ على جاهزية المنظومة.
+          </p>
+          <button
+            type="button"
+            onClick={handleRefreshProviders}
+            disabled={refreshingProviders}
+            className="btn btn-secondary btn-sm shrink-0"
+          >
+            <RefreshCw className={clsx('w-4 h-4', refreshingProviders && 'animate-spin')} />
+            {refreshingProviders ? 'جاري التحديث...' : 'تحديث الآن'}
+          </button>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 text-sm">
