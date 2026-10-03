@@ -1,7 +1,7 @@
 // أنواع بيانات منظومة إعدادات الذكاء الاصطناعي.
 // مطابقة لما تُعيده الدالة ai_get_settings() فى قاعدة البيانات.
 
-export type AIProviderKey = 'openrouter' | 'groq' | 'cloudflare' | 'ocrspace' | 'gemini' | 'nararouter';
+export type AIProviderKey = 'openrouter' | 'groq' | 'cloudflare' | 'ocrspace' | 'gemini' | 'nararouter' | 'requesty';
 
 /** نوع المزود: ai لمزودي توليد النصوص/تحليل الصور، ocr لمزودي استخراج
  * النص من الصور/PDF (تُستخدم فقط لتقسيم عرض صفحة الإعدادات لقسمين). */
@@ -52,7 +52,8 @@ export const AI_PROVIDER_LABELS: Record<AIProviderKey, string> = {
   cloudflare: 'Cloudflare AI',
   ocrspace: 'OCR.Space',
   gemini: 'Gemini (Google AI Studio)',
-  nararouter: 'NaraRouter'
+  nararouter: 'NaraRouter',
+  requesty: 'Requesty'
 };
 
 export const AI_PROVIDER_STATUS_LABELS: Record<AIProviderStatus, string> = {
