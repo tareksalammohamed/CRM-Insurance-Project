@@ -21,9 +21,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-type ProviderKey = "openrouter" | "groq" | "cloudflare" | "ocrspace" | "gemini" | "nararouter";
+type ProviderKey = "openrouter" | "groq" | "cloudflare" | "ocrspace" | "gemini" | "nararouter" | "requesty";
 
-const KNOWN_PROVIDERS: ProviderKey[] = ["openrouter", "groq", "cloudflare", "ocrspace", "gemini", "nararouter"];
+const KNOWN_PROVIDERS: ProviderKey[] = ["openrouter", "groq", "cloudflare", "ocrspace", "gemini", "nararouter", "requesty"];
 
 interface FreeModel {
   model_id: string;
@@ -90,13 +90,25 @@ async function testNaraRouter(apiKey: string): Promise<{ models: FreeModel[] }> 
   const res = await fetch("https://router.bynara.id/v1/models", {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
-  if (res.status === 401 || res.status === 403) {
+  const raw = await res.text();
+  let data: any = null;
+  try { data = raw ? JSON.parse(raw) : null; } catch { data = null; }
+
+  if (res.status === 401) {
     throw new Error("مفتاح NaraRouter غير صحيح أو منتهي الصلاحية");
   }
-  if (!res.ok) {
-    throw new Error(`تعذر الاتصال بـ NaraRouter (HTTP ${res.status})`);
+  if (res.status === 403) {
+    const providerMessage = data?.error?.message || data?.message;
+    throw new Error(providerMessage
+      ? `NaraRouter رفض الوصول للحساب: ${providerMessage}`
+      : "NaraRouter رفض الوصول للحساب (403) — راجع متطلبات الحساب والخطة من إعدادات NaraRouter");
   }
-  const data = await res.json();
+  if (!res.ok) {
+    const providerMessage = data?.error?.message || data?.message;
+    throw new Error(providerMessage
+      ? `تعذر الاتصال بـ NaraRouter (HTTP ${res.status}): ${providerMessage}`
+      : `تعذر الاتصال بـ NaraRouter (HTTP ${res.status})`);
+  }
   const list = Array.isArray(data?.data) ? data.data : [];
   return {
     models: list
@@ -106,6 +118,87 @@ async function testNaraRouter(apiKey: string): Promise<{ models: FreeModel[] }> 
         model_name: m.name ?? m.id,
         context_length: m.context_length ?? m.context_window ?? null,
       })),
+  };
+}
+
+
+const REQUESTY_FREE_MODEL_IDS = new Set([
+  "google/gemma-4-31b-it",
+  "nvidia/nemotron-3.5-lightning-30b-a3b",
+  "meta/muse-glimmer-30b",
+  "inclusionai/iling-3.0-tiny",
+  "nvidia/nemotron-3.5-content-safety",
+  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+  "poolside/laguna-m.1",
+  "poolside/laguna-xs.2",
+  "nvidia/nemotron-3-ultra-550b-a55b",
+  "mistral/leanstral-1-5",
+  "nvidia/nemotron-3-super-120b-a12b",
+  "nvidia/nemotron-3-nano-30b-a3b",
+]);
+
+function isRequestyFreeModel(model: any): boolean {
+  const id = String(model?.id || "");
+  const shortId = id.split("/").pop() || id;
+  const knownFree = [...REQUESTY_FREE_MODEL_IDS].some((freeId) =>
+    freeId === id || freeId.split("/").pop() === shortId
+  );
+  if (knownFree) return true;
+
+  const pricing = model?.pricing ?? model?.price ?? {};
+  const input = pricing?.prompt ?? pricing?.input ?? pricing?.input_price ?? model?.input_price;
+  const output = pricing?.completion ?? pricing?.output ?? pricing?.output_price ?? model?.output_price;
+  const zero = (v: unknown) => v === 0 || v === "0" || v === "0.0" || v === "0.000000";
+  return model?.is_free === true || model?.free === true || (zero(input) && zero(output));
+}
+
+function requestyModelRank(model: any): number {
+  const id = String(model?.id || "");
+  if (id.includes("gemma-4-31b-it")) return 0;
+  if (id.includes("nemotron-3.5-lightning")) return 1;
+  if (/content-safety|laguna|leanstral/i.test(id)) return 10;
+  return 5;
+}
+
+async function testRequesty(apiKey: string): Promise<{ models: FreeModel[] }> {
+  const res = await fetch("https://router.requesty.ai/v1/models", {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  const raw = await res.text();
+  let data: any = null;
+  try { data = raw ? JSON.parse(raw) : null; } catch { data = null; }
+
+  if (res.status === 401) {
+    throw new Error("مفتاح Requesty غير صحيح أو منتهي الصلاحية");
+  }
+  if (res.status === 403) {
+    const providerMessage = data?.error?.message || data?.message;
+    throw new Error(providerMessage
+      ? `Requesty رفض الوصول للحساب: ${providerMessage}`
+      : "Requesty رفض الوصول للحساب (403) — راجع صلاحيات الحساب أو المفتاح");
+  }
+  if (!res.ok) {
+    const providerMessage = data?.error?.message || data?.message;
+    throw new Error(providerMessage
+      ? `تعذر الاتصال بـ Requesty (HTTP ${res.status}): ${providerMessage}`
+      : `تعذر الاتصال بـ Requesty (HTTP ${res.status})`);
+  }
+
+  const list = Array.isArray(data?.data) ? data.data : [];
+  const free = list
+    .filter(isRequestyFreeModel)
+    .sort((a: any, b: any) => requestyModelRank(a) - requestyModelRank(b));
+
+  if (free.length === 0) {
+    throw new Error("تم الاتصال بـ Requesty لكن لم يتم العثور على نماذج مجانية متاحة لهذا المفتاح");
+  }
+
+  return {
+    models: free.map((m: any) => ({
+      model_id: m.id,
+      model_name: m.name ?? m.id,
+      context_length: m.context_length ?? m.context_window ?? null,
+    })),
   };
 }
 
@@ -225,6 +318,7 @@ const TEST_HANDLERS: Record<ProviderKey, (apiKey: string, accountId: string | nu
   ocrspace: (apiKey) => testOcrSpace(apiKey),
   gemini: (apiKey) => testGemini(apiKey),
   nararouter: (apiKey) => testNaraRouter(apiKey),
+  requesty: (apiKey) => testRequesty(apiKey),
 };
 
 Deno.serve(async (req: Request) => {
