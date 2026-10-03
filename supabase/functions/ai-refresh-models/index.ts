@@ -77,8 +77,15 @@ async function fetchGemini(apiKey: string): Promise<CachedModel[]> {
 
 async function fetchNaraRouter(apiKey: string): Promise<CachedModel[]> {
   const res = await fetch("https://router.bynara.id/v1/models", { headers: { Authorization: `Bearer ${apiKey}` } });
-  if (!res.ok) throw new Error(`NaraRouter HTTP ${res.status}`);
-  const data = await res.json();
+  const raw = await res.text();
+  let data: any = null;
+  try { data = raw ? JSON.parse(raw) : null; } catch { data = null; }
+  if (!res.ok) {
+    const providerMessage = data?.error?.message || data?.message;
+    throw new Error(providerMessage
+      ? `NaraRouter HTTP ${res.status}: ${providerMessage}`
+      : `NaraRouter HTTP ${res.status}`);
+  }
   return (Array.isArray(data?.data) ? data.data : [])
     .filter((m: any) => typeof m?.id === "string" && m.id.trim())
     .map((m: any) => ({

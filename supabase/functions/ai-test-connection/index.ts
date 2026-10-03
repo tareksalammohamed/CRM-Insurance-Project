@@ -90,13 +90,25 @@ async function testNaraRouter(apiKey: string): Promise<{ models: FreeModel[] }> 
   const res = await fetch("https://router.bynara.id/v1/models", {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
-  if (res.status === 401 || res.status === 403) {
+  const raw = await res.text();
+  let data: any = null;
+  try { data = raw ? JSON.parse(raw) : null; } catch { data = null; }
+
+  if (res.status === 401) {
     throw new Error("مفتاح NaraRouter غير صحيح أو منتهي الصلاحية");
   }
-  if (!res.ok) {
-    throw new Error(`تعذر الاتصال بـ NaraRouter (HTTP ${res.status})`);
+  if (res.status === 403) {
+    const providerMessage = data?.error?.message || data?.message;
+    throw new Error(providerMessage
+      ? `NaraRouter رفض الوصول للحساب: ${providerMessage}`
+      : "NaraRouter رفض الوصول للحساب (403) — راجع متطلبات الحساب والخطة من إعدادات NaraRouter");
   }
-  const data = await res.json();
+  if (!res.ok) {
+    const providerMessage = data?.error?.message || data?.message;
+    throw new Error(providerMessage
+      ? `تعذر الاتصال بـ NaraRouter (HTTP ${res.status}): ${providerMessage}`
+      : `تعذر الاتصال بـ NaraRouter (HTTP ${res.status})`);
+  }
   const list = Array.isArray(data?.data) ? data.data : [];
   return {
     models: list
