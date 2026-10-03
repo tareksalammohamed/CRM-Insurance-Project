@@ -113,6 +113,22 @@ async function callGroq(apiKey: string, model: string, messages: ChatMessage[], 
   return content as string;
 }
 
+async function callNaraRouter(apiKey: string, model: string, messages: ChatMessage[], maxTokens: number, temperature: number) {
+  const res = await fetch("https://router.bynara.id/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature }),
+  });
+  if (!res.ok) {
+    const details = await res.text().catch(() => "");
+    throw new Error(`NaraRouter: HTTP ${res.status}${details ? ` — ${details.slice(0, 240)}` : ""}`);
+  }
+  const data = await res.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) throw new Error("NaraRouter: استجابة فارغة");
+  return content as string;
+}
+
 async function callCloudflare(apiKey: string, accountId: string, model: string, messages: ChatMessage[]) {
   const res = await fetch(
     `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
@@ -217,6 +233,11 @@ const AI_PROVIDERS: Record<string, { supportsVision: boolean; call: AICallFn }> 
     supportsVision: true,
     call: (row, messages, maxTokens, temperature) =>
       callGemini(row.api_key!, row.default_model!, messages, maxTokens, temperature),
+  },
+  nararouter: {
+    supportsVision: true,
+    call: (row, messages, maxTokens, temperature) =>
+      callNaraRouter(row.api_key!, row.default_model!, messages, maxTokens, temperature),
   },
 };
 
