@@ -235,7 +235,9 @@ const AI_PROVIDERS: Record<string, { supportsVision: boolean; call: AICallFn }> 
       callGemini(row.api_key!, row.default_model!, messages, maxTokens, temperature),
   },
   nararouter: {
-    supportsVision: true,
+    // NaraRouter يضم نماذج متعددة بقدرات مختلفة؛ لا نفترض أن النموذج
+    // الافتراضي يدعم الصور. بعد OCR يمكن استخدامه للنص بشكل طبيعي.
+    supportsVision: false,
     call: (row, messages, maxTokens, temperature) =>
       callNaraRouter(row.api_key!, row.default_model!, messages, maxTokens, temperature),
   },
