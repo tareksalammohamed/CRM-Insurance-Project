@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-crm-ai-refresh-secret",
 };
 
-type ProviderKey = "openrouter" | "groq" | "cloudflare" | "ocrspace" | "gemini" | "nararouter";
+type ProviderKey = "openrouter" | "groq" | "cloudflare" | "ocrspace" | "gemini" | "nararouter" | "requesty";
 
 interface CachedModel {
   model_id: string;
@@ -95,6 +95,70 @@ async function fetchNaraRouter(apiKey: string): Promise<CachedModel[]> {
     }));
 }
 
+
+const REQUESTY_FREE_MODEL_IDS = new Set([
+  "google/gemma-4-31b-it",
+  "nvidia/nemotron-3.5-lightning-30b-a3b",
+  "meta/muse-glimmer-30b",
+  "inclusionai/iling-3.0-tiny",
+  "nvidia/nemotron-3.5-content-safety",
+  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+  "poolside/laguna-m.1",
+  "poolside/laguna-xs.2",
+  "nvidia/nemotron-3-ultra-550b-a55b",
+  "mistral/leanstral-1-5",
+  "nvidia/nemotron-3-super-120b-a12b",
+  "nvidia/nemotron-3-nano-30b-a3b",
+]);
+
+function isRequestyFreeModel(model: any): boolean {
+  const id = String(model?.id || "");
+  const shortId = id.split("/").pop() || id;
+  const knownFree = [...REQUESTY_FREE_MODEL_IDS].some((freeId) =>
+    freeId === id || freeId.split("/").pop() === shortId
+  );
+  if (knownFree) return true;
+
+  const pricing = model?.pricing ?? model?.price ?? {};
+  const input = pricing?.prompt ?? pricing?.input ?? pricing?.input_price ?? model?.input_price;
+  const output = pricing?.completion ?? pricing?.output ?? pricing?.output_price ?? model?.output_price;
+  const zero = (v: unknown) => v === 0 || v === "0" || v === "0.0" || v === "0.000000";
+  return model?.is_free === true || model?.free === true || (zero(input) && zero(output));
+}
+
+function requestyModelRank(model: any): number {
+  const id = String(model?.id || "");
+  if (id.includes("gemma-4-31b-it")) return 0;
+  if (id.includes("nemotron-3.5-lightning")) return 1;
+  if (/content-safety|laguna|leanstral/i.test(id)) return 10;
+  return 5;
+}
+
+async function fetchRequesty(apiKey: string): Promise<CachedModel[]> {
+  const res = await fetch("https://router.requesty.ai/v1/models", {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  const raw = await res.text();
+  let data: any = null;
+  try { data = raw ? JSON.parse(raw) : null; } catch { data = null; }
+
+  if (!res.ok) {
+    const providerMessage = data?.error?.message || data?.message;
+    throw new Error(providerMessage
+      ? `Requesty HTTP ${res.status}: ${providerMessage}`
+      : `Requesty HTTP ${res.status}`);
+  }
+
+  return (Array.isArray(data?.data) ? data.data : [])
+    .filter(isRequestyFreeModel)
+    .sort((a: any, b: any) => requestyModelRank(a) - requestyModelRank(b))
+    .map((m: any) => ({
+      model_id: m.id,
+      model_name: m.name ?? m.id,
+      context_length: m.context_length ?? m.context_window ?? null,
+    }));
+}
+
 const OCR_TEST_IMAGE = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAAeCAIAAAD/+uoYAAABHklEQVR4nO3XIW6FMBjA8TIwxeAAxRFAP7UiQOLoAbgIEscBEOUCTbgBDiSXqGsCmmA6Qd7EAm+EvHZZ0p/6QtrkTwMkGEII8N98/HXAHTpaFR2tio5WRUer8jO66zqEEELIsqx9oJTato2e6roGAEzTlKZpHMdJkjDGDndJrBYnHMc5nHdRFDHGhBCUUozxi5UyWPdulXO+risAIMsy13XfeowXnN3N65Nu29b3/aIo+r4/2yXPpWgI4efTOI77xWVZCCFhGJZlebhLnjsnzTkfhuF79jzvbKUkdz55hmFgjBljAIB5noMgePcz+4tLL+K2bQihfX48HlVVNU2T5zmE0DRNQojEwCOG0H8uauhoVXS0KjpaFR2tio5W5Qu6b8cBll2PywAAAABJRU5ErkJggg==";
 
 async function testOcrSpace(apiKey: string): Promise<void> {
@@ -173,6 +237,11 @@ Deno.serve(async (req: Request) => {
           models = await fetchGemini(row.api_key!);
         } else if (row.provider === "nararouter") {
           models = await fetchNaraRouter(row.api_key!);
+        } else if (row.provider === "requesty") {
+          models = await fetchRequesty(row.api_key!);
+          if (models.length === 0) {
+            throw new Error("تم الاتصال بـ Requesty لكن لم يتم العثور على نماذج مجانية متاحة لهذا المفتاح");
+          }
         }
 
         const available = models.slice(0, 100);
