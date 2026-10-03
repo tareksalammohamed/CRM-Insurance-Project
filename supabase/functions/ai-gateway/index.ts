@@ -113,6 +113,32 @@ async function callGroq(apiKey: string, model: string, messages: ChatMessage[], 
   return content as string;
 }
 
+async function callRequesty(apiKey: string, model: string, messages: ChatMessage[], maxTokens: number, temperature: number) {
+  const res = await fetch("https://router.requesty.ai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://crm-insurance-project.vercel.app",
+      "X-Title": "Insurance CRM",
+    },
+    body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature }),
+  });
+  if (!res.ok) {
+    const raw = await res.text().catch(() => "");
+    let providerMessage = raw;
+    try {
+      const parsed = raw ? JSON.parse(raw) : null;
+      providerMessage = parsed?.error?.message || parsed?.message || raw;
+    } catch { /* keep raw */ }
+    throw new Error(`Requesty: HTTP ${res.status}${providerMessage ? ` — ${String(providerMessage).slice(0, 240)}` : ""}`);
+  }
+  const data = await res.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) throw new Error("Requesty: استجابة فارغة");
+  return content as string;
+}
+
 async function callNaraRouter(apiKey: string, model: string, messages: ChatMessage[], maxTokens: number, temperature: number) {
   const res = await fetch("https://router.bynara.id/v1/chat/completions", {
     method: "POST",
@@ -240,6 +266,12 @@ const AI_PROVIDERS: Record<string, { supportsVision: boolean; call: AICallFn }> 
     supportsVision: false,
     call: (row, messages, maxTokens, temperature) =>
       callNaraRouter(row.api_key!, row.default_model!, messages, maxTokens, temperature),
+  },
+  requesty: {
+    // Requesty يضم نماذج بقدرات مختلفة؛ نستخدمه للنص بعد OCR بصورة آمنة.
+    supportsVision: false,
+    call: (row, messages, maxTokens, temperature) =>
+      callRequesty(row.api_key!, row.default_model!, messages, maxTokens, temperature),
   },
 };
 
