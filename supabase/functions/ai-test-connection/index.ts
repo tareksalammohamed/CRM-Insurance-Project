@@ -21,9 +21,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-type ProviderKey = "openrouter" | "groq" | "cloudflare" | "ocrspace" | "gemini";
+type ProviderKey = "openrouter" | "groq" | "cloudflare" | "ocrspace" | "gemini" | "nararouter";
 
-const KNOWN_PROVIDERS: ProviderKey[] = ["openrouter", "groq", "cloudflare", "ocrspace", "gemini"];
+const KNOWN_PROVIDERS: ProviderKey[] = ["openrouter", "groq", "cloudflare", "ocrspace", "gemini", "nararouter"];
 
 interface FreeModel {
   model_id: string;
@@ -83,6 +83,29 @@ async function testGroq(apiKey: string): Promise<{ models: FreeModel[] }> {
       model_name: m.id,
       context_length: m.context_window ?? null,
     })),
+  };
+}
+
+async function testNaraRouter(apiKey: string): Promise<{ models: FreeModel[] }> {
+  const res = await fetch("https://router.bynara.id/v1/models", {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  if (res.status === 401 || res.status === 403) {
+    throw new Error("مفتاح NaraRouter غير صحيح أو منتهي الصلاحية");
+  }
+  if (!res.ok) {
+    throw new Error(`تعذر الاتصال بـ NaraRouter (HTTP ${res.status})`);
+  }
+  const data = await res.json();
+  const list = Array.isArray(data?.data) ? data.data : [];
+  return {
+    models: list
+      .filter((m: any) => typeof m?.id === "string" && m.id.trim())
+      .map((m: any) => ({
+        model_id: m.id,
+        model_name: m.name ?? m.id,
+        context_length: m.context_length ?? m.context_window ?? null,
+      })),
   };
 }
 
@@ -201,6 +224,7 @@ const TEST_HANDLERS: Record<ProviderKey, (apiKey: string, accountId: string | nu
   cloudflare: (apiKey, accountId) => testCloudflare(apiKey, accountId),
   ocrspace: (apiKey) => testOcrSpace(apiKey),
   gemini: (apiKey) => testGemini(apiKey),
+  nararouter: (apiKey) => testNaraRouter(apiKey),
 };
 
 Deno.serve(async (req: Request) => {
