@@ -37,12 +37,20 @@ export interface AskAIOptions {
   preferVision?: boolean;
 }
 
+export type AIFailureType =
+  | 'capacity_exhausted'
+  | 'gateway_rate_limited'
+  | 'all_providers_failed'
+  | 'unavailable';
+
 export interface AskAIResult {
   success: boolean;
   provider?: string;
   model?: string;
   content?: string;
   error?: string;
+  failureType?: AIFailureType;
+  retryAfterSeconds?: number;
   /** اسم مزود الـ OCR الذى استُخدم لاستخراج النص من الصور قبل تحليلها،
    * إن وُجد (يظهر فقط للطلبات التى تحتوي صوراً ونجح استخراج OCR لها). */
   ocrProvider?: string;
@@ -74,6 +82,10 @@ export async function askAI(messages: AIChatMessage[], options: AskAIOptions = {
     const result = await res.json();
     return {
       ...result,
+      failureType: result?.failure_type ?? undefined,
+      retryAfterSeconds: Number.isFinite(Number(result?.retry_after_seconds))
+        ? Number(result.retry_after_seconds)
+        : undefined,
       ocrProvider: result?.ocr_provider ?? undefined,
     } as AskAIResult;
   } catch (err) {
