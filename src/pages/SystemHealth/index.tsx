@@ -43,6 +43,51 @@ type CronHealth = {
   } | null;
 };
 
+type UsageTotals = {
+  requests: number;
+  successes: number;
+  failures: number;
+  capacity_errors: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+};
+
+type ProviderUsage = UsageTotals & {
+  provider: string;
+  avg_latency_ms: number;
+  last_used_at: string | null;
+};
+
+type ModelUsage = {
+  provider: string;
+  model: string;
+  requests: number;
+  successes: number;
+  failures: number;
+  capacity_errors: number;
+  total_tokens: number;
+  avg_latency_ms: number;
+  last_used_at: string | null;
+};
+
+type AIUsageSummary = {
+  from_date: string;
+  to_date: string;
+  today: UsageTotals;
+  period: UsageTotals;
+  providers: ProviderUsage[];
+  models: ModelUsage[];
+  daily: Array<{
+    usage_date: string;
+    requests: number;
+    successes: number;
+    failures: number;
+    capacity_errors: number;
+    total_tokens: number;
+  }>;
+};
+
 type SystemHealth = {
   checked_at: string;
   database: { status: string; server_time: string; last_backup_export: string | null };
@@ -50,6 +95,7 @@ type SystemHealth = {
     enabled: boolean;
     models_updated_at: string | null;
     providers: ProviderHealth[];
+    usage?: AIUsageSummary;
   };
   cron: CronHealth[];
 };
@@ -58,6 +104,19 @@ function formatDate(value: string | null | undefined) {
   if (!value) return '—';
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('ar-EG');
+}
+
+function formatNumber(value: number | null | undefined) {
+  return new Intl.NumberFormat('ar-EG').format(Number(value || 0));
+}
+
+function formatCompact(value: number | null | undefined) {
+  return new Intl.NumberFormat('ar-EG', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(value || 0));
+}
+
+function successRate(successes: number, requests: number) {
+  if (!requests) return 0;
+  return Math.round((successes / requests) * 100);
 }
 
 function statusBadge(ok: boolean, okText: string, badText: string) {
@@ -203,6 +262,117 @@ export function SystemHealth() {
               <p className="text-xs text-secondary-400 mt-2">آخر Backup Export مسجل</p>
             </div>
           </div>
+
+          {health.ai.usage && (
+            <div className="card space-y-5">
+              <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-2">
+                <div>
+                  <p className="workspace-section-kicker">AI Usage · Actual</p>
+                  <h3 className="text-lg font-bold text-secondary-900">الاستهلاك الفعلي للذكاء الاصطناعي</h3>
+                  <p className="text-sm text-secondary-500 mt-1">
+                    محسوب من الطلبات التي مرّت فعليًا عبر AI Gateway. التوكنز تظهر فقط عندما يرسل المزود Usage رسميًا.
+                  </p>
+                </div>
+                <p className="text-xs text-secondary-400">
+                  الفترة: {health.ai.usage.from_date} ← {health.ai.usage.to_date}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="rounded-xl border border-secondary-200 bg-secondary-50/60 p-3">
+                  <p className="text-xs text-secondary-500">طلبات اليوم</p>
+                  <p className="text-2xl font-extrabold text-secondary-900 mt-1">{formatNumber(health.ai.usage.today.requests)}</p>
+                  <p className="text-xs text-secondary-400 mt-1">
+                    نجاح {successRate(health.ai.usage.today.successes, health.ai.usage.today.requests)}%
+                  </p>
+                </div>
+                <div className="rounded-xl border border-secondary-200 bg-secondary-50/60 p-3">
+                  <p className="text-xs text-secondary-500">طلبات 31 يوم</p>
+                  <p className="text-2xl font-extrabold text-secondary-900 mt-1">{formatNumber(health.ai.usage.period.requests)}</p>
+                  <p className="text-xs text-secondary-400 mt-1">
+                    فشل {formatNumber(health.ai.usage.period.failures)}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-warning-200 bg-warning-50/60 p-3">
+                  <p className="text-xs text-warning-700">Quota / 429 Hits</p>
+                  <p className="text-2xl font-extrabold text-warning-700 mt-1">{formatNumber(health.ai.usage.period.capacity_errors)}</p>
+                  <p className="text-xs text-warning-600 mt-1">محاولات وصلت لحد السعة</p>
+                </div>
+                <div className="rounded-xl border border-primary-200 bg-primary-50/60 p-3">
+                  <p className="text-xs text-primary-700">توكنز مسجلة</p>
+                  <p className="text-2xl font-extrabold text-primary-700 mt-1">{formatCompact(health.ai.usage.period.total_tokens)}</p>
+                  <p className="text-xs text-primary-600 mt-1">
+                    In {formatCompact(health.ai.usage.period.prompt_tokens)} · Out {formatCompact(health.ai.usage.period.completion_tokens)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-secondary-200 text-secondary-500">
+                      <th className="text-right p-3">المزود</th>
+                      <th className="text-right p-3">الطلبات</th>
+                      <th className="text-right p-3">النجاح</th>
+                      <th className="text-right p-3">Quota/429</th>
+                      <th className="text-right p-3">التوكنز</th>
+                      <th className="text-right p-3">متوسط الزمن</th>
+                      <th className="text-right p-3">آخر استخدام</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {health.ai.usage.providers.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-6 text-center text-secondary-400">
+                          لم تُسجل طلبات بعد منذ تفعيل عداد الاستخدام.
+                        </td>
+                      </tr>
+                    ) : health.ai.usage.providers.map((u) => (
+                      <tr key={u.provider} className="border-b border-secondary-100">
+                        <td className="p-3 font-bold text-secondary-900">{u.provider}</td>
+                        <td className="p-3">{formatNumber(u.requests)}</td>
+                        <td className="p-3">
+                          <span className="font-semibold text-success-700">{successRate(u.successes, u.requests)}%</span>
+                          <span className="text-xs text-secondary-400"> · {formatNumber(u.successes)}/{formatNumber(u.failures)}</span>
+                        </td>
+                        <td className="p-3">
+                          <span className={u.capacity_errors > 0 ? 'font-bold text-warning-700' : 'text-secondary-400'}>
+                            {formatNumber(u.capacity_errors)}
+                          </span>
+                        </td>
+                        <td className="p-3">{u.total_tokens > 0 ? formatCompact(u.total_tokens) : '—'}</td>
+                        <td className="p-3">{u.avg_latency_ms > 0 ? `${formatNumber(u.avg_latency_ms)} ms` : '—'}</td>
+                        <td className="p-3">{formatDate(u.last_used_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {health.ai.usage.models.length > 0 && (
+                <div className="rounded-xl border border-secondary-200 overflow-hidden">
+                  <div className="px-4 py-3 bg-secondary-50 border-b border-secondary-200">
+                    <h4 className="font-bold text-secondary-900">أكثر النماذج استخدامًا</h4>
+                  </div>
+                  <div className="divide-y divide-secondary-100">
+                    {health.ai.usage.models.slice(0, 8).map((m) => (
+                      <div key={`${m.provider}:${m.model}`} className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-secondary-900 truncate" dir="ltr">{m.model}</p>
+                          <p className="text-xs text-secondary-400">{m.provider}</p>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-secondary-500">
+                          <span>{formatNumber(m.requests)} طلب</span>
+                          <span>{formatNumber(m.capacity_errors)} quota</span>
+                          <span>{m.total_tokens > 0 ? `${formatCompact(m.total_tokens)} token` : 'token usage غير متاح'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="card space-y-4">
             <div>
