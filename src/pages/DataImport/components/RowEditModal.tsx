@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { X, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { AppDialog } from '../../../components/ui/AppDialog';
+import { PAYMENT_METHOD_LABELS, POLICY_TYPE_LABELS } from '../../../lib/supabase';
 import { IMPORT_COLUMNS, type ParsedRow } from '../types';
 import { revalidateRow, type ImportAgent } from '../services/dataImportService';
 
@@ -45,12 +46,64 @@ export function RowEditModal({ row, agents, onCancel, onSave }: RowEditModalProp
               <label className="input-label">
                 {col.header}{col.required && ' *'}
               </label>
-              <input
-                value={values[col.key] ?? ''}
-                onChange={(e) => handleChange(col.key, e.target.value)}
-                className="input-field"
-                dir={col.key === 'phone' || col.key === 'national_id' ? 'ltr' : undefined}
-              />
+              {col.key === 'agent_name' && agents.length > 0 && (
+                <p className="text-xs text-secondary-500 mb-1">
+                  القائمة تعرض فقط الوكلاء النشطين المتاحين لك داخل نطاق إدارتك.
+                </p>
+              )}
+              {col.key === 'agent_name' && agents.length > 0 ? (
+                <select
+                  value={values[col.key] ?? ''}
+                  onChange={(e) => handleChange(col.key, e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">اختر الوكيل المسؤول</option>
+                  {agents.map((agent) => (
+                    <option key={agent.id} value={agent.name}>{agent.name}</option>
+                  ))}
+                </select>
+              ) : col.key === 'marital_status' ? (
+                <select
+                  value={values[col.key] ?? ''}
+                  onChange={(e) => handleChange(col.key, e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">بدون تحديد</option>
+                  <option value="أعزب">أعزب / عزباء</option>
+                  <option value="متزوج">متزوج / متزوجة</option>
+                  <option value="مطلق">مطلق / مطلقة</option>
+                  <option value="أرمل">أرمل / أرملة</option>
+                </select>
+              ) : col.key === 'policy_type' ? (
+                <select
+                  value={values[col.key] ?? ''}
+                  onChange={(e) => handleChange(col.key, e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">اختر نوع الوثيقة</option>
+                  {Object.values(POLICY_TYPE_LABELS).map((label) => (
+                    <option key={label} value={label}>{label}</option>
+                  ))}
+                </select>
+              ) : col.key === 'payment_method' ? (
+                <select
+                  value={values[col.key] ?? ''}
+                  onChange={(e) => handleChange(col.key, e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">اختر طريقة السداد</option>
+                  {Object.values(PAYMENT_METHOD_LABELS).map((label) => (
+                    <option key={label} value={label}>{label}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  value={values[col.key] ?? ''}
+                  onChange={(e) => handleChange(col.key, e.target.value)}
+                  className="input-field"
+                  dir={col.key === 'phone' || col.key === 'national_id' ? 'ltr' : undefined}
+                />
+              )}
             </div>
           ))}
         </div>
