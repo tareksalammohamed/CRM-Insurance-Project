@@ -17,7 +17,7 @@ import { NotifyProvider } from './lib/notify';
 import { initOfflineSync, stopOfflineSync } from './lib/offlineSync';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { RequireRole } from './components/RequireRole';
-import { isNotAgent, canAccessDailyReports } from './config/navigation';
+import { isNotAgent, canAccessDailyReports, canAccessOperationalPages } from './config/navigation';
 import { canManageUsers, canViewOrgStructure, canViewSettings, canViewMonthlyClosing, canManageBranches, canManageAI } from './lib/supabase';
 import { HelpProvider } from './features/help/HelpContext';
 import { HelpPanel } from './features/help/HelpPanel';
@@ -165,26 +165,26 @@ function AppLayout() {
             <Suspense fallback={<LoadingSpinner />}>
               <Routes>
                 <Route path="/"                element={<Dashboard />} />
-                <Route path="/customers"       element={<Customers />} />
-                <Route path="/policies"        element={<Policies />} />
-                <Route path="/policies/:id"    element={<PolicyDetail />} />
-                <Route path="/collection"      element={<Collection />} />
-                <Route path="/commissions"     element={<Commissions />} />
+                <Route path="/customers"       element={<RequireRole check={canAccessOperationalPages}><Customers /></RequireRole>} />
+                <Route path="/policies"        element={<RequireRole check={canAccessOperationalPages}><Policies /></RequireRole>} />
+                <Route path="/policies/:id"    element={<RequireRole check={canAccessOperationalPages}><PolicyDetail /></RequireRole>} />
+                <Route path="/collection"      element={<RequireRole check={canAccessOperationalPages}><Collection /></RequireRole>} />
+                <Route path="/commissions"     element={<RequireRole check={canAccessOperationalPages}><Commissions /></RequireRole>} />
                 <Route path="/users"           element={<RequireRole check={canManageUsers}><Users /></RequireRole>} />
-                <Route path="/reports"         element={<RequireRole check={isNotAgent}><Reports /></RequireRole>} />
-                <Route path="/monthly-closing" element={<RequireRole check={canViewMonthlyClosing}><MonthlyClosing /></RequireRole>} />
-                <Route path="/cancellations"   element={<Cancellations />} />
-                <Route path="/org-structure"   element={<RequireRole check={canViewOrgStructure}><OrgStructure /></RequireRole>} />
+                <Route path="/reports"         element={<RequireRole check={(role) => canAccessOperationalPages(role) && isNotAgent(role)}><Reports /></RequireRole>} />
+                <Route path="/monthly-closing" element={<RequireRole check={(role) => canAccessOperationalPages(role) && canViewMonthlyClosing(role)}><MonthlyClosing /></RequireRole>} />
+                <Route path="/cancellations"   element={<RequireRole check={canAccessOperationalPages}><Cancellations /></RequireRole>} />
+                <Route path="/org-structure"   element={<RequireRole check={(role) => canAccessOperationalPages(role) && canViewOrgStructure(role)}><OrgStructure /></RequireRole>} />
                 <Route path="/activity-log"    element={<RequireRole check={isNotAgent}><ActivityLog /></RequireRole>} />
-                <Route path="/data-import"     element={<RequireRole check={isNotAgent}><DataImport /></RequireRole>} />
+                <Route path="/data-import"     element={<RequireRole check={(role) => canAccessOperationalPages(role) && isNotAgent(role)}><DataImport /></RequireRole>} />
                 <Route path="/profile"         element={<Profile />} />
                 <Route path="/subscriptions-admin" element={<RequireRole check={canViewSettings}><SubscriptionsAdminPage /></RequireRole>} />
                 <Route path="/branches"        element={<RequireRole check={canManageBranches}><BranchesAdminPage /></RequireRole>} />
                 <Route path="/settings"        element={<RequireRole check={canViewSettings}><Settings /></RequireRole>} />
                 <Route path="/ai-settings"     element={<RequireRole check={canManageAI}><AISettingsPage /></RequireRole>} />
                 <Route path="/system-health"    element={<RequireRole check={canManageAI}><SystemHealth /></RequireRole>} />
-                <Route path="/jobs"             element={<JobCenter />} />
-                <Route path="/price-calculator" element={<PriceCalculator />} />
+                <Route path="/jobs"             element={<RequireRole check={canAccessOperationalPages}><JobCenter /></RequireRole>} />
+                <Route path="/price-calculator" element={<RequireRole check={canAccessOperationalPages}><PriceCalculator /></RequireRole>} />
                 <Route path="/daily-reports"    element={<RequireRole check={canAccessDailyReports}><DailyReports /></RequireRole>} />
                 <Route path="/help"             element={<HelpCenterPage />} />
               </Routes>

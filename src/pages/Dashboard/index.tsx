@@ -7,8 +7,10 @@ import { DashboardTargets } from './components/DashboardTargets';
 import { DashboardPerformance } from './components/DashboardPerformance';
 import { DashboardKPIs } from './components/DashboardKPIs';
 import { DashboardCharts } from './components/DashboardCharts';
+import { useAuth } from '../../hooks/useAuth';
+import { AdminDashboard } from '../AdminDashboard';
 
-export function Dashboard() {
+function OperationalDashboard() {
   const {
     stats,
     loading,
@@ -103,4 +105,15 @@ export function Dashboard() {
       </section>
     </div>
   );
+}
+
+
+export function Dashboard() {
+  const { user } = useAuth();
+
+  if (user?.role === 'super_admin') {
+    return <AdminDashboard />;
+  }
+
+  return <OperationalDashboard />;
 }
