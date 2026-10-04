@@ -608,11 +608,15 @@ async function tryOcrRewrite(
       return { messages: rewritten, provider: row.provider };
     } catch (ocrErr) {
       const message = ocrErr instanceof Error ? ocrErr.message : "فشل استخراج النص عبر OCR";
-      await adminClient
-        .from("ai_providers")
-        .update({ status: "error", last_error: message, last_tested_at: new Date().toISOString() })
-        .eq("provider", row.provider);
-      // استمرار تلقائي لمزود OCR التالي حسب الأولوية إن وجد
+      // 401/403 فقط تعتبر مشكلة إعداد دائمة. انتهاء الحصة/429 أو الشبكة
+      // لا يعطّل OCR حتى فحص الست ساعات؛ نسمح للطلب الحالي يكمل مباشرة
+      // على Vision أو مزود OCR تالٍ، ويعود OCR تلقائياً لاحقاً.
+      if (isPersistentProviderError(message)) {
+        await adminClient
+          .from("ai_providers")
+          .update({ status: "error", last_error: message, last_tested_at: new Date().toISOString() })
+          .eq("provider", row.provider);
+      }
       continue;
     }
   }
