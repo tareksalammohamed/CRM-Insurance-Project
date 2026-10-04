@@ -5242,3 +5242,233 @@ html.dark .dashboard-page .drilldown-card {
   background: #10241f !important;
   border-color: rgb(143 212 183 / 0.12) !important;
 }
+
+
+/* ============================================================================
+   GLOBAL DARK MODE REFRESH
+   Final compatibility layer for Tailwind light-surface utilities and premium
+   components. Print/image export surfaces intentionally stay light.
+============================================================================ */
+html.dark {
+  --page-bg: #06120f;
+  --surface: #0c1b17;
+  --surface-soft: #11241f;
+  --surface-sunken: #0a1714;
+  --ink: #edf8f3;
+  --ink-soft: #c8ddd4;
+  --muted-ink: #91aa9f;
+  --faint-ink: #6f8a7f;
+  --line: #1d352e;
+  --line-strong: #2b4b41;
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.24);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.28), 0 8px 22px -16px rgb(0 0 0 / 0.72);
+  --shadow-md: 0 4px 10px -6px rgb(0 0 0 / 0.42), 0 18px 36px -22px rgb(0 0 0 / 0.76);
+  --shadow-lg: 0 8px 22px -12px rgb(0 0 0 / 0.48), 0 28px 54px -30px rgb(0 0 0 / 0.82);
+}
+
+html.dark body,
+html.dark .app-shell {
+  background:
+    radial-gradient(circle at 88% -8%, rgb(22 161 115 / 0.10), transparent 26rem),
+    radial-gradient(circle at 0% 100%, rgb(15 91 89 / 0.08), transparent 30rem),
+    var(--page-bg) !important;
+  color: var(--ink);
+}
+
+html.dark .app-shell::before {
+  background:
+    linear-gradient(90deg, rgb(143 212 183 / 0.025) 1px, transparent 1px),
+    linear-gradient(rgb(143 212 183 / 0.025) 1px, transparent 1px) !important;
+  opacity: 0.5;
+}
+
+/* Tailwind light surfaces that were leaking bright white into dark mode. */
+html.dark .bg-white {
+  background-color: var(--surface) !important;
+}
+html.dark [class~="bg-white/95"],
+html.dark [class~="bg-white/90"],
+html.dark [class~="bg-white/80"],
+html.dark [class~="bg-white/75"],
+html.dark [class~="bg-white/70"],
+html.dark [class~="bg-white/60"],
+html.dark [class~="bg-white/50"] {
+  background-color: rgb(12 27 23 / 0.96) !important;
+}
+html.dark .from-white {
+  --tw-gradient-from: #0c1b17 var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(12 27 23 / 0) var(--tw-gradient-to-position) !important;
+}
+html.dark .via-white {
+  --tw-gradient-to: rgb(12 27 23 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), #10241f var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+}
+html.dark .to-white {
+  --tw-gradient-to: #0c1b17 var(--tw-gradient-to-position) !important;
+}
+
+/* Common pale backgrounds should become tonal dark surfaces, not grey-white. */
+html.dark .bg-secondary-50,
+html.dark [class~="bg-secondary-50/50"],
+html.dark [class~="bg-secondary-50/70"],
+html.dark [class~="bg-secondary-50/80"],
+html.dark [class~="bg-secondary-50/90"] {
+  background-color: #0e211c !important;
+}
+html.dark [class~="bg-primary-50/40"],
+html.dark [class~="bg-primary-50/50"],
+html.dark [class~="bg-primary-50/60"] {
+  background-color: rgb(18 60 49 / 0.72) !important;
+}
+
+/* Header, bottom nav, drawers, sheets and sticky modal headers. */
+html.dark .app-header,
+html.dark .app-header.is-scrolled {
+  background: rgb(7 18 15 / 0.94) !important;
+  border-bottom-color: rgb(143 212 183 / 0.10) !important;
+  box-shadow: 0 10px 30px -26px rgb(0 0 0 / 0.9) !important;
+}
+html.dark .mobile-bottom-nav {
+  background: rgb(10 24 20 / 0.96) !important;
+  border-color: rgb(143 212 183 / 0.12) !important;
+  box-shadow: 0 18px 38px -22px rgb(0 0 0 / 0.88) !important;
+}
+html.dark .mobile-nav-item {
+  color: var(--muted-ink) !important;
+}
+html.dark .mobile-nav-item.is-active > div {
+  background: rgb(22 161 115 / 0.13) !important;
+  color: #87e6bd !important;
+  box-shadow: inset 0 0 0 1px rgb(143 212 183 / 0.10) !important;
+}
+html.dark .mobile-sidebar,
+html.dark .mobile-sidebar-panel,
+html.dark aside[class*="bg-white"],
+html.dark div[class*="rounded-l-3xl"][class*="bg-white"] {
+  background: #0b1a16 !important;
+  border-color: var(--line) !important;
+}
+
+/* General interactive light tiles / chips / buttons. */
+html.dark button.bg-white,
+html.dark a.bg-white,
+html.dark label.bg-white,
+html.dark .hover\:bg-secondary-50:hover,
+html.dark .hover\:bg-primary-50:hover,
+html.dark .hover\:bg-primary-50\/50:hover {
+  background-color: var(--surface-soft) !important;
+}
+html.dark button.bg-white:hover,
+html.dark a.bg-white:hover {
+  background-color: #17352d !important;
+  border-color: #335b4e !important;
+}
+
+/* Cards and nested panels: stronger separation in dark mode. */
+html.dark .card,
+html.dark .kpi-card,
+html.dark .table-container,
+html.dark .surface-section,
+html.dark .surface-toolbar,
+html.dark .surface-tabs,
+html.dark .modal-content,
+html.dark .dropdown-menu,
+html.dark .app-action-menu-anchored,
+html.dark .workspace-toolbar-section,
+html.dark .col-panel,
+html.dark .col-kpi,
+html.dark .detail-field,
+html.dark .org-node,
+html.dark .org-tree-card,
+html.dark .org-structure-card {
+  background: linear-gradient(180deg, #0e201b 0%, #0b1916 100%) !important;
+  border-color: #203a32 !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.018),
+    0 10px 26px -20px rgb(0 0 0 / 0.78) !important;
+}
+
+html.dark .surface-sunken,
+html.dark .drilldown-action,
+html.dark .drilldown-card,
+html.dark .detail-section-toggle,
+html.dark .price-calculator-form-grid > .form-group {
+  background: #10241f !important;
+  border-color: #28463c !important;
+}
+
+/* Sticky table/modal/sheet headers must not stay white. */
+html.dark .sticky.bg-white,
+html.dark thead.bg-white,
+html.dark .table-container thead,
+html.dark .modal-form-header,
+html.dark .modal-actions {
+  background: #10241f !important;
+  border-color: var(--line) !important;
+}
+
+/* Reports and import preview surfaces. */
+html.dark .workspace-page-reports [class~="bg-white"],
+html.dark .workspace-page-users [class~="bg-white"],
+html.dark .workspace-page-settings [class~="bg-white"],
+html.dark .workspace-page-profile [class~="bg-white"],
+html.dark .workspace-page-collection [class~="bg-white"],
+html.dark .workspace-page-customers [class~="bg-white"],
+html.dark .workspace-page-policies [class~="bg-white"],
+html.dark .daily-reports-page [class~="bg-white"],
+html.dark .monthly-closing-page [class~="bg-white"] {
+  background-color: var(--surface) !important;
+}
+
+/* Dark dashboard should keep the branded hero but never restore white KPI cards. */
+html.dark .dashboard-page .dashboard-stats-grid .kpi-card,
+html.dark .dashboard-page .dashboard-kpis-grid .kpi-card,
+html.dark .dashboard-page .dashboard-section-block > .card,
+html.dark .dashboard-page .dashboard-targets-panel,
+html.dark .dashboard-page .dashboard-performance-panel {
+  background: linear-gradient(180deg, #0e201b 0%, #0b1916 100%) !important;
+  border-color: #28463c !important;
+  box-shadow: 0 10px 28px -20px rgb(0 0 0 / 0.82) !important;
+}
+html.dark .dashboard-page .drilldown-action,
+html.dark .dashboard-page .drilldown-card {
+  background: #10241f !important;
+  border-color: #315247 !important;
+}
+
+/* Login and subscription/admin components that use direct white utilities. */
+html.dark .login-card,
+html.dark [class*="Subscription"],
+html.dark .subscription-card {
+  color: var(--ink);
+}
+html.dark .login-card {
+  background: rgb(12 27 23 / 0.97) !important;
+  border-color: #25443a !important;
+}
+
+/* Text and separators inside components that were designed only for light mode. */
+html.dark .shadow-sm,
+html.dark .shadow-soft,
+html.dark .shadow-elevated {
+  --tw-shadow-color: rgb(0 0 0 / 0.55);
+}
+html.dark hr,
+html.dark .border-b,
+html.dark .border-t {
+  border-color: var(--line);
+}
+
+/* Preserve intentionally light print/export documents regardless of app theme. */
+html.dark .print-report,
+html.dark [data-print-image-stage],
+html.dark [data-print-image-stage] .bg-white,
+html.dark .org-formation-report {
+  color-scheme: light !important;
+}
+html.dark .print-report,
+html.dark [data-print-image-stage],
+html.dark .org-formation-report {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+}
