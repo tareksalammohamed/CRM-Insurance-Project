@@ -100,6 +100,7 @@ export interface DocumentExtractionResult {
   processedPages: number;
   totalPages: number;
   retryAfterSeconds?: number;
+  pageLimitReached?: boolean;
 }
 
 const UNAVAILABLE_MESSAGE =
@@ -119,49 +120,82 @@ export async function extractRowsFromDocument(
   agents: ImportAgent[],
   onProgress?: (progress: DocumentExtractionProgress) => void,
 ): Promise<DocumentExtractionResult> {
+  const MAX_IMPORT_PDF_PAGES = 60;
+  const RENDER_CHUNK_PAGES = 6;
+
   try {
-    const { images, totalPages, truncated } = await documentFileToImagesWithMeta(file, kind, 12);
     const extractedRawRows: Array<Record<string, unknown>> = [];
     const seenPolicies = new Set<string>();
     let processedPages = 0;
+    let totalPages = kind === 'image' ? 1 : 0;
+    let nextPage = 1;
     let lastRetryAfterSeconds: number | undefined;
 
-    for (let pageIndex = 0; pageIndex < images.length; pageIndex++) {
-      const priorPolicies = [...seenPolicies].slice(-80);
-      const contextText = priorPolicies.length
-        ? `تم استخراج أرقام الوثائق التالية من الصفحات السابقة، فلا تكررها إلا إذا كانت الصفحة الحالية تحتوي سجلاً مختلفاً بوضوح: ${priorPolicies.join('، ')}`
-        : 'هذه أول صفحة/صورة يتم تحليلها.';
+    while (true) {
+      const remainingBudget = kind === 'pdf'
+        ? Math.max(0, MAX_IMPORT_PDF_PAGES - processedPages)
+        : 1;
+      if (remainingBudget <= 0) break;
 
-      const userContent: AIContentPart[] = [
-        {
-          type: 'text',
-          text: `حلّل الصفحة ${pageIndex + 1} من ${totalPages}. استخرج كل السجلات الموجودة فى هذه الصفحة فقط وفق القواعد المذكورة. ${contextText}`,
-        },
-        { type: 'image_url', image_url: { url: images[pageIndex] } },
-      ];
-
-      const result = await askAI(
-        [
-          { role: 'system', content: buildSystemPrompt() },
-          { role: 'user', content: userContent },
-        ],
-        { maxTokens: 4000, temperature: 0.1, purpose: 'data_import' }
+      const { images, totalPages: detectedTotalPages } = await documentFileToImagesWithMeta(
+        file,
+        kind,
+        Math.min(RENDER_CHUNK_PAGES, remainingBudget),
+        nextPage,
       );
+      totalPages = detectedTotalPages;
+      if (images.length === 0) break;
 
-      if (!result.success || !result.content) {
-        lastRetryAfterSeconds = result.retryAfterSeconds;
-        const capacityExhausted =
-          result.failureType === 'capacity_exhausted' ||
-          result.failureType === 'gateway_rate_limited';
+      for (let localIndex = 0; localIndex < images.length; localIndex++) {
+        const pageNumber = nextPage + localIndex;
+        const priorPolicies = [...seenPolicies].slice(-80);
+        const contextText = priorPolicies.length
+          ? `تم استخراج أرقام الوثائق التالية من الصفحات السابقة، فلا تكررها إلا إذا كانت الصفحة الحالية تحتوي سجلاً مختلفاً بوضوح: ${priorPolicies.join('، ')}`
+          : 'هذه أول صفحة/صورة يتم تحليلها.';
 
-        if (extractedRawRows.length > 0) {
-          const rows = extractedRawRows.map((extracted, idx) =>
-            buildParsedRow(idx + 2, sanitizeExtractedRow(extracted), agents)
-          );
+        const userContent: AIContentPart[] = [
+          {
+            type: 'text',
+            text: `حلّل الصفحة ${pageNumber} من ${totalPages}. استخرج كل السجلات الموجودة فى هذه الصفحة فقط وفق القواعد المذكورة. ${contextText}`,
+          },
+          { type: 'image_url', image_url: { url: images[localIndex] } },
+        ];
+
+        const result = await askAI(
+          [
+            { role: 'system', content: buildSystemPrompt() },
+            { role: 'user', content: userContent },
+          ],
+          { maxTokens: 4000, temperature: 0.1, purpose: 'data_import' }
+        );
+
+        if (!result.success || !result.content) {
+          lastRetryAfterSeconds = result.retryAfterSeconds;
+          const capacityExhausted =
+            result.failureType === 'capacity_exhausted' ||
+            result.failureType === 'gateway_rate_limited';
+
+          if (extractedRawRows.length > 0) {
+            const rows = extractedRawRows.map((extracted, idx) =>
+              buildParsedRow(idx + 2, sanitizeExtractedRow(extracted), agents)
+            );
+            return {
+              rows,
+              error: null,
+              partial: true,
+              capacityExhausted,
+              processedPages,
+              totalPages,
+              retryAfterSeconds: lastRetryAfterSeconds,
+            };
+          }
+
           return {
-            rows,
-            error: null,
-            partial: true,
+            rows: [],
+            error: capacityExhausted
+              ? 'انتهت الحصة المتاحة حالياً لدى كل نماذج ومزودي الذكاء الاصطناعي قبل بدء استخراج الملف. لم يتم حفظ أي بيانات.'
+              : (result.error || UNAVAILABLE_MESSAGE),
+            partial: false,
             capacityExhausted,
             processedPages,
             totalPages,
@@ -169,72 +203,53 @@ export async function extractRowsFromDocument(
           };
         }
 
-        const error = capacityExhausted
-          ? 'انتهت الحصة المتاحة حالياً لدى كل نماذج ومزودي الذكاء الاصطناعي قبل بدء استخراج الملف. لم يتم حفظ أي بيانات.'
-          : (result.error || UNAVAILABLE_MESSAGE);
-
-        return {
-          rows: [],
-          error,
-          partial: false,
-          capacityExhausted,
-          processedPages,
-          totalPages,
-          retryAfterSeconds: lastRetryAfterSeconds,
-        };
-      }
-
-      let parsed: RawExtractionResponse;
-      try {
-        parsed = parseExtractionResponse(result.content);
-      } catch {
-        // رد نموذج غير صالح لا يلغي الصفحات السابقة. نتوقف ونُبقي ما تم.
-        if (extractedRawRows.length > 0) {
-          const rows = extractedRawRows.map((extracted, idx) =>
-            buildParsedRow(idx + 2, sanitizeExtractedRow(extracted), agents)
-          );
+        let parsed: RawExtractionResponse;
+        try {
+          parsed = parseExtractionResponse(result.content);
+        } catch {
+          if (extractedRawRows.length > 0) {
+            const rows = extractedRawRows.map((extracted, idx) =>
+              buildParsedRow(idx + 2, sanitizeExtractedRow(extracted), agents)
+            );
+            return {
+              rows,
+              error: null,
+              partial: true,
+              capacityExhausted: false,
+              processedPages,
+              totalPages,
+            };
+          }
           return {
-            rows,
-            error: null,
-            partial: true,
+            rows: [],
+            error: UNAVAILABLE_MESSAGE,
+            partial: false,
             capacityExhausted: false,
             processedPages,
             totalPages,
           };
         }
-        return {
-          rows: [],
-          error: UNAVAILABLE_MESSAGE,
-          partial: false,
-          capacityExhausted: false,
+
+        for (const extracted of parsed.rows || []) {
+          const sanitized = sanitizeExtractedRow(extracted);
+          const policyNumber = String(sanitized.policy_number || '').trim().toLowerCase();
+          if (policyNumber && seenPolicies.has(policyNumber)) continue;
+          if (policyNumber) seenPolicies.add(policyNumber);
+          extractedRawRows.push(sanitized);
+        }
+
+        processedPages = pageNumber;
+        onProgress?.({
           processedPages,
           totalPages,
-        };
+          extractedRows: extractedRawRows.length,
+          provider: result.provider,
+          model: result.model,
+        });
       }
 
-      for (const extracted of parsed.rows || []) {
-        const sanitized = sanitizeExtractedRow(extracted);
-        const policyNumber = String(sanitized.policy_number || '').trim().toLowerCase();
-        const customerName = String(sanitized.customer_name || '').trim().toLowerCase();
-        const dedupeKey = policyNumber ? `policy:${policyNumber}` : `customer:${customerName}:${extractedRawRows.length}`;
-
-        if (policyNumber && seenPolicies.has(policyNumber)) continue;
-        if (policyNumber) seenPolicies.add(policyNumber);
-
-        // dedupeKey reserved for readability/future expansion; policy number is
-        // the authoritative de-duplication signal for extracted documents.
-        void dedupeKey;
-        extractedRawRows.push(sanitized);
-      }
-
-      processedPages = pageIndex + 1;
-      onProgress?.({
-        processedPages,
-        totalPages,
-        extractedRows: extractedRawRows.length,
-        provider: result.provider,
-        model: result.model,
-      });
+      if (kind === 'image' || processedPages >= totalPages) break;
+      nextPage = processedPages + 1;
     }
 
     if (extractedRawRows.length === 0) {
@@ -252,13 +267,16 @@ export async function extractRowsFromDocument(
       buildParsedRow(idx + 2, sanitizeExtractedRow(extracted), agents)
     );
 
+    const pageLimitReached = kind === 'pdf' && totalPages > MAX_IMPORT_PDF_PAGES && processedPages >= MAX_IMPORT_PDF_PAGES;
+
     return {
       rows,
       error: null,
-      partial: truncated,
+      partial: processedPages < totalPages,
       capacityExhausted: false,
       processedPages,
       totalPages,
+      pageLimitReached,
     };
   } catch {
     return {
