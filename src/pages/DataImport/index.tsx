@@ -20,8 +20,9 @@ import {
 import clsx from 'clsx';
 
 import { useAuth } from '../../hooks/useAuth';
+import { useBranchContext } from '../../lib/branchContext';
 import type { ParsedRow, ImportSummary } from './types';
-import { downloadTemplateFile, parseWorkbookFile, importRows, fetchImportAgents, exportErrorReport, type ImportAgent } from './services/dataImportService';
+import { downloadTemplateFile, parseWorkbookFile, importRows, fetchImportAgents, exportErrorReport, revalidateRow, type ImportAgent } from './services/dataImportService';
 import { detectDocumentKind, extractRowsFromDocument } from './services/aiDocumentExtractor';
 import { RowEditModal } from './components/RowEditModal';
 
@@ -29,6 +30,7 @@ type Stage = 'idle' | 'parsed' | 'importing' | 'done';
 
 export function DataImport() {
   const { user } = useAuth();
+  const { currentBranchId } = useBranchContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -74,7 +76,7 @@ export function DataImport() {
       // نجيب قائمة وكلاء فريق المستورِد قبل التحليل عشان نطابق عمود "اسم
       // الوكيل" محلياً (تطبيع + تشابه) بدل ما نكتشف الاسم الغلط بعد فشل
       // كل صف في السيرفر واحداً واحداً
-      const fetchedAgents = user ? await fetchImportAgents(user) : [];
+      const fetchedAgents = user ? await fetchImportAgents(user, currentBranchId) : [];
       setAgents(fetchedAgents);
 
       const documentKind = detectDocumentKind(file);
@@ -126,7 +128,7 @@ export function DataImport() {
     const rowsToImport = parsedRows.filter((r) => !excludedRows.has(r.rowNumber));
     setStage('importing');
     setProgress({ done: 0, total: rowsToImport.length });
-    const result = await importRows(rowsToImport, (_r, done, total) => {
+    const result = await importRows(rowsToImport, currentBranchId, (_r, done, total) => {
       setProgress({ done, total });
     });
     setSummary(result);
@@ -150,6 +152,14 @@ export function DataImport() {
   const handleRowSaved = (updatedRow: ParsedRow) => {
     setParsedRows((prev) => prev.map((r) => (r.rowNumber === updatedRow.rowNumber ? updatedRow : r)));
     setEditingRow(null);
+  };
+
+  const handleAgentQuickSelect = (row: ParsedRow, agentName: string) => {
+    const updated = revalidateRow({
+      ...row,
+      raw: { ...row.raw, agent_name: agentName },
+    }, agents);
+    setParsedRows((prev) => prev.map((item) => item.rowNumber === row.rowNumber ? updated : item));
   };
 
   const toggleExcludeRow = (rowNumber: number) => {
@@ -321,7 +331,25 @@ export function DataImport() {
                         >
                           <td className="py-2 px-2 text-secondary-500">{row.rowNumber}</td>
                           <td className="py-2 px-2">{row.raw['customer_name'] || '-'}</td>
-                          <td className="py-2 px-2">{row.raw['agent_name'] || '-'}</td>
+                          <td className="py-2 px-2 min-w-[180px]">
+                            {!isExcluded && row.clientError?.includes('الوكيل') && agents.length > 0 ? (
+                              <select
+                                value=""
+                                onChange={(e) => {
+                                  if (e.target.value) handleAgentQuickSelect(row, e.target.value);
+                                }}
+                                className="input-field py-1.5 text-xs min-w-[170px]"
+                                aria-label={`اختيار الوكيل للصف ${row.rowNumber}`}
+                              >
+                                <option value="">اختر الوكيل الصحيح</option>
+                                {agents.map((agent) => (
+                                  <option key={agent.id} value={agent.name}>{agent.name}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              row.raw['agent_name'] || '-'
+                            )}
+                          </td>
                           <td className="py-2 px-2">{row.raw['policy_number'] || '-'}</td>
                           <td className="py-2 px-2">
                             {isExcluded ? (
