@@ -200,7 +200,7 @@ export function JobCenter() {
               {(job.progress_total > 0 || job.status === 'running') && (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs text-secondary-500">
-                    <span>{job.progress_total > 0 ? \`\${job.progress_current} / \${job.progress_total}\` : 'جاري التنفيذ'}</span>
+                    <span>{job.progress_total > 0 ? `${job.progress_current} / ${job.progress_total}` : 'جاري التنفيذ'}</span>
                     <span>{progress}%</span>
                   </div>
                   <div className="h-2 rounded-full bg-secondary-100 overflow-hidden">
@@ -209,7 +209,7 @@ export function JobCenter() {
                         'h-full rounded-full transition-all duration-300',
                         job.status === 'failed' || job.status === 'interrupted' ? 'bg-warning-500' : 'bg-primary-600'
                       )}
-                      style={{ width: \`\${progress}%\` }}
+                      style={{ width: `${progress}%` }}
                     />
                   </div>
                 </div>
