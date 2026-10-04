@@ -21,6 +21,7 @@ import {
   Sparkles,
   UserCog,
   Activity,
+  Clock3,
 } from 'lucide-react';
 import { UserRole, canManageUsers, canViewOrgStructure, canViewSettings, canManageBranches, canManageAI, getRoleLevel } from '../lib/supabase';
 
@@ -103,6 +104,7 @@ export const NAV_GROUPS: NavGroup[] = [
     isVisible: isNotAgent,
     items: [
       { path: '/data-import',        label: 'استيراد البيانات',        icon: FileUp },
+      { path: '/jobs',               label: 'مركز المهام',             icon: Clock3 },
       { path: '/activity-log',       label: 'سجل العمليات',            icon: History },
       { path: '/subscriptions-admin', label: 'الاشتراكات',             icon: WalletCards,   isVisible: canViewSettings },
       { path: '/branches',            label: 'إدارة الفروع',           icon: Building2, isVisible: canManageBranches },

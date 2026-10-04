@@ -25,6 +25,7 @@ import type { ParsedRow, ImportSummary } from './types';
 import { downloadTemplateFile, parseWorkbookFile, importRows, fetchImportAgents, exportErrorReport, revalidateRow, type ImportAgent } from './services/dataImportService';
 import { detectDocumentKind, extractRowsFromDocument } from './services/aiDocumentExtractor';
 import { RowEditModal } from './components/RowEditModal';
+import { createAppJob, finishAppJob, updateAppJob } from '../../features/jobs/jobService';
 
 type Stage = 'idle' | 'parsed' | 'importing' | 'done';
 
@@ -46,6 +47,8 @@ export function DataImport() {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [parsing, setParsing] = useState(false);
+  const activeParseJobIdRef = useRef<string | null>(null);
+  const activeImportJobIdRef = useRef<string | null>(null);
   const [aiExtractionProgress, setAiExtractionProgress] = useState<{
     processedPages: number;
     totalPages: number;
@@ -53,6 +56,24 @@ export function DataImport() {
     provider?: string;
     model?: string;
   } | null>(null);
+
+  const safeUpdateJob = (jobId: string | null, patch: Parameters<typeof updateAppJob>[1]) => {
+    if (!jobId) return;
+    void updateAppJob(jobId, patch).catch((err) => console.warn('Job Center update failed:', err));
+  };
+
+  const safeFinishJob = (
+    jobId: string | null,
+    status: Parameters<typeof finishAppJob>[1],
+    message?: string,
+    current?: number,
+    total?: number,
+    metadata?: Record<string, unknown>,
+  ) => {
+    if (!jobId) return;
+    void finishAppJob(jobId, status, message, current, total, metadata)
+      .catch((err) => console.warn('Job Center finish failed:', err));
+  };
 
   const activeRows = parsedRows.filter((r) => !excludedRows.has(r.rowNumber));
   const validRowsCount = activeRows.filter((r) => r.payload !== null).length;
@@ -82,6 +103,26 @@ export function DataImport() {
     resetAll();
     setFileName(file.name);
     setParsing(true);
+    const documentKind = detectDocumentKind(file);
+    let jobId: string | null = null;
+    if (user) {
+      try {
+        const job = await createAppJob({
+          userId: user.id,
+          branchId: currentBranchId,
+          jobType: documentKind ? 'ai_document_extract' : 'data_import_prepare',
+          title: documentKind ? `استخراج بيانات: ${file.name}` : `تحليل ملف: ${file.name}`,
+          stage: documentKind ? 'تحليل المستند بالذكاء الاصطناعي' : 'قراءة الملف ومطابقة الأعمدة',
+          message: 'بدأت المهمة',
+          metadata: { file_name: file.name, file_size: file.size, file_type: file.type || null },
+        });
+        jobId = job.id;
+        activeParseJobIdRef.current = job.id;
+      } catch (jobErr) {
+        console.warn('Job Center create failed:', jobErr);
+      }
+    }
+
     try {
       // نجيب قائمة وكلاء فريق المستورِد قبل التحليل عشان نطابق عمود "اسم
       // الوكيل" محلياً (تطبيع + تشابه) بدل ما نكتشف الاسم الغلط بعد فشل
@@ -89,7 +130,6 @@ export function DataImport() {
       const fetchedAgents = user ? await fetchImportAgents(user, currentBranchId) : [];
       setAgents(fetchedAgents);
 
-      const documentKind = detectDocumentKind(file);
       if (documentKind) {
         // ملف PDF أو صورة — لا تدعمه الطبقة الأولى أصلاً، فيُعالَج بالكامل
         // عبر طبقة الاستخراج بالذكاء الاصطناعي (لا يوجد "نظام حالي" بديل
@@ -98,11 +138,33 @@ export function DataImport() {
           file,
           documentKind,
           fetchedAgents,
-          (progress) => setAiExtractionProgress(progress),
+          (progress) => {
+            setAiExtractionProgress(progress);
+            safeUpdateJob(jobId, {
+              stage: 'استخراج الصفحات',
+              progress_current: progress.processedPages,
+              progress_total: progress.totalPages,
+              message: `تم استخراج ${progress.extractedRows} سجل حتى الآن`,
+              metadata: {
+                file_name: file.name,
+                provider: progress.provider ?? null,
+                model: progress.model ?? null,
+                extracted_rows: progress.extractedRows,
+              },
+            });
+          },
         );
         if (extraction.error) {
           setHeaderError(extraction.error);
           setStage('idle');
+          safeFinishJob(
+            jobId,
+            'failed',
+            extraction.error,
+            extraction.processedPages,
+            extraction.totalPages,
+            { file_name: file.name, extracted_rows: extraction.rows.length },
+          );
         } else {
           setParsedRows(extraction.rows);
 
@@ -123,8 +185,19 @@ export function DataImport() {
               `تم استخراج بيانات الملف بالكامل بواسطة الذكاء الاصطناعي (${extraction.processedPages} صفحة، ${extraction.rows.length} سجل). راجع الصفوف أدناه بعناية قبل الاستيراد.`
             );
           }
+          safeFinishJob(
+            jobId,
+            extraction.partial ? 'partial' : 'completed',
+            extraction.partial
+              ? 'اكتمل جزء من المستند ويمكن مراجعة الصفوف المستخرجة الآن.'
+              : 'اكتمل استخراج المستند وأصبح جاهزًا للمراجعة.',
+            extraction.processedPages,
+            extraction.totalPages,
+            { file_name: file.name, extracted_rows: extraction.rows.length },
+          );
           setStage('parsed');
         }
+        activeParseJobIdRef.current = null;
         return;
       }
 
@@ -132,13 +205,26 @@ export function DataImport() {
       if (hErr) {
         setHeaderError(hErr);
         setStage('idle');
+        safeFinishJob(jobId, 'failed', hErr, 0, 0, { file_name: file.name });
       } else {
         setParsedRows(rows);
         setAiNotice(aiUsed ? 'لم يطابق الملف نموذج الاستيراد حرفياً، فتم استخدام الذكاء الاصطناعي لمطابقة الأعمدة تلقائياً. راجع الصفوف أدناه قبل الاستيراد.' : null);
+        safeFinishJob(
+          jobId,
+          'completed',
+          `تم تحليل الملف والعثور على ${rows.length} صف للمراجعة.`,
+          rows.length,
+          rows.length,
+          { file_name: file.name, rows: rows.length, ai_column_mapping: !!aiUsed },
+        );
         setStage('parsed');
       }
+      activeParseJobIdRef.current = null;
     } catch (err: unknown) {
-      setHeaderError(friendlyError(err, 'تعذر قراءة الملف. تأكد أنه ملف صحيح غير تالف'));
+      const message = friendlyError(err, 'تعذر قراءة الملف. تأكد أنه ملف صحيح غير تالف');
+      setHeaderError(message);
+      safeFinishJob(jobId, 'failed', message, 0, 0, { file_name: file.name });
+      activeParseJobIdRef.current = null;
     } finally {
       setParsing(false);
     }
@@ -160,11 +246,61 @@ export function DataImport() {
     const rowsToImport = parsedRows.filter((r) => !excludedRows.has(r.rowNumber));
     setStage('importing');
     setProgress({ done: 0, total: rowsToImport.length });
-    const result = await importRows(rowsToImport, currentBranchId, (_r, done, total) => {
-      setProgress({ done, total });
-    });
-    setSummary(result);
-    setStage('done');
+
+    let jobId: string | null = null;
+    if (user) {
+      try {
+        const job = await createAppJob({
+          userId: user.id,
+          branchId: currentBranchId,
+          jobType: 'data_import_commit',
+          title: `استيراد البيانات${fileName ? `: ${fileName}` : ''}`,
+          stage: 'إضافة العملاء والوثائق',
+          message: 'بدأ الاستيراد إلى قاعدة البيانات',
+          progressTotal: rowsToImport.length,
+          metadata: { file_name: fileName, total_rows: rowsToImport.length },
+        });
+        jobId = job.id;
+        activeImportJobIdRef.current = job.id;
+      } catch (jobErr) {
+        console.warn('Job Center create failed:', jobErr);
+      }
+    }
+
+    try {
+      const result = await importRows(rowsToImport, currentBranchId, (_r, done, total) => {
+        setProgress({ done, total });
+        safeUpdateJob(jobId, {
+          progress_current: done,
+          progress_total: total,
+          stage: 'استيراد الصفوف',
+          message: `تمت معالجة ${done} من ${total} صف`,
+        });
+      });
+      setSummary(result);
+      safeFinishJob(
+        jobId,
+        result.failedCount > 0 ? 'partial' : 'completed',
+        result.failedCount > 0
+          ? `تم استيراد ${result.importedCount} صف وفشل ${result.failedCount} صف.`
+          : `تم استيراد ${result.importedCount} صف بنجاح.`,
+        result.totalRows,
+        result.totalRows,
+        {
+          file_name: fileName,
+          imported_count: result.importedCount,
+          failed_count: result.failedCount,
+        },
+      );
+      activeImportJobIdRef.current = null;
+      setStage('done');
+    } catch (err) {
+      const message = friendlyError(err, 'تعذر إكمال الاستيراد');
+      safeFinishJob(jobId, 'failed', message, progress.done, rowsToImport.length, { file_name: fileName });
+      activeImportJobIdRef.current = null;
+      setHeaderError(message);
+      setStage('parsed');
+    }
   };
 
   const retryFailedRows = () => {
