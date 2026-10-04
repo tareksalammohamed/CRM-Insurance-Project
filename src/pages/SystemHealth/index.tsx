@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Activity, Bot, CheckCircle2, Clock3, Database, RefreshCw, ServerCog, TriangleAlert, XCircle } from 'lucide-react';
+import { Activity, Bot, CheckCircle2, Clock3, Database, DatabaseBackup, RefreshCw, ServerCog, TriangleAlert, XCircle } from 'lucide-react';
 import clsx from 'clsx';
 import { supabase } from '../../lib/supabase';
 import { friendlyError } from '../../lib/errorMessages';
@@ -45,7 +45,7 @@ type CronHealth = {
 
 type SystemHealth = {
   checked_at: string;
-  database: { status: string; server_time: string };
+  database: { status: string; server_time: string; last_backup_export: string | null };
   ai: {
     enabled: boolean;
     models_updated_at: string | null;
@@ -143,7 +143,7 @@ export function SystemHealth() {
 
       {health && (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
             <div className="kpi-card">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-bold text-secondary-600">قاعدة البيانات</span>
@@ -178,6 +178,15 @@ export function SystemHealth() {
               </div>
               <p className="text-sm font-bold text-secondary-900 mt-4">{formatDate(health.ai.models_updated_at)}</p>
               <p className="text-xs text-secondary-400 mt-2">فحص تلقائي كل 6 ساعات</p>
+            </div>
+
+            <div className="kpi-card">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-bold text-secondary-600">آخر نسخة احتياطية</span>
+                <DatabaseBackup className="w-5 h-5 text-primary-600" />
+              </div>
+              <p className="text-sm font-bold text-secondary-900 mt-4">{formatDate(health.database.last_backup_export)}</p>
+              <p className="text-xs text-secondary-400 mt-2">آخر Backup Export مسجل</p>
             </div>
           </div>
 
