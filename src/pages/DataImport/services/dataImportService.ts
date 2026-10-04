@@ -664,6 +664,7 @@ export async function parseWorkbookFile(file: File, agents: ImportAgent[] = []):
 
   const strictMatchOk = missingHeaders.length === 0 && premiumColumnIndices.length > 0;
   let usedAIMapping = false;
+  let aiFailureType: 'capacity_exhausted' | 'gateway_rate_limited' | 'all_providers_failed' | 'unavailable' | undefined;
 
   // ===== الطبقة الثانية (AI Enhancement Layer) — تُستدعى فقط لو فشلت =====
   // المطابقة الحرفية الصارمة أعلاه. لا تُستبدل الطبقة الأولى ولا تُشغَّل
@@ -673,6 +674,7 @@ export async function parseWorkbookFile(file: File, agents: ImportAgent[] = []):
   if (!strictMatchOk) {
     const sampleRows = aoa.slice(1, 4);
     const aiAttempt = await matchColumnsWithAI(headerRow, sampleRows);
+    aiFailureType = aiAttempt.failureType;
     const aiMapping = aiAttempt.mapping;
 
     if (aiMapping) {
@@ -701,8 +703,7 @@ export async function parseWorkbookFile(file: File, agents: ImportAgent[] = []):
 
   if (!strictMatchOk && !usedAIMapping) {
     const aiCapacityExhausted =
-      typeof aiAttempt !== 'undefined' &&
-      (aiAttempt.failureType === 'capacity_exhausted' || aiAttempt.failureType === 'gateway_rate_limited');
+      aiFailureType === 'capacity_exhausted' || aiFailureType === 'gateway_rate_limited';
 
     if (aiCapacityExhausted) {
       return {
