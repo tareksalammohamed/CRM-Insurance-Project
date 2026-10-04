@@ -5472,3 +5472,67 @@ html.dark .org-formation-report {
   background: #ffffff !important;
   color: #1f2937 !important;
 }
+
+
+/* ============================================================================
+   REPORTS DARK MODE — screen vs print separation
+   /reports uses .print-report as its live page root, so it must stay dark on
+   screen and switch to white only while actually printing/exporting.
+============================================================================ */
+@media screen {
+  html.dark .workspace-page-reports.print-report {
+    background: transparent !important;
+    color: var(--ink) !important;
+    color-scheme: dark !important;
+  }
+
+  html.dark .workspace-page-reports .bg-amber-50,
+  html.dark .workspace-page-reports [class~="bg-amber-50/70"] {
+    background-color: #3a2d13 !important;
+  }
+
+  html.dark .workspace-page-reports .text-amber-700,
+  html.dark .workspace-page-reports .text-amber-600 {
+    color: #f2c75c !important;
+  }
+
+  html.dark .workspace-page-reports .border-amber-100,
+  html.dark .workspace-page-reports .border-amber-200 {
+    border-color: #6b5220 !important;
+  }
+
+  html.dark .workspace-page-reports .print-report {
+    color: var(--ink) !important;
+  }
+
+  html.dark .workspace-page-reports .rounded-xl.bg-white,
+  html.dark .workspace-page-reports .rounded-lg.bg-white {
+    background: #0f211c !important;
+    border-color: #29483e !important;
+  }
+
+  html.dark .workspace-page-reports .bg-gradient-to-br.from-white {
+    background-image: linear-gradient(135deg, #10231e 0%, #0d1d19 58%, #123c31 100%) !important;
+  }
+
+  html.dark .workspace-page-reports .stack-row,
+  html.dark .workspace-page-reports .stack-row-cell {
+    background: #10241f !important;
+    border-color: #28463c !important;
+  }
+
+  html.dark .workspace-page-reports .recharts-default-tooltip {
+    background: #10241f !important;
+    border-color: #355c4e !important;
+    color: var(--ink) !important;
+  }
+}
+
+@media print {
+  html.dark .workspace-page-reports.print-report,
+  html.dark .workspace-page-reports .print-report {
+    background: #ffffff !important;
+    color: #1f2937 !important;
+    color-scheme: light !important;
+  }
+}
