@@ -86,6 +86,18 @@ interface AIProviderRuntimeStats {
   consecutive_failures: number;
   avg_latency_ms: number | null;
   cooldown_until: string | null;
+  last_runtime_error?: string | null;
+}
+
+interface AIProviderModelRow {
+  provider: string;
+  model_id: string;
+}
+
+interface AIAttemptError {
+  provider: string;
+  model: string | null;
+  message: string;
 }
 
 function runtimeCooldownSeconds(message: string): number {
@@ -97,6 +109,30 @@ function runtimeCooldownSeconds(message: string): number {
 
 function isPersistentProviderError(message: string): boolean {
   return /HTTP\s*(401|403)/i.test(message);
+}
+
+function isCapacityError(message: string): boolean {
+  return /HTTP\s*429|rate.?limit|too many requests|quota|resource exhausted|insufficient.*(?:credit|quota)|credit.*(?:exhaust|limit)|balance.*(?:low|empty|insufficient)/i.test(message);
+}
+
+function isTransientProviderError(message: string): boolean {
+  return /HTTP\s*5\d\d|timeout|timed out|network|fetch failed|aborted/i.test(message);
+}
+
+function modelCandidates(provider: AIProviderRow, models: AIProviderModelRow[]): string[] {
+  const cached = models
+    .filter((row) => row.provider === provider.provider)
+    .map((row) => row.model_id)
+    .filter(Boolean);
+
+  const unique = Array.from(new Set([
+    ...(provider.default_model ? [provider.default_model] : []),
+    ...cached,
+  ]));
+
+  // لا نريد تحويل فشل مزود واحد إلى عشرات الاستدعاءات. نجرب النموذج
+  // الافتراضي ثم حتى 3 بدائل حديثة من الكاش قبل الانتقال للمزود التالي.
+  return unique.slice(0, 4);
 }
 
 async function recordProviderRuntime(
@@ -617,7 +653,12 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ success: false, error: "غير مصرح: الحساب غير نشط" }, 403);
     }
     if (isRateLimited(callerAuth.user.id)) {
-      return jsonResponse({ success: false, error: "تم تجاوز الحد المؤقت لطلبات الذكاء الاصطناعي، حاول بعد دقيقة" }, 429);
+      return jsonResponse({
+        success: false,
+        error: "تم تجاوز الحد المؤقت لطلبات الذكاء الاصطناعي، حاول بعد دقيقة",
+        failure_type: "gateway_rate_limited",
+        retry_after_seconds: 60,
+      }, 429);
     }
 
     const contentLength = Number(req.headers.get("content-length") || 0);
@@ -672,13 +713,21 @@ Deno.serve(async (req: Request) => {
     const providerNames = (providers as AIProviderRow[]).map((p) => p.provider);
     const { data: runtimeRows } = await adminClient
       .from("ai_provider_runtime_stats")
-      .select("provider,consecutive_failures,avg_latency_ms,cooldown_until")
+      .select("provider,consecutive_failures,avg_latency_ms,cooldown_until,last_runtime_error")
       .in("provider", providerNames);
 
     const orderedProviders = orderProvidersByRuntime(
       providers as AIProviderRow[],
       (runtimeRows || []) as AIProviderRuntimeStats[],
     );
+
+    const { data: cachedModels } = await adminClient
+      .from("ai_provider_models")
+      .select("provider,model_id")
+      .in("provider", providerNames)
+      .order("fetched_at", { ascending: false });
+
+    const providerModels = (cachedModels || []) as AIProviderModelRow[];
 
     // --------------------------------------------------------------------
     // الخطوة 1: لو الرسائل تحتوي صوراً، حاول استخراج النص منها أولاً عبر
@@ -717,72 +766,153 @@ Deno.serve(async (req: Request) => {
     // مع Fallback تلقائي كامل بين كل المزودين المفعّلين عند فشل أي منهم.
     // --------------------------------------------------------------------
 
-    const errors: string[] = [];
+    const attemptErrors: AIAttemptError[] = [];
+    const runtimeByProvider = new Map(
+      ((runtimeRows || []) as AIProviderRuntimeStats[]).map((row) => [row.provider, row])
+    );
+    const nowMs = Date.now();
 
     for (const provider of orderedProviders) {
       const handler = AI_PROVIDERS[provider.provider];
       if (!handler) {
-        errors.push(`${provider.provider}: مزود غير مدعوم`);
+        attemptErrors.push({ provider: provider.provider, model: null, message: "مزود غير مدعوم" });
         continue;
       }
 
-      if (!provider.api_key || !provider.default_model) {
-        errors.push(`${provider.provider}: لا يوجد مفتاح أو نموذج افتراضي محدد`);
+      if (!provider.api_key) {
+        attemptErrors.push({ provider: provider.provider, model: null, message: "لا يوجد مفتاح API" });
         continue;
       }
 
-      // مزودات AI التى لا تدعم تحليل الصور (Vision) يتم تخطيها تلقائياً فقط
-      // عندما تعذّر استخراج OCR وما زالت الرسائل تحتوي صوراً فعلياً، دون أن
-      // يُسجَّل ذلك كخطأ فى المزود نفسه (حتى لا يُعطَّل من طلبات نصية لاحقة).
       if (stillNeedsVision && !handler.supportsVision) {
-        errors.push(`${provider.provider}: لا يدعم تحليل الصور فى هذه المرحلة`);
+        attemptErrors.push({ provider: provider.provider, model: null, message: "لا يدعم تحليل الصور فى هذه المرحلة" });
         continue;
       }
 
-      const startedAt = Date.now();
-      try {
-        const content = await handler.call(provider, effectiveMessages, maxTokens, temperature);
-        const latencyMs = Date.now() - startedAt;
-        await recordProviderRuntime(adminClient, provider.provider, true, latencyMs);
+      const runtime = runtimeByProvider.get(provider.provider);
+      const cooling = runtime?.cooldown_until
+        ? new Date(runtime.cooldown_until).getTime() > nowMs
+        : false;
 
-        // لازم فلتر WHERE صريح حتى لو الجدول Singleton، لأن قاعدة بيانات
-        // المشروع مضبوطة على رفض أي UPDATE بدون WHERE clause.
-        await adminClient
-          .from("ai_settings")
-          .update({ active_provider: provider.provider, active_model: provider.default_model })
-          .not("id", "is", null);
-
-        return jsonResponse({
-          success: true,
+      // لا نعيد ضرب مزود معروف أنه داخل cooldown في كل صفحة من ملف كبير.
+      // إذا انتهت بقية البدائل، التصنيف النهائي يوضح للمستدعي إن السعة
+      // غير متاحة مؤقتاً ويحتفظ الاستيراد بالجزء الذي اكتمل بالفعل.
+      if (cooling) {
+        attemptErrors.push({
           provider: provider.provider,
-          model: provider.default_model,
-          content,
-          ...(ocrUsedProvider ? { ocr_provider: ocrUsedProvider } : {}),
+          model: null,
+          message: runtime?.last_runtime_error || "المزود في فترة cooldown مؤقتة",
         });
-      } catch (callErr) {
-        const latencyMs = Date.now() - startedAt;
-        const message = callErr instanceof Error ? callErr.message : "خطأ غير معروف";
-        errors.push(`${provider.provider}: ${message}`);
-        await recordProviderRuntime(adminClient, provider.provider, false, latencyMs, message);
-
-        // 401/403 غالباً مشكلة مفتاح/صلاحية مستمرة؛ نعلّم المزود Error حتى
-        // ينجح فحص الاتصال الدوري. أما 429/5xx/network فهي مؤقتة: تدخل
-        // cooldown فقط ثم تعود تلقائياً بدون انتظار تحديث الست ساعات.
-        if (isPersistentProviderError(message)) {
-          await adminClient
-            .from("ai_providers")
-            .update({ status: "error", last_error: message, last_tested_at: new Date().toISOString() })
-            .eq("provider", provider.provider);
-        }
-        // استمرار تلقائي للمزود التالي حسب الترتيب الذكي
         continue;
+      }
+
+      const candidates = modelCandidates(provider, providerModels);
+      if (candidates.length === 0) {
+        attemptErrors.push({ provider: provider.provider, model: null, message: "لا يوجد نموذج متاح للمزود" });
+        continue;
+      }
+
+      const providerStartedAt = Date.now();
+      let providerLastError = "";
+      let persistentFailure = false;
+
+      for (const model of candidates) {
+        const candidateRow: AIProviderRow = { ...provider, default_model: model };
+        try {
+          const content = await handler.call(candidateRow, effectiveMessages, maxTokens, temperature);
+          const latencyMs = Date.now() - providerStartedAt;
+          await recordProviderRuntime(adminClient, provider.provider, true, latencyMs);
+
+          await adminClient
+            .from("ai_settings")
+            .update({ active_provider: provider.provider, active_model: model })
+            .not("id", "is", null);
+
+          return jsonResponse({
+            success: true,
+            provider: provider.provider,
+            model,
+            content,
+            ...(model !== provider.default_model ? { fallback_model_used: true } : {}),
+            ...(ocrUsedProvider ? { ocr_provider: ocrUsedProvider } : {}),
+          });
+        } catch (callErr) {
+          const message = callErr instanceof Error ? callErr.message : "خطأ غير معروف";
+          providerLastError = message;
+          attemptErrors.push({ provider: provider.provider, model, message });
+
+          if (isPersistentProviderError(message)) {
+            persistentFailure = true;
+            break;
+          }
+
+          // لو المشكلة quota/rate limit على نموذج بعينه نجرب نموذجاً آخر من
+          // نفس المزود أولاً. كذلك بعض أخطاء 5xx قد تكون خاصة بالنموذج.
+          if (isCapacityError(message) || isTransientProviderError(message)) {
+            continue;
+          }
+
+          // خطأ غير مصنف: نجرب نموذجاً بديلاً واحداً ضمن نفس القائمة ثم
+          // يواصل اللوب طبيعياً، بدون تعطيل المزود دائماً.
+          continue;
+        }
+      }
+
+      const latencyMs = Date.now() - providerStartedAt;
+      if (providerLastError) {
+        await recordProviderRuntime(adminClient, provider.provider, false, latencyMs, providerLastError);
+      }
+
+      if (persistentFailure) {
+        await adminClient
+          .from("ai_providers")
+          .update({ status: "error", last_error: providerLastError, last_tested_at: new Date().toISOString() })
+          .eq("provider", provider.provider);
       }
     }
 
-    return jsonResponse(
-      { success: false, error: `فشلت كل المزودات المتاحة: ${errors.join(" | ")}` },
-      502
+    const meaningfulErrors = attemptErrors.filter((e) =>
+      !/لا يدعم تحليل الصور|مزود غير مدعوم|لا يوجد مفتاح|لا يوجد نموذج/i.test(e.message)
     );
+    const capacityExhausted =
+      meaningfulErrors.length > 0 &&
+      meaningfulErrors.every((e) => isCapacityError(e.message));
+
+    const temporarilyUnavailable =
+      meaningfulErrors.length > 0 &&
+      meaningfulErrors.every((e) => isCapacityError(e.message) || isTransientProviderError(e.message));
+
+    const earliestCooldown = ((runtimeRows || []) as AIProviderRuntimeStats[])
+      .map((row) => row.cooldown_until ? new Date(row.cooldown_until).getTime() : NaN)
+      .filter((ts) => Number.isFinite(ts) && ts > Date.now())
+      .sort((a, b) => a - b)[0];
+
+    const retryAfterSeconds = earliestCooldown
+      ? Math.max(30, Math.ceil((earliestCooldown - Date.now()) / 1000))
+      : (capacityExhausted ? 600 : temporarilyUnavailable ? 120 : undefined);
+
+    const errorText = attemptErrors
+      .map((e) => `${e.provider}${e.model ? `/${e.model}` : ""}: ${e.message}`)
+      .join(" | ");
+
+    return jsonResponse(
+      {
+        success: false,
+        error: capacityExhausted
+          ? "انتهت أو توقفت الحصة المتاحة حالياً لدى كل نماذج ومزودي الذكاء الاصطناعي المفعّلين"
+          : `فشلت كل المزودات المتاحة: ${errorText}`,
+        failure_type: capacityExhausted
+          ? "capacity_exhausted"
+          : temporarilyUnavailable
+            ? "unavailable"
+            : "all_providers_failed",
+        ...(retryAfterSeconds ? { retry_after_seconds: retryAfterSeconds } : {}),
+        provider_errors: attemptErrors,
+      },
+      capacityExhausted ? 429 : 502
+    );
+
+
   } catch (err) {
     return jsonResponse(
       { success: false, error: err instanceof Error ? err.message : "خطأ غير متوقع" },
