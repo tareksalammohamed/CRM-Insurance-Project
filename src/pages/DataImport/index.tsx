@@ -20,6 +20,7 @@ import {
 import clsx from 'clsx';
 
 import { useAuth } from '../../hooks/useAuth';
+import { useBranchContext } from '../../lib/branchContext';
 import type { ParsedRow, ImportSummary } from './types';
 import { downloadTemplateFile, parseWorkbookFile, importRows, fetchImportAgents, exportErrorReport, type ImportAgent } from './services/dataImportService';
 import { detectDocumentKind, extractRowsFromDocument } from './services/aiDocumentExtractor';
@@ -29,6 +30,7 @@ type Stage = 'idle' | 'parsed' | 'importing' | 'done';
 
 export function DataImport() {
   const { user } = useAuth();
+  const { currentBranchId } = useBranchContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -74,7 +76,7 @@ export function DataImport() {
       // نجيب قائمة وكلاء فريق المستورِد قبل التحليل عشان نطابق عمود "اسم
       // الوكيل" محلياً (تطبيع + تشابه) بدل ما نكتشف الاسم الغلط بعد فشل
       // كل صف في السيرفر واحداً واحداً
-      const fetchedAgents = user ? await fetchImportAgents(user) : [];
+      const fetchedAgents = user ? await fetchImportAgents(user, currentBranchId) : [];
       setAgents(fetchedAgents);
 
       const documentKind = detectDocumentKind(file);
@@ -126,7 +128,7 @@ export function DataImport() {
     const rowsToImport = parsedRows.filter((r) => !excludedRows.has(r.rowNumber));
     setStage('importing');
     setProgress({ done: 0, total: rowsToImport.length });
-    const result = await importRows(rowsToImport, (_r, done, total) => {
+    const result = await importRows(rowsToImport, currentBranchId, (_r, done, total) => {
       setProgress({ done, total });
     });
     setSummary(result);
