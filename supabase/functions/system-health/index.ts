@@ -47,12 +47,29 @@ Deno.serve(async (req: Request) => {
       return json({ error: "غير مصرح: هذه الصفحة للمشرف الأعلى فقط" }, 403);
     }
 
-    const { data, error } = await adminClient.rpc("get_system_health", {
-      p_caller_id: auth.user.id,
-    });
+    const [{ data, error }, { data: usage, error: usageError }] = await Promise.all([
+      adminClient.rpc("get_system_health", {
+        p_caller_id: auth.user.id,
+      }),
+      adminClient.rpc("get_ai_usage_summary", {
+        p_caller_id: auth.user.id,
+        p_days: 31,
+      }),
+    ]);
 
     if (error) throw error;
-    return json({ success: true, data });
+    if (usageError) throw usageError;
+
+    return json({
+      success: true,
+      data: {
+        ...data,
+        ai: {
+          ...(data?.ai || {}),
+          usage,
+        },
+      },
+    });
   } catch (err) {
     return json(
       { success: false, error: err instanceof Error ? err.message : "تعذر تحميل حالة النظام" },
