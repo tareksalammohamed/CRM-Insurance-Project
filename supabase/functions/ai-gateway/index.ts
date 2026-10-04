@@ -78,6 +78,66 @@ interface AIProviderRow {
   api_key: string | null;
   account_id: string | null;
   default_model: string | null;
+  priority: number;
+}
+
+interface AIProviderRuntimeStats {
+  provider: string;
+  consecutive_failures: number;
+  avg_latency_ms: number | null;
+  cooldown_until: string | null;
+}
+
+function runtimeCooldownSeconds(message: string): number {
+  if (/HTTP\s*429|rate.?limit|quota|too many requests/i.test(message)) return 10 * 60;
+  if (/HTTP\s*5\d\d|timeout|timed out|network|fetch failed|aborted/i.test(message)) return 2 * 60;
+  if (/HTTP\s*(401|403)/i.test(message)) return 30 * 60;
+  return 5 * 60;
+}
+
+function isPersistentProviderError(message: string): boolean {
+  return /HTTP\s*(401|403)/i.test(message);
+}
+
+async function recordProviderRuntime(
+  adminClient: ReturnType<typeof createClient>,
+  provider: string,
+  success: boolean,
+  latencyMs: number,
+  error: string | null = null
+) {
+  const cooldownSeconds = success ? 0 : runtimeCooldownSeconds(error || "");
+  await adminClient.rpc("record_ai_provider_runtime", {
+    p_provider: provider,
+    p_success: success,
+    p_latency_ms: latencyMs,
+    p_error: error,
+    p_cooldown_seconds: cooldownSeconds,
+  });
+}
+
+function orderProvidersByRuntime(
+  providers: AIProviderRow[],
+  stats: AIProviderRuntimeStats[]
+): AIProviderRow[] {
+  const statsByProvider = new Map(stats.map((row) => [row.provider, row]));
+  const now = Date.now();
+
+  return [...providers].sort((a, b) => {
+    const sa = statsByProvider.get(a.provider);
+    const sb = statsByProvider.get(b.provider);
+
+    const aCooling = sa?.cooldown_until ? new Date(sa.cooldown_until).getTime() > now : false;
+    const bCooling = sb?.cooldown_until ? new Date(sb.cooldown_until).getTime() > now : false;
+    if (aCooling !== bCooling) return aCooling ? 1 : -1;
+
+    const score = (provider: AIProviderRow, stat?: AIProviderRuntimeStats) =>
+      (provider.priority * 1000)
+      + ((stat?.consecutive_failures || 0) * 250)
+      + ((stat?.avg_latency_ms || 0) / 10);
+
+    return score(a, sa) - score(b, sb);
+  });
 }
 
 type AICallFn = (
@@ -599,7 +659,7 @@ Deno.serve(async (req: Request) => {
     // ثم لاختيار المزود فى الخطوة 2.
     const { data: providers } = await adminClient
       .from("ai_providers")
-      .select("provider, api_key, account_id, default_model")
+      .select("provider, api_key, account_id, default_model, priority")
       .eq("provider_type", "ai")
       .eq("enabled", true)
       .eq("status", "active")
@@ -608,6 +668,17 @@ Deno.serve(async (req: Request) => {
     if (!providers || providers.length === 0) {
       return jsonResponse({ success: false, error: "لا يوجد أي مزود ذكاء اصطناعي مفعّل ومتصل حالياً" }, 400);
     }
+
+    const providerNames = (providers as AIProviderRow[]).map((p) => p.provider);
+    const { data: runtimeRows } = await adminClient
+      .from("ai_provider_runtime_stats")
+      .select("provider,consecutive_failures,avg_latency_ms,cooldown_until")
+      .in("provider", providerNames);
+
+    const orderedProviders = orderProvidersByRuntime(
+      providers as AIProviderRow[],
+      (runtimeRows || []) as AIProviderRuntimeStats[],
+    );
 
     // --------------------------------------------------------------------
     // الخطوة 1: لو الرسائل تحتوي صوراً، حاول استخراج النص منها أولاً عبر
@@ -624,7 +695,7 @@ Deno.serve(async (req: Request) => {
     // --------------------------------------------------------------------
     const needsVision = hasImageContent(messages);
     const preferVision = body?.prefer_vision === true;
-    const hasActiveVisionProvider = (providers as AIProviderRow[]).some(
+    const hasActiveVisionProvider = orderedProviders.some(
       (p) => AI_PROVIDERS[p.provider]?.supportsVision && p.api_key && p.default_model,
     );
     let effectiveMessages = messages;
@@ -641,13 +712,14 @@ Deno.serve(async (req: Request) => {
     const stillNeedsVision = hasImageContent(effectiveMessages);
 
     // --------------------------------------------------------------------
-    // الخطوة 2: اختيار أفضل مزود AI متاح حسب الأولوية، مع Fallback تلقائي
-    // كامل بين كل المزودين المفعّلين عند فشل أي منهم.
+    // الخطوة 2: Smart Routing. الأولوية اليدوية تظل الأساس، ثم تُعدَّل
+    // ديناميكياً حسب الفشل المتتالي، زمن الاستجابة، والـcooldown المؤقت.
+    // مع Fallback تلقائي كامل بين كل المزودين المفعّلين عند فشل أي منهم.
     // --------------------------------------------------------------------
 
     const errors: string[] = [];
 
-    for (const provider of providers as AIProviderRow[]) {
+    for (const provider of orderedProviders) {
       const handler = AI_PROVIDERS[provider.provider];
       if (!handler) {
         errors.push(`${provider.provider}: مزود غير مدعوم`);
@@ -667,8 +739,11 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
+      const startedAt = Date.now();
       try {
         const content = await handler.call(provider, effectiveMessages, maxTokens, temperature);
+        const latencyMs = Date.now() - startedAt;
+        await recordProviderRuntime(adminClient, provider.provider, true, latencyMs);
 
         // لازم فلتر WHERE صريح حتى لو الجدول Singleton، لأن قاعدة بيانات
         // المشروع مضبوطة على رفض أي UPDATE بدون WHERE clause.
@@ -685,13 +760,21 @@ Deno.serve(async (req: Request) => {
           ...(ocrUsedProvider ? { ocr_provider: ocrUsedProvider } : {}),
         });
       } catch (callErr) {
+        const latencyMs = Date.now() - startedAt;
         const message = callErr instanceof Error ? callErr.message : "خطأ غير معروف";
         errors.push(`${provider.provider}: ${message}`);
-        await adminClient
-          .from("ai_providers")
-          .update({ status: "error", last_error: message, last_tested_at: new Date().toISOString() })
-          .eq("provider", provider.provider);
-        // استمرار تلقائي للمزود التالي حسب الأولوية
+        await recordProviderRuntime(adminClient, provider.provider, false, latencyMs, message);
+
+        // 401/403 غالباً مشكلة مفتاح/صلاحية مستمرة؛ نعلّم المزود Error حتى
+        // ينجح فحص الاتصال الدوري. أما 429/5xx/network فهي مؤقتة: تدخل
+        // cooldown فقط ثم تعود تلقائياً بدون انتظار تحديث الست ساعات.
+        if (isPersistentProviderError(message)) {
+          await adminClient
+            .from("ai_providers")
+            .update({ status: "error", last_error: message, last_tested_at: new Date().toISOString() })
+            .eq("provider", provider.provider);
+        }
+        // استمرار تلقائي للمزود التالي حسب الترتيب الذكي
         continue;
       }
     }
