@@ -86,13 +86,25 @@ export function downloadTemplateFile() {
 export async function fetchImportAgents(user: User): Promise<ImportAgent[]> {
   try {
     const all = await fetchAgentsForCurrentUser(user, null);
-    return (all || [])
-      .filter((u: any) => u.role === 'agent' || u.role === 'premium_agent')
-      .map((u: any) => ({ id: u.id, name: u.name as string }));
+    const candidates = [
+      ...(user.role === 'agent' || user.role === 'premium_agent'
+        ? [{ id: user.id, name: user.name, role: user.role }]
+        : []),
+      ...(all || []),
+    ];
+
+    const unique = new Map<string, ImportAgent>();
+    for (const u of candidates as any[]) {
+      if ((u.role === 'agent' || u.role === 'premium_agent') && u.id && u.name) {
+        unique.set(u.id, { id: u.id, name: String(u.name).trim() });
+      }
+    }
+
+    return [...unique.values()].sort((a, b) => a.name.localeCompare(b.name, 'ar'));
   } catch {
     // لو فشل الجلب لأي سبب، منمنعش المستخدم من الاستيراد — هنرجع قائمة
     // فاضية وهيتم تجاوز التحقق المحلي من اسم الوكيل، وتبقى المطابقة
-    // النهائية زي زمان بالكامل من طرف السيرفر (RPC) فقط
+    // النهائية من طرف السيرفر (RPC).
     return [];
   }
 }
@@ -142,34 +154,86 @@ function similarityRatio(a: string, b: string): number {
   return 1 - levenshteinDistance(a, b) / maxLen;
 }
 
-export interface AgentMatchResult {
-  agent: ImportAgent | null; // موجود فقط لو تطابق كامل (بعد التطبيع)
-  suggestions: ImportAgent[]; // أقرب 3 أسماء لو مفيش تطابق كامل
+function tokenSimilarity(a: string, b: string): number {
+  const aTokens = a.split(' ').filter(Boolean);
+  const bTokens = b.split(' ').filter(Boolean);
+  if (aTokens.length === 0 || bTokens.length === 0) return 0;
+
+  const aSet = new Set(aTokens);
+  const bSet = new Set(bTokens);
+  const intersection = [...aSet].filter((t) => bSet.has(t)).length;
+  const union = new Set([...aSet, ...bSet]).size;
+  return union ? intersection / union : 0;
 }
 
-const FUZZY_SUGGESTION_THRESHOLD = 0.55;
+function agentMatchScore(input: string, candidate: string): number {
+  if (input === candidate) return 1;
 
-// مطابقة اسم الوكيل المكتوب في الإكسل بقائمة وكلاء فريق المستورِد:
-// 1) تطابق كامل بعد تطبيع الحروف العربية → يُعتمد تلقائياً (بديل الاسم
-//    المكتوب باسمه الرسمي المسجّل في النظام حرفياً، لضمان نجاح المطابقة
-//    الصارمة في السيرفر حتى لو كان فيه فرق تشكيل/همزة بسيط).
-// 2) بدون تطابق كامل → نرجّع أقرب أسماء (تشابه ≥ 55%) كاقتراحات ضمن رسالة
-//    الخطأ، من غير ما نختار بدل المستخدم أبداً (تفادياً لتعيين وثيقة لوكيل
-//    غلط)، عشان يقدر يصلّح الإكسل بسرعة بدل التخمين.
-function matchAgentName(inputName: string, agents: ImportAgent[]): AgentMatchResult {
+  const editScore = similarityRatio(input, candidate);
+  const tokensScore = tokenSimilarity(input, candidate);
+  const containsScore =
+    input.length >= 5 && candidate.length >= 5 && (input.includes(candidate) || candidate.includes(input))
+      ? 0.92
+      : 0;
+
+  return Math.max(editScore, tokensScore * 0.96, containsScore);
+}
+
+export interface AgentMatchResult {
+  agent: ImportAgent | null;
+  suggestions: Array<ImportAgent & { matchScore?: number }>;
+  confidence: number;
+  matchType: 'exact' | 'auto_fuzzy' | 'suggestion' | 'none';
+}
+
+const FUZZY_AUTO_MATCH_THRESHOLD = 0.88;
+const FUZZY_AUTO_MATCH_MARGIN = 0.08;
+const FUZZY_SUGGESTION_THRESHOLD = 0.52;
+
+// مطابقة متعددة المراحل:
+// 1) تطابق كامل بعد التطبيع.
+// 2) تطابق تقريبي عالي الثقة فقط لو أفضل نتيجة >= 88% وبفارق واضح عن
+//    ثاني أفضل نتيجة؛ وقتها نعتمد الاسم الرسمي تلقائياً.
+// 3) غير ذلك نعرض أقرب المرشحين للمستخدم ولا نخمن مالك الوثيقة.
+export function matchAgentName(inputName: string, agents: ImportAgent[]): AgentMatchResult {
   const normalizedInput = normalizeArabicForMatch(inputName);
 
   const exact = agents.find((a) => normalizeArabicForMatch(a.name) === normalizedInput);
-  if (exact) return { agent: exact, suggestions: [] };
+  if (exact) return { agent: exact, suggestions: [], confidence: 1, matchType: 'exact' };
 
   const scored = agents
-    .map((a) => ({ agent: a, score: similarityRatio(normalizedInput, normalizeArabicForMatch(a.name)) }))
-    .filter((s) => s.score >= FUZZY_SUGGESTION_THRESHOLD)
-    .sort((x, y) => y.score - x.score)
-    .slice(0, 3)
-    .map((s) => s.agent);
+    .map((a) => ({
+      agent: a,
+      score: agentMatchScore(normalizedInput, normalizeArabicForMatch(a.name)),
+    }))
+    .sort((x, y) => y.score - x.score);
 
-  return { agent: null, suggestions: scored };
+  const best = scored[0];
+  const second = scored[1];
+  if (
+    best &&
+    best.score >= FUZZY_AUTO_MATCH_THRESHOLD &&
+    (!second || best.score - second.score >= FUZZY_AUTO_MATCH_MARGIN)
+  ) {
+    return {
+      agent: best.agent,
+      suggestions: [],
+      confidence: best.score,
+      matchType: 'auto_fuzzy',
+    };
+  }
+
+  const suggestions = scored
+    .filter((item) => item.score >= FUZZY_SUGGESTION_THRESHOLD)
+    .slice(0, 5)
+    .map((item) => ({ ...item.agent, matchScore: item.score }));
+
+  return {
+    agent: null,
+    suggestions,
+    confidence: best?.score ?? 0,
+    matchType: suggestions.length ? 'suggestion' : 'none',
+  };
 }
 
 // ===================================================================
@@ -179,6 +243,29 @@ function matchAgentName(inputName: string, agents: ImportAgent[]): AgentMatchRes
 const POLICY_TYPE_REVERSE = buildReverseMap(POLICY_TYPE_LABELS);
 const PAYMENT_METHOD_REVERSE = buildReverseMap(PAYMENT_METHOD_LABELS);
 const MARITAL_STATUS_REVERSE = buildReverseMap(MARITAL_STATUS_LABELS);
+
+const MARITAL_STATUS_ALIASES: Record<string, string> = {
+  'اعزب': 'single',
+  'أعزب': 'single',
+  'عزباء': 'single',
+  'غير متزوج': 'single',
+  'غير متزوجه': 'single',
+  'متزوج': 'married',
+  'متزوجة': 'married',
+  'متزوجه': 'married',
+  'متزوج / ة': 'married',
+  'مطلق': 'divorced',
+  'مطلقة': 'divorced',
+  'مطلقه': 'divorced',
+  'ارمل': 'widowed',
+  'أرمل': 'widowed',
+  'ارملة': 'widowed',
+  'أرملة': 'widowed',
+  'ارمله': 'widowed',
+};
+Object.entries(MARITAL_STATUS_ALIASES).forEach(([alias, code]) => {
+  MARITAL_STATUS_REVERSE.set(normalizeLookupText(alias), code);
+});
 
 // أسماء شائعة لنوع الوثيقة كما تظهر عادةً في كشوف شركات التأمين.
 // القيمة التي تُحفظ تظل دائماً الكود الرسمي الموجود في POLICY_TYPE_LABELS.
@@ -233,10 +320,11 @@ export function buildParsedRow(
     const { agent, suggestions } = matchAgentName(agentNameInput, agents);
     if (agent) {
       agentName = agent.name;
+      raw.agent_name = agent.name;
     } else if (suggestions.length > 0) {
-      errors.push(`اسم الوكيل "${agentNameInput}" غير موجود ضمن فريقك. هل تقصد: ${suggestions.map((s) => s.name).join('، ')}؟`);
+      errors.push(`تعذر تأكيد اسم الوكيل "${agentNameInput}". اختر الوكيل الصحيح من القائمة: ${suggestions.map((item) => item.name).join('، ')}`);
     } else {
-      errors.push(`اسم الوكيل "${agentNameInput}" غير موجود ضمن فريقك أو غير نشط`);
+      errors.push(`اسم الوكيل "${agentNameInput}" غير موجود ضمن الوكلاء النشطين المسموحين لك`);
     }
   }
   // لو مفيش قائمة وكلاء متاحة (فشل الجلب)، نتجاوز التحقق المحلي بالكامل
