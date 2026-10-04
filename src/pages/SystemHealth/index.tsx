@@ -278,7 +278,7 @@ export function SystemHealth() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="rounded-xl border border-secondary-200 bg-secondary-50/60 p-3">
                   <p className="text-xs text-secondary-500">طلبات اليوم</p>
                   <p className="text-2xl font-extrabold text-secondary-900 mt-1">{formatNumber(health.ai.usage.today.requests)}</p>

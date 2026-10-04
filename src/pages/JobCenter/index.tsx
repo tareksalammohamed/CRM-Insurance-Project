@@ -131,7 +131,7 @@ export function JobCenter() {
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <button onClick={() => setFilter('active')} className="kpi-card text-right">
           <p className="text-xs text-secondary-500">جارية الآن</p>
           <p className="text-2xl font-extrabold text-primary-700 mt-1">{counts.active}</p>
