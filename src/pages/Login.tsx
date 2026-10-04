@@ -221,7 +221,13 @@ export function Login() {
         </div>
       </div>
       <div className="relative z-10 w-full max-w-md">
-        <div className="login-card card border-secondary-100/80 bg-white/95 p-6 shadow-elevated backdrop-blur-sm sm:p-8 animate-fadeIn">
+        <div
+          className={clsx(
+            'login-card card border-secondary-100/80 bg-white/95 p-6 shadow-elevated backdrop-blur-sm sm:p-8 animate-fadeIn',
+            (loading || googleLoading || passkeyLoading) && 'is-authenticating'
+          )}
+          aria-busy={loading || googleLoading || passkeyLoading}
+        >
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-primary-100 rounded-2xl flex items-center justify-center mx-auto mb-4 overflow-hidden">
               {branding.company_logo_url
@@ -240,7 +246,7 @@ export function Login() {
                 type="button"
                 onClick={handlePasskeySignIn}
                 disabled={passkeyLoading || loading}
-                className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-xs font-medium text-primary-700 transition-colors duration-200 hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-60"
+                className="glassy-action flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-xs font-medium text-primary-700 transition-colors duration-200 hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {passkeyLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -258,7 +264,7 @@ export function Login() {
               onClick={handleGoogleSignIn}
               disabled={googleLoading || loading}
               className={clsx(
-                'flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-secondary-200 bg-white px-3 py-2 text-xs font-medium text-secondary-700 transition-colors duration-200 hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-60',
+                'glassy-action flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-secondary-200 bg-white px-3 py-2 text-xs font-medium text-secondary-700 transition-colors duration-200 hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-60',
                 !passkeySupported && 'col-span-2'
               )}
             >
@@ -359,7 +365,7 @@ export function Login() {
             <button
               type="submit"
               disabled={!isValid() || loading}
-              className="btn btn-primary w-full py-3"
+              className="btn btn-primary glassy-action glassy-action-primary w-full py-3"
             >
               {loading ? (
                 <>
