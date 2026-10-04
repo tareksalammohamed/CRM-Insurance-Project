@@ -19,7 +19,7 @@
 // ===================================================================
 
 import { askAI, type AIContentPart } from '../../../lib/ai/aiManager';
-import { documentFileToImages, type ExtractionFileKind } from '../../../features/customerDataExtraction/utils/documentToImages';
+import { documentFileToImagesWithMeta, type ExtractionFileKind } from '../../../features/customerDataExtraction/utils/documentToImages';
 import { POLICY_TYPE_LABELS, PAYMENT_METHOD_LABELS, MARITAL_STATUS_LABELS } from '../../../lib/supabase';
 import { IMPORT_COLUMNS, type ParsedRow } from '../types';
 import { buildParsedRow, type ImportAgent } from './dataImportService';
@@ -120,8 +120,7 @@ export async function extractRowsFromDocument(
   onProgress?: (progress: DocumentExtractionProgress) => void,
 ): Promise<DocumentExtractionResult> {
   try {
-    const images = await documentFileToImages(file, kind);
-    const totalPages = images.length;
+    const { images, totalPages, truncated } = await documentFileToImagesWithMeta(file, kind, 12);
     const extractedRawRows: Array<Record<string, unknown>> = [];
     const seenPolicies = new Set<string>();
     let processedPages = 0;
@@ -256,7 +255,7 @@ export async function extractRowsFromDocument(
     return {
       rows,
       error: null,
-      partial: false,
+      partial: truncated,
       capacityExhausted: false,
       processedPages,
       totalPages,
