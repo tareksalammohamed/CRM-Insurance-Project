@@ -20,6 +20,7 @@ import {
   HelpCircle,
   Sparkles,
   UserCog,
+  Activity,
 } from 'lucide-react';
 import { UserRole, canManageUsers, canViewOrgStructure, canViewSettings, canManageBranches, canManageAI, getRoleLevel } from '../lib/supabase';
 
@@ -106,6 +107,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/subscriptions-admin', label: 'الاشتراكات',             icon: WalletCards,   isVisible: canViewSettings },
       { path: '/branches',            label: 'إدارة الفروع',           icon: Building2, isVisible: canManageBranches },
       { path: '/ai-settings',         label: 'إعدادات الذكاء الاصطناعي', icon: Sparkles, isVisible: canManageAI },
+      { path: '/system-health',        label: 'صحة النظام',              icon: Activity, isVisible: canManageAI },
       { path: '/settings',            label: 'إعدادات النظام',         icon: Settings2, isVisible: canViewSettings },
     ],
   },
