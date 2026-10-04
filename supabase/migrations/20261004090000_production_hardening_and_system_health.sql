@@ -95,6 +95,12 @@ ALTER TABLE public.ai_provider_runtime_stats ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.ai_provider_runtime_stats FROM anon, authenticated, PUBLIC;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.ai_provider_runtime_stats TO service_role;
 
+DROP POLICY IF EXISTS ai_runtime_stats_no_client_access ON public.ai_provider_runtime_stats;
+CREATE POLICY ai_runtime_stats_no_client_access
+  ON public.ai_provider_runtime_stats FOR ALL TO authenticated
+  USING (false)
+  WITH CHECK (false);
+
 
 CREATE OR REPLACE FUNCTION public.record_ai_provider_runtime(
   p_provider text,
@@ -165,17 +171,25 @@ REVOKE ALL ON FUNCTION public.record_ai_provider_runtime(text, boolean, integer,
 GRANT EXECUTE ON FUNCTION public.record_ai_provider_runtime(text, boolean, integer, text, integer)
   TO service_role;
 
-CREATE OR REPLACE FUNCTION public.get_system_health()
+DROP FUNCTION IF EXISTS public.get_system_health();
+
+CREATE OR REPLACE FUNCTION public.get_system_health(p_caller_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, cron
-AS $$
+AS $
 DECLARE
-  v_user_id uuid := auth.uid();
   v_result jsonb;
 BEGIN
-  IF v_user_id IS NULL OR NOT public.is_super_admin() THEN
+  IF p_caller_id IS NULL OR NOT EXISTS (
+    SELECT 1
+    FROM public.users
+    WHERE id = p_caller_id
+      AND role = 'super_admin'
+      AND is_active = true
+      AND deleted_at IS NULL
+  ) THEN
     RAISE EXCEPTION 'غير مصرح: هذه الصفحة للمشرف الأعلى فقط';
   END IF;
 
@@ -254,5 +268,5 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.get_system_health() FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.get_system_health() TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.get_system_health(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_system_health(uuid) TO service_role;
