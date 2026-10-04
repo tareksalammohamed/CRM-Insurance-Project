@@ -176,12 +176,50 @@ function orderProvidersByRuntime(
   });
 }
 
+interface AICallResult {
+  content: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
+function usageFromOpenAI(data: any): Pick<AICallResult, 'promptTokens' | 'completionTokens' | 'totalTokens'> {
+  const usage = data?.usage || {};
+  const promptTokens = Number(usage.prompt_tokens ?? usage.input_tokens ?? 0) || 0;
+  const completionTokens = Number(usage.completion_tokens ?? usage.output_tokens ?? 0) || 0;
+  const totalTokens = Number(usage.total_tokens ?? (promptTokens + completionTokens)) || 0;
+  return { promptTokens, completionTokens, totalTokens };
+}
+
 type AICallFn = (
   row: AIProviderRow,
   messages: ChatMessage[],
   maxTokens: number,
   temperature: number
-) => Promise<string>;
+) => Promise<AICallResult>;
+
+async function recordProviderUsage(
+  adminClient: ReturnType<typeof createClient>,
+  provider: string,
+  model: string,
+  purpose: string,
+  success: boolean,
+  capacityError: boolean,
+  latencyMs: number,
+  usage?: Partial<AICallResult>,
+) {
+  await adminClient.rpc("record_ai_provider_usage", {
+    p_provider: provider,
+    p_model: model,
+    p_purpose: purpose,
+    p_success: success,
+    p_capacity_error: capacityError,
+    p_prompt_tokens: usage?.promptTokens ?? 0,
+    p_completion_tokens: usage?.completionTokens ?? 0,
+    p_total_tokens: usage?.totalTokens ?? 0,
+    p_latency_ms: latencyMs,
+  });
+}
 
 async function callOpenRouter(apiKey: string, model: string, messages: ChatMessage[], maxTokens: number, temperature: number) {
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -193,7 +231,7 @@ async function callOpenRouter(apiKey: string, model: string, messages: ChatMessa
   const data = await res.json();
   const content = data?.choices?.[0]?.message?.content;
   if (!content) throw new Error("OpenRouter: استجابة فارغة");
-  return content as string;
+  return { content: content as string, ...usageFromOpenAI(data) };
 }
 
 async function callGroq(apiKey: string, model: string, messages: ChatMessage[], maxTokens: number, temperature: number) {
@@ -206,7 +244,7 @@ async function callGroq(apiKey: string, model: string, messages: ChatMessage[], 
   const data = await res.json();
   const content = data?.choices?.[0]?.message?.content;
   if (!content) throw new Error("Groq: استجابة فارغة");
-  return content as string;
+  return { content: content as string, ...usageFromOpenAI(data) };
 }
 
 async function callRequesty(apiKey: string, model: string, messages: ChatMessage[], maxTokens: number, temperature: number) {
@@ -232,7 +270,7 @@ async function callRequesty(apiKey: string, model: string, messages: ChatMessage
   const data = await res.json();
   const content = data?.choices?.[0]?.message?.content;
   if (!content) throw new Error("Requesty: استجابة فارغة");
-  return content as string;
+  return { content: content as string, ...usageFromOpenAI(data) };
 }
 
 async function callNaraRouter(apiKey: string, model: string, messages: ChatMessage[], maxTokens: number, temperature: number) {
@@ -248,7 +286,7 @@ async function callNaraRouter(apiKey: string, model: string, messages: ChatMessa
   const data = await res.json();
   const content = data?.choices?.[0]?.message?.content;
   if (!content) throw new Error("NaraRouter: استجابة فارغة");
-  return content as string;
+  return { content: content as string, ...usageFromOpenAI(data) };
 }
 
 async function callCloudflare(apiKey: string, accountId: string, model: string, messages: ChatMessage[]) {
@@ -264,7 +302,11 @@ async function callCloudflare(apiKey: string, accountId: string, model: string, 
   const data = await res.json();
   const content = data?.result?.response;
   if (!content) throw new Error("Cloudflare AI: استجابة فارغة");
-  return content as string;
+  const usage = data?.result?.usage || data?.usage || {};
+  const promptTokens = Number(usage.prompt_tokens ?? usage.input_tokens ?? 0) || 0;
+  const completionTokens = Number(usage.completion_tokens ?? usage.output_tokens ?? 0) || 0;
+  const totalTokens = Number(usage.total_tokens ?? (promptTokens + completionTokens)) || 0;
+  return { content: content as string, promptTokens, completionTokens, totalTokens };
 }
 
 // Gemini (Google AI Studio) يستخدم شكل طلب مختلف عن باقي المزودين (OpenAI
@@ -327,7 +369,11 @@ async function callGemini(apiKey: string, model: string, messages: ChatMessage[]
     .map((p: any) => p?.text || "")
     .join("");
   if (!content) throw new Error("Gemini: استجابة فارغة");
-  return content as string;
+  const usage = data?.usageMetadata || {};
+  const promptTokens = Number(usage.promptTokenCount ?? 0) || 0;
+  const completionTokens = Number(usage.candidatesTokenCount ?? 0) || 0;
+  const totalTokens = Number(usage.totalTokenCount ?? (promptTokens + completionTokens)) || 0;
+  return { content: content as string, promptTokens, completionTokens, totalTokens };
 }
 
 // سجل مزودي AI: "supportsVision" يحدد إن كان المزود يُستبعد تلقائياً عندما
@@ -825,9 +871,21 @@ Deno.serve(async (req: Request) => {
       for (const model of candidates) {
         const candidateRow: AIProviderRow = { ...provider, default_model: model };
         try {
-          const content = await handler.call(candidateRow, effectiveMessages, maxTokens, temperature);
+          const callResult = await handler.call(candidateRow, effectiveMessages, maxTokens, temperature);
           const latencyMs = Date.now() - providerStartedAt;
-          await recordProviderRuntime(adminClient, provider.provider, true, latencyMs);
+          await Promise.all([
+            recordProviderRuntime(adminClient, provider.provider, true, latencyMs),
+            recordProviderUsage(
+              adminClient,
+              provider.provider,
+              model,
+              requestPurpose,
+              true,
+              false,
+              latencyMs,
+              callResult,
+            ),
+          ]);
 
           await adminClient
             .from("ai_settings")
@@ -838,7 +896,12 @@ Deno.serve(async (req: Request) => {
             success: true,
             provider: provider.provider,
             model,
-            content,
+            content: callResult.content,
+            usage: {
+              prompt_tokens: callResult.promptTokens,
+              completion_tokens: callResult.completionTokens,
+              total_tokens: callResult.totalTokens,
+            },
             ...(model !== provider.default_model ? { fallback_model_used: true } : {}),
             ...(ocrUsedProvider ? { ocr_provider: ocrUsedProvider } : {}),
           });
@@ -846,6 +909,15 @@ Deno.serve(async (req: Request) => {
           const message = callErr instanceof Error ? callErr.message : "خطأ غير معروف";
           providerLastError = message;
           attemptErrors.push({ provider: provider.provider, model, message });
+          await recordProviderUsage(
+            adminClient,
+            provider.provider,
+            model,
+            requestPurpose,
+            false,
+            isCapacityError(message),
+            Date.now() - providerStartedAt,
+          );
 
           if (isPersistentProviderError(message)) {
             persistentFailure = true;
