@@ -38,7 +38,7 @@ export function Dashboard() {
   }
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="dashboard-page space-y-6 animate-fadeIn">
       <DashboardHeader
         selectedMonth={selectedMonth}
         isCurrentMonth={isCurrentMonth}
