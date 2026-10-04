@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Activity, Bot, CheckCircle2, Clock3, Database, DatabaseBackup, RefreshCw, ServerCog, TriangleAlert, XCircle } from 'lucide-react';
 import clsx from 'clsx';
-import { supabase } from '../../lib/supabase';
+import { supabase, supabaseUrl } from '../../lib/supabase';
 import { friendlyError } from '../../lib/errorMessages';
 
 type RuntimeStats = {
@@ -82,9 +82,23 @@ export function SystemHealth() {
     manual ? setRefreshing(true) : setLoading(true);
     setError(null);
     try {
-      const { data, error: rpcError } = await supabase.rpc('get_system_health');
-      if (rpcError) throw rpcError;
-      setHealth(data as SystemHealth);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error('الجلسة غير صالحة');
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/system-health`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({}),
+      });
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'تعذر تحميل حالة النظام');
+      }
+      setHealth(result.data as SystemHealth);
     } catch (err) {
       setError(friendlyError(err, 'تعذر تحميل حالة النظام'));
     } finally {
