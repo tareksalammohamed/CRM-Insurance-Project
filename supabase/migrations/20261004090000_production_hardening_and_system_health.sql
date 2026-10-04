@@ -183,7 +183,12 @@ BEGIN
     'checked_at', now(),
     'database', jsonb_build_object(
       'status', 'healthy',
-      'server_time', now()
+      'server_time', now(),
+      'last_backup_export', (
+        SELECT max(created_at)
+        FROM public.activity_logs
+        WHERE action_type = 'backup_export'
+      )
     ),
     'ai', jsonb_build_object(
       'enabled', COALESCE((SELECT ai_enabled FROM public.ai_settings LIMIT 1), false),
