@@ -101,7 +101,8 @@ async function imageFileToDataUrl(file: File): Promise<string> {
 
 async function pdfFileToDataUrls(
   file: File,
-  maxPages = DEFAULT_MAX_PDF_PAGES
+  maxPages = DEFAULT_MAX_PDF_PAGES,
+  startPage = 1,
 ): Promise<{ urls: string[]; totalPages: number }> {
   let buffer: ArrayBuffer;
   try {
@@ -115,10 +116,11 @@ async function pdfFileToDataUrls(
   });
 
   const totalPages = pdf.numPages;
-  const pageCount = Math.min(totalPages, Math.max(1, maxPages));
+  const firstPage = Math.min(Math.max(1, startPage), totalPages);
+  const lastPage = Math.min(totalPages, firstPage + Math.max(1, maxPages) - 1);
   const urls: string[] = [];
 
-  for (let pageNumber = 1; pageNumber <= pageCount; pageNumber++) {
+  for (let pageNumber = firstPage; pageNumber <= lastPage; pageNumber++) {
     const page = await pdf.getPage(pageNumber);
     const baseViewport = page.getViewport({ scale: 1 });
     const scale = Math.min(1, MAX_DIMENSION / Math.max(baseViewport.width, baseViewport.height)) || 1;
@@ -156,13 +158,14 @@ export async function documentFileToImagesWithMeta(
   file: File,
   kind: ExtractionFileKind,
   maxPdfPages = DEFAULT_MAX_PDF_PAGES,
+  startPdfPage = 1,
 ): Promise<DocumentImagesResult> {
   if (kind === 'pdf') {
-    const { urls, totalPages } = await pdfFileToDataUrls(file, maxPdfPages);
+    const { urls, totalPages } = await pdfFileToDataUrls(file, maxPdfPages, startPdfPage);
     return {
       images: urls,
       totalPages,
-      truncated: totalPages > urls.length,
+      truncated: startPdfPage - 1 + urls.length < totalPages,
     };
   }
   return { images: [await imageFileToDataUrl(file)], totalPages: 1, truncated: false };
