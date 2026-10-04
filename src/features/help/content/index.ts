@@ -7,7 +7,7 @@ import {
   usersHelp, orgStructureHelp, orgFormationHelp, reportsHelp, monthlyClosingHelp, cancellationsHelp,
 } from './management';
 import {
-  dataImportHelp, activityLogHelp, subscriptionsAdminHelp, branchesAdminHelp, settingsHelp, aiSettingsHelp, systemHealthHelp,
+  dataImportHelp, activityLogHelp, subscriptionsAdminHelp, branchesAdminHelp, settingsHelp, aiSettingsHelp, systemHealthHelp, jobCenterHelp,
 } from './system';
 import { profileHelp, priceCalculatorHelp, loginHelp } from './account';
 
@@ -37,6 +37,7 @@ export const HELP_REGISTRY: HelpContent[] = [
   settingsHelp,
   aiSettingsHelp,
   systemHealthHelp,
+  jobCenterHelp,
   profileHelp,
   priceCalculatorHelp,
   loginHelp,
