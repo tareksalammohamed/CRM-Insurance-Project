@@ -105,7 +105,7 @@ export async function matchColumnsWithAI(
         { role: 'system', content: buildSystemPrompt() },
         { role: 'user', content: `أعمدة الملف المرفوع:\n${describeFileColumns(fileHeaders, sampleRows)}` },
       ],
-      { maxTokens: 800, temperature: 0.1 }
+      { maxTokens: 800, temperature: 0.1, purpose: 'data_import' }
     );
 
     if (!result.success || !result.content) {
