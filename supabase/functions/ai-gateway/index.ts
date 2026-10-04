@@ -112,7 +112,7 @@ function isPersistentProviderError(message: string): boolean {
 }
 
 function isCapacityError(message: string): boolean {
-  return /HTTP\s*429|rate.?limit|too many requests|quota|resource exhausted|insufficient.*(?:credit|quota)|credit.*(?:exhaust|limit)|balance.*(?:low|empty|insufficient)/i.test(message);
+  return /HTTP\s*(?:402|429)|rate.?limit|too many requests|quota|resource exhausted|insufficient.*(?:credit|quota)|credit.*(?:exhaust|limit)|balance.*(?:low|empty|insufficient)/i.test(message);
 }
 
 function isTransientProviderError(message: string): boolean {
@@ -401,7 +401,7 @@ const AI_RATE_WINDOW_MS = 60_000;
 const AI_RATE_LIMIT = 20;
 const aiRateBuckets = new Map<string, { startedAt: number; count: number }>();
 
-function isRateLimited(userId: string): boolean {
+function isRateLimited(userId: string, limit = AI_RATE_LIMIT): boolean {
   const now = Date.now();
   const bucket = aiRateBuckets.get(userId);
   if (!bucket || now - bucket.startedAt >= AI_RATE_WINDOW_MS) {
@@ -409,7 +409,7 @@ function isRateLimited(userId: string): boolean {
     return false;
   }
   bucket.count += 1;
-  return bucket.count > AI_RATE_LIMIT;
+  return bucket.count > limit;
 }
 
 function validateRequestMessages(messages: unknown): string | null {
@@ -656,15 +656,6 @@ Deno.serve(async (req: Request) => {
     if (callerProfileError || !callerProfile || !callerProfile.is_active || callerProfile.deleted_at) {
       return jsonResponse({ success: false, error: "غير مصرح: الحساب غير نشط" }, 403);
     }
-    if (isRateLimited(callerAuth.user.id)) {
-      return jsonResponse({
-        success: false,
-        error: "تم تجاوز الحد المؤقت لطلبات الذكاء الاصطناعي، حاول بعد دقيقة",
-        failure_type: "gateway_rate_limited",
-        retry_after_seconds: 60,
-      }, 429);
-    }
-
     const contentLength = Number(req.headers.get("content-length") || 0);
     if (contentLength > MAX_REQUEST_BYTES) {
       return jsonResponse({ success: false, error: "حجم الطلب كبير جداً" }, 413);
@@ -675,6 +666,17 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ success: false, error: "حجم الطلب كبير جداً" }, 413);
     }
     const body = JSON.parse(rawBody);
+    const requestPurpose = body?.purpose === "data_import" ? "data_import" : "general";
+    const requestRateLimit = requestPurpose === "data_import" ? 80 : AI_RATE_LIMIT;
+    if (isRateLimited(callerAuth.user.id, requestRateLimit)) {
+      return jsonResponse({
+        success: false,
+        error: "تم تجاوز الحد المؤقت لطلبات الذكاء الاصطناعي، حاول بعد دقيقة",
+        failure_type: "gateway_rate_limited",
+        retry_after_seconds: 60,
+      }, 429);
+    }
+
     const messages = body?.messages as ChatMessage[];
     const validationError = validateRequestMessages(messages);
     if (validationError) {
