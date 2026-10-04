@@ -600,6 +600,7 @@ export interface ParseResult {
   rows: ParsedRow[];
   headerError: string | null;
   usedAIMapping?: boolean;
+  aiCapacityExhausted?: boolean;
 }
 
 export async function parseWorkbookFile(file: File, agents: ImportAgent[] = []): Promise<ParseResult> {
@@ -671,7 +672,8 @@ export async function parseWorkbookFile(file: File, agents: ImportAgent[] = []):
   // رسائل الخطأ القديمة بالضبط أدناه، دون فقد أي بيانات أو تعطيل المستخدم
   if (!strictMatchOk) {
     const sampleRows = aoa.slice(1, 4);
-    const aiMapping = await matchColumnsWithAI(headerRow, sampleRows);
+    const aiAttempt = await matchColumnsWithAI(headerRow, sampleRows);
+    const aiMapping = aiAttempt.mapping;
 
     if (aiMapping) {
       IMPORT_COLUMNS.forEach((col) => {
@@ -698,10 +700,18 @@ export async function parseWorkbookFile(file: File, agents: ImportAgent[] = []):
   }
 
   if (!strictMatchOk && !usedAIMapping) {
-    // نفس رسائل الخطأ الأصلية بالضبط — سواء الذكاء الاصطناعي غير متاح
-    // (معطّل/بدون مزود/فشل الاتصال...) أو استُدعي ولم يكفِ لتغطية كل
-    // الأعمدة الإلزامية. النظام الحالي يعمل بالضبط كما لو لم تُضَف هذه
-    // الطبقة أصلاً
+    const aiCapacityExhausted =
+      typeof aiAttempt !== 'undefined' &&
+      (aiAttempt.failureType === 'capacity_exhausted' || aiAttempt.failureType === 'gateway_rate_limited');
+
+    if (aiCapacityExhausted) {
+      return {
+        rows: [],
+        headerError: 'الملف يحتاج الذكاء الاصطناعي لفهم أسماء الأعمدة غير القياسية، لكن كل الحصص المتاحة انتهت أو متوقفة مؤقتاً. لم يتم حفظ أي بيانات. يمكنك إعادة المحاولة لاحقاً أو استخدام نموذج Excel الرسمي.',
+        aiCapacityExhausted: true,
+      };
+    }
+
     if (missingHeaders.length > 0) {
       return {
         rows: [],
