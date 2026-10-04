@@ -750,6 +750,29 @@ export async function parseWorkbookFile(file: File, agents: ImportAgent[] = []):
     rows.push(row);
   }
 
+  // Dry Run على مستوى الملف كله: رقم الوثيقة لازم يكون فريدًا، فبدل ما
+  // نبدأ الاستيراد ونكتشف التعارض صفًا بعد صف، نوقف النسخ المكررة قبل أي
+  // كتابة لقاعدة البيانات ونوضح أرقام الصفوف المتعارضة للمستخدم.
+  const policyRows = new Map<string, ParsedRow[]>();
+  for (const row of rows) {
+    const policyNumber = normalizeDigitsText(row.raw['policy_number']);
+    if (!policyNumber) continue;
+    const key = policyNumber.toLowerCase();
+    const bucket = policyRows.get(key) || [];
+    bucket.push(row);
+    policyRows.set(key, bucket);
+  }
+
+  for (const duplicateRows of policyRows.values()) {
+    if (duplicateRows.length < 2) continue;
+    const rowNumbers = duplicateRows.map((r) => r.rowNumber).join('، ');
+    for (const row of duplicateRows) {
+      const duplicateError = `رقم الوثيقة مكرر داخل الملف (الصفوف: ${rowNumbers})`;
+      row.clientError = row.clientError ? `${row.clientError} — ${duplicateError}` : duplicateError;
+      row.payload = null;
+    }
+  }
+
   return { rows, headerError: null, usedAIMapping };
 }
 
