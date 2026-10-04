@@ -145,7 +145,7 @@ export async function extractRowsFromDocument(
           { role: 'system', content: buildSystemPrompt() },
           { role: 'user', content: userContent },
         ],
-        { maxTokens: 4000, temperature: 0.1 }
+        { maxTokens: 4000, temperature: 0.1, purpose: 'data_import' }
       );
 
       if (!result.success || !result.content) {
