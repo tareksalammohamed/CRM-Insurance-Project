@@ -83,9 +83,9 @@ export function downloadTemplateFile() {
 //     في السيرفر. بنعيد استخدام نفس الدالة المستخدمة في صفحة العملاء
 //     (fetchAgentsForCurrentUser) عشان نفس نطاق الفريق بالظبط.
 // ===================================================================
-export async function fetchImportAgents(user: User): Promise<ImportAgent[]> {
+export async function fetchImportAgents(user: User, branchId: string | null = null): Promise<ImportAgent[]> {
   try {
-    const all = await fetchAgentsForCurrentUser(user, null);
+    const all = await fetchAgentsForCurrentUser(user, branchId);
     const candidates = [
       ...(user.role === 'agent' || user.role === 'premium_agent'
         ? [{ id: user.id, name: user.name, role: user.role }]
@@ -310,6 +310,7 @@ export function buildParsedRow(
 
   const agentNameInput = normalizeText(get('agent_name'));
   let agentName = agentNameInput;
+  let agentId: string | null = null;
   if (!agentNameInput) {
     errors.push('اسم الوكيل مطلوب');
   } else if (agents.length > 0) {
@@ -320,6 +321,7 @@ export function buildParsedRow(
     const { agent, suggestions } = matchAgentName(agentNameInput, agents);
     if (agent) {
       agentName = agent.name;
+      agentId = agent.id;
       raw.agent_name = agent.name;
     } else if (suggestions.length > 0) {
       errors.push(`تعذر تأكيد اسم الوكيل "${agentNameInput}". اختر الوكيل الصحيح من القائمة: ${suggestions.map((item) => item.name).join('، ')}`);
@@ -389,6 +391,7 @@ export function buildParsedRow(
       p_occupation: normalizeText(get('occupation')) || null,
       p_marital_status: maritalStatus || null,
       p_agent_name: agentName,
+      p_agent_id: agentId,
       p_policy_number: policyNumber,
       p_policy_type: policyType,
       p_sum_assured: sumAssured,
@@ -455,6 +458,31 @@ function normalizeHeaderForMatch(value: any): string {
     .replace(/ـ/g, '') // التطويل
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+const IMPORT_HEADER_ALIASES: Partial<Record<ImportColumnKey, string[]>> = {
+  customer_name: ['العميل', 'اسم المؤمن عليه', 'اسم المؤمن عليه بالكامل', 'client name', 'customer name', 'full name'],
+  national_id: ['رقم قومي', 'الرقم القومى', 'الرقم القومي للمؤمن عليه', 'national id', 'national_id'],
+  phone: ['التليفون', 'الهاتف', 'الموبايل', 'رقم الموبايل', 'mobile', 'phone', 'phone number'],
+  address: ['عنوان العميل', 'محل الاقامة', 'محل الإقامة', 'address'],
+  birth_date: ['تاريخ الميلاد', 'ميلاد', 'date of birth', 'dob'],
+  occupation: ['الوظيفة', 'المهنه', 'وظيفة العميل', 'occupation', 'job'],
+  marital_status: ['الحاله الاجتماعيه', 'الحالة الزوجية', 'marital status', 'status marital'],
+  agent_name: ['الوكيل', 'اسم المندوب', 'المندوب', 'اسم المنتج', 'المنتج', 'agent', 'agent name'],
+  policy_number: ['رقم البوليصة', 'رقم بوليصه', 'رقم الوثيقه', 'policy no', 'policy number', 'policy_number'],
+  policy_type: ['نوع البوليصة', 'نوع الوثيقه', 'البرنامج', 'المنتج التأميني', 'policy type', 'plan'],
+  sum_assured: ['مبلغ التامين', 'مبلغ التأمين الكلي', 'راس المال', 'رأس المال', 'sum assured', 'sum_assured'],
+  premium_amount: ['القسط الصافي', 'صافي القسط', 'قيمة القسط', 'premium', 'net premium', 'premium amount'],
+  payment_method: ['دورية السداد', 'طريقه السداد', 'طريقة الدفع', 'دورية الدفع', 'payment method', 'frequency'],
+  start_date: ['تاريخ البدء', 'تاريخ السريان', 'تاريخ بداية الوثيقة', 'تاريخ الاصدار', 'تاريخ الإصدار', 'start date', 'effective date'],
+  notes: ['ملاحظة', 'بيان', 'remarks', 'notes'],
+};
+
+function findHeaderAliasIndex(headerRow: string[], key: ImportColumnKey): number {
+  const aliases = [IMPORT_COLUMNS.find((c) => c.key === key)?.header, ...(IMPORT_HEADER_ALIASES[key] || [])]
+    .filter(Boolean)
+    .map(normalizeHeaderForMatch);
+  return headerRow.findIndex((header) => aliases.includes(normalizeHeaderForMatch(header)));
 }
 
 const ARABIC_INDIC_DIGITS: Record<string, string> = {
@@ -622,8 +650,7 @@ export async function parseWorkbookFile(file: File, agents: ImportAgent[] = []):
   // الأعمدة الإلزامية فقط هي اللي بيتسبب غيابها في خطأ "الأعمدة الناقصة"
   IMPORT_COLUMNS.forEach((col) => {
     if (col.key === 'premium_amount') return;
-    const expectedHeader = normalizeHeaderForMatch(col.header);
-    const idx = headerRow.findIndex((h) => normalizeHeaderForMatch(h) === expectedHeader);
+    const idx = findHeaderAliasIndex(headerRow, col.key);
     if (idx === -1) {
       if (col.required) missingHeaders.push(col.header);
     } else {
@@ -763,6 +790,7 @@ const IMPORT_CONCURRENCY = 5;
 
 export async function importRows(
   rows: ParsedRow[],
+  branchId: string | null,
   onRowDone: (result: RowResult, doneCount: number, totalCount: number) => void
 ): Promise<ImportSummary> {
   const results: RowResult[] = [];
@@ -789,7 +817,10 @@ export async function importRows(
       const row = rowsToProcess[nextIndex++];
       const payload = row.payload!;
       try {
-        const { error } = await supabase.rpc('import_policy_row', payload);
+        const { error } = await supabase.rpc('import_policy_row_v2', {
+          ...payload,
+          p_branch_id: branchId,
+        });
         if (error) throw error;
 
         const result: RowResult = {
