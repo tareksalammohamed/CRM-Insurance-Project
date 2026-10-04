@@ -39,6 +39,7 @@ export interface ImportRowPayload {
   p_occupation: string | null;
   p_marital_status: string | null;
   p_agent_name: string;
+  p_agent_id: string | null;
   p_policy_number: string;
   p_policy_type: string;
   p_sum_assured: number;
