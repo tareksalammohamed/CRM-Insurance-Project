@@ -51,6 +51,8 @@ export function DataImport() {
   const validRowsCount = activeRows.filter((r) => r.payload !== null).length;
   const invalidRowsCount = activeRows.length - validRowsCount;
   const excludedCount = excludedRows.size;
+  const duplicateRowsCount = activeRows.filter((r) => r.clientError?.includes('مكرر داخل الملف')).length;
+  const agentIssueRowsCount = activeRows.filter((r) => r.clientError?.includes('الوكيل')).length;
 
   const resetAll = () => {
     setFileName(null);
@@ -269,17 +271,44 @@ export function DataImport() {
                 <span>هذه إعادة محاولة للصفوف التي فشلت في المرة السابقة فقط. الصفوف التي نجحت سابقاً تم استيرادها بالفعل ولن تتكرر.</span>
               </div>
             )}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-secondary-50 rounded-lg p-4">
-              <div className="text-sm text-secondary-700 space-y-1">
-                <p>تم العثور على <span className="font-semibold">{parsedRows.length}</span> صف بيانات.</p>
-                <p className="text-success-700">{validRowsCount} صف جاهز للاستيراد</p>
-                {invalidRowsCount > 0 && (
-                  <p className="text-error-600">{invalidRowsCount} صف به أخطاء وسيُرفض فور بدء الاستيراد</p>
-                )}
-                {excludedCount > 0 && (
-                  <p className="text-secondary-500">{excludedCount} صف مستبعد من الاستيراد يدوياً</p>
-                )}
+            <div className="rounded-xl border border-secondary-200 bg-secondary-50 p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-extrabold text-primary-700">DRY RUN — فحص قبل الاستيراد</p>
+                  <p className="text-sm text-secondary-600 mt-1">
+                    لم يتم حفظ أي بيانات بعد. راجع الملخص وصحّح الصفوف غير المؤكدة قبل البدء.
+                  </p>
+                </div>
+                <span className="text-xs text-secondary-500">
+                  {agents.length > 0 ? `${agents.length} وكيل متاح للمطابقة في نطاقك الحالي` : 'مطابقة الوكلاء ستُراجع على الخادم'}
+                </span>
               </div>
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                <div className="rounded-lg bg-white border border-secondary-200 p-3">
+                  <p className="text-xs text-secondary-500">إجمالي الصفوف</p>
+                  <p className="text-xl font-bold text-secondary-900">{parsedRows.length}</p>
+                </div>
+                <div className="rounded-lg bg-white border border-success-200 p-3">
+                  <p className="text-xs text-success-700">جاهز</p>
+                  <p className="text-xl font-bold text-success-700">{validRowsCount}</p>
+                </div>
+                <div className="rounded-lg bg-white border border-error-200 p-3">
+                  <p className="text-xs text-error-600">يحتاج تصحيح</p>
+                  <p className="text-xl font-bold text-error-600">{invalidRowsCount}</p>
+                </div>
+                <div className="rounded-lg bg-white border border-warning-200 p-3">
+                  <p className="text-xs text-warning-700">مشاكل وكيل</p>
+                  <p className="text-xl font-bold text-warning-700">{agentIssueRowsCount}</p>
+                </div>
+                <div className="rounded-lg bg-white border border-warning-200 p-3">
+                  <p className="text-xs text-warning-700">تكرار داخل الملف</p>
+                  <p className="text-xl font-bold text-warning-700">{duplicateRowsCount}</p>
+                </div>
+              </div>
+              {excludedCount > 0 && (
+                <p className="text-xs text-secondary-500">{excludedCount} صف مستبعد يدويًا ولن يتم إرساله.</p>
+              )}
+              <div className="flex justify-end">
               <button
                 onClick={startImport}
                 disabled={validRowsCount === 0}
@@ -288,6 +317,7 @@ export function DataImport() {
                 <PlayCircle className="w-4 h-4" />
                 بدء الاستيراد
               </button>
+              </div>
             </div>
 
             {/* الخطوة ٢ب: معاينة وتعديل الصفوف قبل الإرسال — تصحيح خطأ بسيط
