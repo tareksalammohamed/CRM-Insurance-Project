@@ -47,6 +47,7 @@ const SubscriptionsAdminPage = lazy(() => import('./features/subscriptions/pages
 const BranchesAdminPage = lazy(() => import('./features/branches/pages/BranchesAdminPage').then(m => ({ default: m.BranchesAdminPage })));
 const AISettingsPage = lazy(() => import('./features/aiSettings/pages/AISettingsPage').then(m => ({ default: m.AISettingsPage })));
 const SystemHealth = lazy(() => import('./pages/SystemHealth').then(m => ({ default: m.SystemHealth })));
+const JobCenter = lazy(() => import('./pages/JobCenter').then(m => ({ default: m.JobCenter })));
 const PriceCalculator = lazy(() => import('./pages/PriceCalculator').then(m => ({ default: m.PriceCalculator })));
 const DailyReports   = lazy(() => import('./pages/DailyReports').then(m => ({ default: m.DailyReports })));
 const HelpCenterPage = lazy(() => import('./features/help/HelpCenterPage'));
@@ -182,6 +183,7 @@ function AppLayout() {
                 <Route path="/settings"        element={<RequireRole check={canViewSettings}><Settings /></RequireRole>} />
                 <Route path="/ai-settings"     element={<RequireRole check={canManageAI}><AISettingsPage /></RequireRole>} />
                 <Route path="/system-health"    element={<RequireRole check={canManageAI}><SystemHealth /></RequireRole>} />
+                <Route path="/jobs"             element={<JobCenter />} />
                 <Route path="/price-calculator" element={<PriceCalculator />} />
                 <Route path="/daily-reports"    element={<RequireRole check={canAccessDailyReports}><DailyReports /></RequireRole>} />
                 <Route path="/help"             element={<HelpCenterPage />} />
