@@ -22,7 +22,7 @@ import clsx from 'clsx';
 import { useAuth } from '../../hooks/useAuth';
 import { useBranchContext } from '../../lib/branchContext';
 import type { ParsedRow, ImportSummary } from './types';
-import { downloadTemplateFile, parseWorkbookFile, importRows, fetchImportAgents, exportErrorReport, type ImportAgent } from './services/dataImportService';
+import { downloadTemplateFile, parseWorkbookFile, importRows, fetchImportAgents, exportErrorReport, revalidateRow, type ImportAgent } from './services/dataImportService';
 import { detectDocumentKind, extractRowsFromDocument } from './services/aiDocumentExtractor';
 import { RowEditModal } from './components/RowEditModal';
 
@@ -152,6 +152,14 @@ export function DataImport() {
   const handleRowSaved = (updatedRow: ParsedRow) => {
     setParsedRows((prev) => prev.map((r) => (r.rowNumber === updatedRow.rowNumber ? updatedRow : r)));
     setEditingRow(null);
+  };
+
+  const handleAgentQuickSelect = (row: ParsedRow, agentName: string) => {
+    const updated = revalidateRow({
+      ...row,
+      raw: { ...row.raw, agent_name: agentName },
+    }, agents);
+    setParsedRows((prev) => prev.map((item) => item.rowNumber === row.rowNumber ? updated : item));
   };
 
   const toggleExcludeRow = (rowNumber: number) => {
@@ -323,7 +331,25 @@ export function DataImport() {
                         >
                           <td className="py-2 px-2 text-secondary-500">{row.rowNumber}</td>
                           <td className="py-2 px-2">{row.raw['customer_name'] || '-'}</td>
-                          <td className="py-2 px-2">{row.raw['agent_name'] || '-'}</td>
+                          <td className="py-2 px-2 min-w-[180px]">
+                            {!isExcluded && row.clientError?.includes('الوكيل') && agents.length > 0 ? (
+                              <select
+                                value=""
+                                onChange={(e) => {
+                                  if (e.target.value) handleAgentQuickSelect(row, e.target.value);
+                                }}
+                                className="input-field py-1.5 text-xs min-w-[170px]"
+                                aria-label={`اختيار الوكيل للصف ${row.rowNumber}`}
+                              >
+                                <option value="">اختر الوكيل الصحيح</option>
+                                {agents.map((agent) => (
+                                  <option key={agent.id} value={agent.name}>{agent.name}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              row.raw['agent_name'] || '-'
+                            )}
+                          </td>
                           <td className="py-2 px-2">{row.raw['policy_number'] || '-'}</td>
                           <td className="py-2 px-2">
                             {isExcluded ? (
