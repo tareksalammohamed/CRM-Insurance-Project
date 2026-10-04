@@ -95,6 +95,76 @@ ALTER TABLE public.ai_provider_runtime_stats ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.ai_provider_runtime_stats FROM anon, authenticated, PUBLIC;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.ai_provider_runtime_stats TO service_role;
 
+
+CREATE OR REPLACE FUNCTION public.record_ai_provider_runtime(
+  p_provider text,
+  p_success boolean,
+  p_latency_ms integer DEFAULT NULL,
+  p_error text DEFAULT NULL,
+  p_cooldown_seconds integer DEFAULT 0
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $
+BEGIN
+  INSERT INTO public.ai_provider_runtime_stats (
+    provider,
+    success_count,
+    failure_count,
+    consecutive_failures,
+    avg_latency_ms,
+    last_latency_ms,
+    last_success_at,
+    last_failure_at,
+    cooldown_until,
+    last_runtime_error,
+    updated_at
+  )
+  VALUES (
+    p_provider,
+    CASE WHEN p_success THEN 1 ELSE 0 END,
+    CASE WHEN p_success THEN 0 ELSE 1 END,
+    CASE WHEN p_success THEN 0 ELSE 1 END,
+    p_latency_ms,
+    p_latency_ms,
+    CASE WHEN p_success THEN now() ELSE NULL END,
+    CASE WHEN p_success THEN NULL ELSE now() END,
+    CASE WHEN p_success OR p_cooldown_seconds <= 0 THEN NULL ELSE now() + make_interval(secs => p_cooldown_seconds) END,
+    CASE WHEN p_success THEN NULL ELSE left(p_error, 500) END,
+    now()
+  )
+  ON CONFLICT (provider) DO UPDATE SET
+    success_count = public.ai_provider_runtime_stats.success_count + CASE WHEN p_success THEN 1 ELSE 0 END,
+    failure_count = public.ai_provider_runtime_stats.failure_count + CASE WHEN p_success THEN 0 ELSE 1 END,
+    consecutive_failures = CASE
+      WHEN p_success THEN 0
+      ELSE public.ai_provider_runtime_stats.consecutive_failures + 1
+    END,
+    avg_latency_ms = CASE
+      WHEN p_latency_ms IS NULL THEN public.ai_provider_runtime_stats.avg_latency_ms
+      WHEN public.ai_provider_runtime_stats.avg_latency_ms IS NULL THEN p_latency_ms
+      ELSE round((public.ai_provider_runtime_stats.avg_latency_ms * 0.8) + (p_latency_ms * 0.2), 2)
+    END,
+    last_latency_ms = COALESCE(p_latency_ms, public.ai_provider_runtime_stats.last_latency_ms),
+    last_success_at = CASE WHEN p_success THEN now() ELSE public.ai_provider_runtime_stats.last_success_at END,
+    last_failure_at = CASE WHEN p_success THEN public.ai_provider_runtime_stats.last_failure_at ELSE now() END,
+    cooldown_until = CASE
+      WHEN p_success THEN NULL
+      WHEN p_cooldown_seconds > 0 THEN now() + make_interval(secs => p_cooldown_seconds)
+      ELSE public.ai_provider_runtime_stats.cooldown_until
+    END,
+    last_runtime_error = CASE WHEN p_success THEN NULL ELSE left(p_error, 500) END,
+    updated_at = now();
+END;
+$;
+
+REVOKE ALL ON FUNCTION public.record_ai_provider_runtime(text, boolean, integer, text, integer)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.record_ai_provider_runtime(text, boolean, integer, text, integer)
+  TO service_role;
+
 CREATE OR REPLACE FUNCTION public.get_system_health()
 RETURNS jsonb
 LANGUAGE plpgsql
