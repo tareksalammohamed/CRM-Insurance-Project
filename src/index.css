@@ -5732,3 +5732,36 @@ html.dark .login-card.is-authenticating {
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* ============================================================================
+   VISUAL QA — semantic translucent surfaces
+   Tailwind alpha utility variants need explicit dark counterparts; otherwise
+   pale status tiles stay visually washed-out even after the global dark pass.
+============================================================================ */
+html.dark [class~="bg-secondary-50/20"],
+html.dark [class~="bg-secondary-50/30"],
+html.dark [class~="bg-secondary-50/60"] {
+  background-color: rgb(14 33 28 / 0.9) !important;
+}
+
+html.dark [class~="bg-primary-50/30"],
+html.dark [class~="bg-primary-50/45"],
+html.dark [class~="bg-primary-50/70"] {
+  background-color: rgb(18 60 49 / 0.72) !important;
+}
+
+html.dark [class~="bg-success-50/60"],
+html.dark [class~="bg-success-50/70"] {
+  background-color: rgb(12 68 59 / 0.58) !important;
+}
+
+html.dark [class~="bg-warning-50/60"],
+html.dark [class~="bg-warning-50/70"] {
+  background-color: rgb(73 54 19 / 0.72) !important;
+}
+
+html.dark [class~="bg-error-50/45"],
+html.dark [class~="bg-error-50/60"] {
+  background-color: rgb(79 29 37 / 0.62) !important;
+}
