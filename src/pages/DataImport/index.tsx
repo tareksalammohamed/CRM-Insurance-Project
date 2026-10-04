@@ -110,9 +110,13 @@ export function DataImport() {
             setAiNotice(
               `تم استخراج ${extraction.processedPages} من ${extraction.totalPages} صفحة و${extraction.rows.length} سجل بنجاح، ثم انتهت الحصة المتاحة لدى كل نماذج ومزودي الذكاء الاصطناعي. يمكنك استيراد الجزء المستخرج الآن بأمان، وإعادة المحاولة لاحقاً للباقي.`
             );
+          } else if (extraction.pageLimitReached) {
+            setAiNotice(
+              `تم تحليل أول ${extraction.processedPages} صفحة من أصل ${extraction.totalPages} واستخراج ${extraction.rows.length} سجل. لحماية أداء الهاتف والذاكرة، الحد الأقصى للملف الواحد هو 60 صفحة؛ قسّم الصفحات المتبقية في ملف ثانٍ ثم استوردها بعد ذلك.`
+            );
           } else if (extraction.partial && extraction.processedPages < extraction.totalPages) {
             setAiNotice(
-              `تم استخراج ${extraction.processedPages} من ${extraction.totalPages} صفحة و${extraction.rows.length} سجل. تم الاحتفاظ بكل ما اكتمل؛ راجع البيانات واستورد الجزء الجاهز، ثم أكمل الملف لاحقاً إذا لزم.`
+              `تم استخراج ${extraction.processedPages} من ${extraction.totalPages} صفحة و${extraction.rows.length} سجل. تم الاحتفاظ بكل ما اكتمل؛ راجع البيانات واستورد الجزء الجاهز، ثم أعد المحاولة للباقي لاحقاً.`
             );
           } else {
             setAiNotice(
