@@ -84,64 +84,191 @@ function sanitizeExtractedRow(raw: Record<string, unknown>): Record<string, any>
   return out;
 }
 
+export interface DocumentExtractionProgress {
+  processedPages: number;
+  totalPages: number;
+  extractedRows: number;
+  provider?: string;
+  model?: string;
+}
+
 export interface DocumentExtractionResult {
   rows: ParsedRow[];
   error: string | null;
+  partial: boolean;
+  capacityExhausted: boolean;
+  processedPages: number;
+  totalPages: number;
+  retryAfterSeconds?: number;
 }
 
 const UNAVAILABLE_MESSAGE =
-  'تعذر استخراج البيانات من هذا الملف حالياً لأن منظومة الذكاء الاصطناعي غير متاحة (قد تكون معطّلة، أو انتهت الحصة المتاحة، أو تعذر الاتصال). قراءة ملفات PDF والصور تعتمد بالكامل على الذكاء الاصطناعي — يرجى تجربة رفع ملف Excel أو CSV بدلاً من ذلك، أو إعادة المحاولة لاحقاً.';
+  'تعذر استخراج البيانات من هذا الملف حالياً لأن منظومة الذكاء الاصطناعي غير متاحة. يمكنك استخدام Excel/CSV أو إعادة المحاولة لاحقاً.';
 
 /**
- * يستخرج صفوف بيانات من ملف PDF أو صورة عبر الذكاء الاصطناعي، ثم يمرر كل
- * صف مستخرَج على buildParsedRow (نفس دالة تحقق ملفات Excel/CSV بالضبط)
- * لضمان نفس قواعد التحقق ومطابقة الوكيل تماماً. لا يوجد نظام بديل لهذا
- * النوع من الملفات، فأي فشل يُرجع رسالة خطأ واضحة دون أي استيراد جزئي.
+ * استخراج مرن على دفعات (صفحة بصفحة):
+ * - كل صفحة طلب مستقل، والـ ai-gateway يتولى Model fallback ثم Provider fallback.
+ * - نمرر للصفحة التالية أرقام الوثائق المستخرجة سابقاً حتى يحافظ أي نموذج
+ *   بديل على نفس السياق ولا يكرر سجلات الصفحات السابقة.
+ * - إذا استنفدت كل الحصص بعد إنجاز جزء من الملف، نرجع الجزء المنجز بدلاً
+ *   من رميه، ليقدر المستخدم يراجعه ويستورده بأمان.
  */
 export async function extractRowsFromDocument(
   file: File,
   kind: ExtractionFileKind,
-  agents: ImportAgent[]
+  agents: ImportAgent[],
+  onProgress?: (progress: DocumentExtractionProgress) => void,
 ): Promise<DocumentExtractionResult> {
   try {
     const images = await documentFileToImages(file, kind);
+    const totalPages = images.length;
+    const extractedRawRows: Array<Record<string, unknown>> = [];
+    const seenPolicies = new Set<string>();
+    let processedPages = 0;
+    let lastRetryAfterSeconds: number | undefined;
 
-    const userContent: AIContentPart[] = [
-      { type: 'text', text: 'استخرج كل سجلات العملاء/الوثائق الموجودة فى هذا المستند وفق القواعد المذكورة.' },
-      ...images.map((url): AIContentPart => ({ type: 'image_url', image_url: { url } })),
-    ];
+    for (let pageIndex = 0; pageIndex < images.length; pageIndex++) {
+      const priorPolicies = [...seenPolicies].slice(-80);
+      const contextText = priorPolicies.length
+        ? `تم استخراج أرقام الوثائق التالية من الصفحات السابقة، فلا تكررها إلا إذا كانت الصفحة الحالية تحتوي سجلاً مختلفاً بوضوح: ${priorPolicies.join('، ')}`
+        : 'هذه أول صفحة/صورة يتم تحليلها.';
 
-    const result = await askAI(
-      [
-        { role: 'system', content: buildSystemPrompt() },
-        { role: 'user', content: userContent },
-      ],
-      { maxTokens: 4000, temperature: 0.1 }
-    );
+      const userContent: AIContentPart[] = [
+        {
+          type: 'text',
+          text: `حلّل الصفحة ${pageIndex + 1} من ${totalPages}. استخرج كل السجلات الموجودة فى هذه الصفحة فقط وفق القواعد المذكورة. ${contextText}`,
+        },
+        { type: 'image_url', image_url: { url: images[pageIndex] } },
+      ];
 
-    if (!result.success || !result.content) {
-      return { rows: [], error: UNAVAILABLE_MESSAGE };
+      const result = await askAI(
+        [
+          { role: 'system', content: buildSystemPrompt() },
+          { role: 'user', content: userContent },
+        ],
+        { maxTokens: 4000, temperature: 0.1 }
+      );
+
+      if (!result.success || !result.content) {
+        lastRetryAfterSeconds = result.retryAfterSeconds;
+        const capacityExhausted =
+          result.failureType === 'capacity_exhausted' ||
+          result.failureType === 'gateway_rate_limited';
+
+        if (extractedRawRows.length > 0) {
+          const rows = extractedRawRows.map((extracted, idx) =>
+            buildParsedRow(idx + 2, sanitizeExtractedRow(extracted), agents)
+          );
+          return {
+            rows,
+            error: null,
+            partial: true,
+            capacityExhausted,
+            processedPages,
+            totalPages,
+            retryAfterSeconds: lastRetryAfterSeconds,
+          };
+        }
+
+        const error = capacityExhausted
+          ? 'انتهت الحصة المتاحة حالياً لدى كل نماذج ومزودي الذكاء الاصطناعي قبل بدء استخراج الملف. لم يتم حفظ أي بيانات.'
+          : (result.error || UNAVAILABLE_MESSAGE);
+
+        return {
+          rows: [],
+          error,
+          partial: false,
+          capacityExhausted,
+          processedPages,
+          totalPages,
+          retryAfterSeconds: lastRetryAfterSeconds,
+        };
+      }
+
+      let parsed: RawExtractionResponse;
+      try {
+        parsed = parseExtractionResponse(result.content);
+      } catch {
+        // رد نموذج غير صالح لا يلغي الصفحات السابقة. نتوقف ونُبقي ما تم.
+        if (extractedRawRows.length > 0) {
+          const rows = extractedRawRows.map((extracted, idx) =>
+            buildParsedRow(idx + 2, sanitizeExtractedRow(extracted), agents)
+          );
+          return {
+            rows,
+            error: null,
+            partial: true,
+            capacityExhausted: false,
+            processedPages,
+            totalPages,
+          };
+        }
+        return {
+          rows: [],
+          error: UNAVAILABLE_MESSAGE,
+          partial: false,
+          capacityExhausted: false,
+          processedPages,
+          totalPages,
+        };
+      }
+
+      for (const extracted of parsed.rows || []) {
+        const sanitized = sanitizeExtractedRow(extracted);
+        const policyNumber = String(sanitized.policy_number || '').trim().toLowerCase();
+        const customerName = String(sanitized.customer_name || '').trim().toLowerCase();
+        const dedupeKey = policyNumber ? `policy:${policyNumber}` : `customer:${customerName}:${extractedRawRows.length}`;
+
+        if (policyNumber && seenPolicies.has(policyNumber)) continue;
+        if (policyNumber) seenPolicies.add(policyNumber);
+
+        // dedupeKey reserved for readability/future expansion; policy number is
+        // the authoritative de-duplication signal for extracted documents.
+        void dedupeKey;
+        extractedRawRows.push(sanitized);
+      }
+
+      processedPages = pageIndex + 1;
+      onProgress?.({
+        processedPages,
+        totalPages,
+        extractedRows: extractedRawRows.length,
+        provider: result.provider,
+        model: result.model,
+      });
     }
 
-    let parsed: RawExtractionResponse;
-    try {
-      parsed = parseExtractionResponse(result.content);
-    } catch {
-      return { rows: [], error: UNAVAILABLE_MESSAGE };
+    if (extractedRawRows.length === 0) {
+      return {
+        rows: [],
+        error: 'لم يتمكن الذكاء الاصطناعي من العثور على أي سجل بيانات واضح فى هذا الملف.',
+        partial: false,
+        capacityExhausted: false,
+        processedPages,
+        totalPages,
+      };
     }
 
-    if (parsed.rows!.length === 0) {
-      return { rows: [], error: 'لم يتمكن الذكاء الاصطناعي من العثور على أي سجل بيانات واضح فى هذا الملف.' };
-    }
-
-    const rows = parsed.rows!.map((extracted, idx) =>
+    const rows = extractedRawRows.map((extracted, idx) =>
       buildParsedRow(idx + 2, sanitizeExtractedRow(extracted), agents)
     );
 
-    return { rows, error: null };
+    return {
+      rows,
+      error: null,
+      partial: false,
+      capacityExhausted: false,
+      processedPages,
+      totalPages,
+    };
   } catch {
-    // أي استثناء غير متوقع (فشل تحويل PDF/الصورة، خطأ شبكة...) → نفس رسالة
-    // عدم التوفر، دون أي محاولة استيراد جزئي أو فقد بيانات
-    return { rows: [], error: UNAVAILABLE_MESSAGE };
+    return {
+      rows: [],
+      error: UNAVAILABLE_MESSAGE,
+      partial: false,
+      capacityExhausted: false,
+      processedPages: 0,
+      totalPages: 0,
+    };
   }
 }
