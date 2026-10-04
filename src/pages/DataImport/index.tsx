@@ -46,6 +46,13 @@ export function DataImport() {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [parsing, setParsing] = useState(false);
+  const [aiExtractionProgress, setAiExtractionProgress] = useState<{
+    processedPages: number;
+    totalPages: number;
+    extractedRows: number;
+    provider?: string;
+    model?: string;
+  } | null>(null);
 
   const activeRows = parsedRows.filter((r) => !excludedRows.has(r.rowNumber));
   const validRowsCount = activeRows.filter((r) => r.payload !== null).length;
@@ -67,6 +74,7 @@ export function DataImport() {
     setStage('idle');
     setProgress({ done: 0, total: 0 });
     setSummary(null);
+    setAiExtractionProgress(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -86,13 +94,35 @@ export function DataImport() {
         // ملف PDF أو صورة — لا تدعمه الطبقة الأولى أصلاً، فيُعالَج بالكامل
         // عبر طبقة الاستخراج بالذكاء الاصطناعي (لا يوجد "نظام حالي" بديل
         // لهذا النوع من الملفات تحديداً)
-        const { rows, error } = await extractRowsFromDocument(file, documentKind, fetchedAgents);
-        if (error) {
-          setHeaderError(error);
+        const extraction = await extractRowsFromDocument(
+          file,
+          documentKind,
+          fetchedAgents,
+          (progress) => setAiExtractionProgress(progress),
+        );
+        if (extraction.error) {
+          setHeaderError(extraction.error);
           setStage('idle');
         } else {
-          setParsedRows(rows);
-          setAiNotice('تم استخراج بيانات هذا الملف بواسطة الذكاء الاصطناعي. راجع الصفوف أدناه بعناية قبل الاستيراد.');
+          setParsedRows(extraction.rows);
+
+          if (extraction.partial && extraction.capacityExhausted) {
+            setAiNotice(
+              `تم استخراج ${extraction.processedPages} من ${extraction.totalPages} صفحة و${extraction.rows.length} سجل بنجاح، ثم انتهت الحصة المتاحة لدى كل نماذج ومزودي الذكاء الاصطناعي. يمكنك استيراد الجزء المستخرج الآن بأمان، وإعادة المحاولة لاحقاً للباقي.`
+            );
+          } else if (extraction.pageLimitReached) {
+            setAiNotice(
+              `تم تحليل أول ${extraction.processedPages} صفحة من أصل ${extraction.totalPages} واستخراج ${extraction.rows.length} سجل. لحماية أداء الهاتف والذاكرة، الحد الأقصى للملف الواحد هو 60 صفحة؛ قسّم الصفحات المتبقية في ملف ثانٍ ثم استوردها بعد ذلك.`
+            );
+          } else if (extraction.partial && extraction.processedPages < extraction.totalPages) {
+            setAiNotice(
+              `تم استخراج ${extraction.processedPages} من ${extraction.totalPages} صفحة و${extraction.rows.length} سجل. تم الاحتفاظ بكل ما اكتمل؛ راجع البيانات واستورد الجزء الجاهز، ثم أعد المحاولة للباقي لاحقاً.`
+            );
+          } else {
+            setAiNotice(
+              `تم استخراج بيانات الملف بالكامل بواسطة الذكاء الاصطناعي (${extraction.processedPages} صفحة، ${extraction.rows.length} سجل). راجع الصفوف أدناه بعناية قبل الاستيراد.`
+            );
+          }
           setStage('parsed');
         }
         return;
@@ -244,9 +274,32 @@ export function DataImport() {
         )}
 
         {parsing && (
-          <div className="flex items-center gap-2 text-sm text-secondary-500">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            جاري قراءة الملف...
+          <div className="space-y-2 rounded-lg border border-primary-100 bg-primary-50/50 p-3">
+            <div className="flex items-center gap-2 text-sm text-secondary-700">
+              <Loader2 className="w-4 h-4 animate-spin text-primary-600" />
+              <span>
+                {aiExtractionProgress?.totalPages
+                  ? `جاري تحليل المستند... صفحة ${Math.min(aiExtractionProgress.processedPages + 1, aiExtractionProgress.totalPages)} من ${aiExtractionProgress.totalPages}`
+                  : 'جاري قراءة وتحليل الملف...'}
+              </span>
+            </div>
+            {aiExtractionProgress?.totalPages ? (
+              <>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-secondary-100">
+                  <div
+                    className="h-full bg-primary-600 transition-all duration-300"
+                    style={{
+                      width: `${(aiExtractionProgress.processedPages / aiExtractionProgress.totalPages) * 100}%`,
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-secondary-500">
+                  تم استخراج {aiExtractionProgress.extractedRows} سجل حتى الآن
+                  {aiExtractionProgress.provider ? ` · المزود الحالي: ${aiExtractionProgress.provider}` : ''}
+                  {aiExtractionProgress.model ? ` · النموذج: ${aiExtractionProgress.model}` : ''}
+                </p>
+              </>
+            ) : null}
           </div>
         )}
 

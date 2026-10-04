@@ -30,6 +30,7 @@ export interface AIChatMessage {
 export interface AskAIOptions {
   maxTokens?: number;
   temperature?: number;
+  purpose?: 'data_import';
   /** عند true: يتخطى الـ Gateway خطوة استخراج النص عبر OCR التقليدي ويرسل
    * الصور مباشرة لنموذج ذكاء اصطناعي يدعم الرؤية (Vision). مهم جداً
    * للمستندات المكتوبة بخط اليد — الـ OCR التقليدي (OCR.Space) ضعيف جداً
@@ -37,12 +38,20 @@ export interface AskAIOptions {
   preferVision?: boolean;
 }
 
+export type AIFailureType =
+  | 'capacity_exhausted'
+  | 'gateway_rate_limited'
+  | 'all_providers_failed'
+  | 'unavailable';
+
 export interface AskAIResult {
   success: boolean;
   provider?: string;
   model?: string;
   content?: string;
   error?: string;
+  failureType?: AIFailureType;
+  retryAfterSeconds?: number;
   /** اسم مزود الـ OCR الذى استُخدم لاستخراج النص من الصور قبل تحليلها،
    * إن وُجد (يظهر فقط للطلبات التى تحتوي صوراً ونجح استخراج OCR لها). */
   ocrProvider?: string;
@@ -68,12 +77,17 @@ export async function askAI(messages: AIChatMessage[], options: AskAIOptions = {
         messages,
         max_tokens: options.maxTokens ?? 512,
         temperature: options.temperature ?? 0.7,
+        ...(options.purpose ? { purpose: options.purpose } : {}),
         ...(options.preferVision ? { prefer_vision: true } : {}),
       }),
     });
     const result = await res.json();
     return {
       ...result,
+      failureType: result?.failure_type ?? undefined,
+      retryAfterSeconds: Number.isFinite(Number(result?.retry_after_seconds))
+        ? Number(result.retry_after_seconds)
+        : undefined,
       ocrProvider: result?.ocr_provider ?? undefined,
     } as AskAIResult;
   } catch (err) {

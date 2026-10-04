@@ -13,7 +13,7 @@
 // src/lib/ai/aiManager) — لا يوجد أي استدعاء مباشر لمزود خدمة هنا.
 // ===================================================================
 
-import { askAI } from '../../../lib/ai/aiManager';
+import { askAI, type AIFailureType } from '../../../lib/ai/aiManager';
 import { IMPORT_COLUMNS, type ImportColumnKey } from '../types';
 
 export const FIELD_DESCRIPTIONS: Record<ImportColumnKey, string> = {
@@ -87,22 +87,34 @@ function parseMappingResponse(raw: string): RawMappingResponse {
  * بعد التحقق من أن كل اسم عمود مُرجَع موجود فعلاً وبنفس الحروف فى
  * fileHeaders (تجاهل أي اسم مُختلَق أو مكرر)، أو null فى أي حالة فشل.
  */
+export interface AIColumnMatchResult {
+  mapping: Partial<Record<ImportColumnKey, string>> | null;
+  failureType?: AIFailureType;
+  error?: string;
+}
+
 export async function matchColumnsWithAI(
   fileHeaders: string[],
   sampleRows: any[][]
-): Promise<Partial<Record<ImportColumnKey, string>> | null> {
+): Promise<AIColumnMatchResult> {
   try {
-    if (fileHeaders.length === 0) return null;
+    if (fileHeaders.length === 0) return { mapping: null };
 
     const result = await askAI(
       [
         { role: 'system', content: buildSystemPrompt() },
         { role: 'user', content: `أعمدة الملف المرفوع:\n${describeFileColumns(fileHeaders, sampleRows)}` },
       ],
-      { maxTokens: 800, temperature: 0.1 }
+      { maxTokens: 800, temperature: 0.1, purpose: 'data_import' }
     );
 
-    if (!result.success || !result.content) return null;
+    if (!result.success || !result.content) {
+      return {
+        mapping: null,
+        failureType: result.failureType,
+        error: result.error,
+      };
+    }
 
     const parsed = parseMappingResponse(result.content);
     const validHeaders = new Set(fileHeaders);
@@ -114,13 +126,17 @@ export async function matchColumnsWithAI(
       if (typeof value !== 'string') continue;
       const header = value.trim();
       if (!header || header.toLowerCase() === 'null') continue;
-      if (!validHeaders.has(header) || usedHeaders.has(header)) continue; // تجاهل أي اسم عمود مُختلَق أو مكرر
+      if (!validHeaders.has(header) || usedHeaders.has(header)) continue;
       mapping[col.key] = header;
       usedHeaders.add(header);
     }
 
-    return mapping;
-  } catch {
-    return null; // أي خطأ (شبكة، JSON غير صالح، استثناء غير متوقع...) → رجوع صامت للنظام الحالي
+    return { mapping };
+  } catch (err) {
+    return {
+      mapping: null,
+      failureType: 'unavailable',
+      error: err instanceof Error ? err.message : 'تعذر تحليل أسماء الأعمدة',
+    };
   }
 }

@@ -15,7 +15,7 @@ import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 const MAX_DIMENSION = 1600;
-const MAX_PDF_PAGES = 4;
+const DEFAULT_MAX_PDF_PAGES = 4;
 // هامش أمان تحت حد الـ 1 ميجابايت الفعلي المفروض فى ai-gateway، لتجنب أي
 // فارق تقريب بسيط بين الحسابين
 const TARGET_MAX_BYTES = 950 * 1024;
@@ -99,7 +99,11 @@ async function imageFileToDataUrl(file: File): Promise<string> {
   return compressCanvasToDataUrl(canvas, TARGET_MAX_BYTES);
 }
 
-async function pdfFileToDataUrls(file: File): Promise<string[]> {
+async function pdfFileToDataUrls(
+  file: File,
+  maxPages = DEFAULT_MAX_PDF_PAGES,
+  startPage = 1,
+): Promise<{ urls: string[]; totalPages: number }> {
   let buffer: ArrayBuffer;
   try {
     buffer = await file.arrayBuffer();
@@ -111,10 +115,12 @@ async function pdfFileToDataUrls(file: File): Promise<string[]> {
     throw new Error('ملف الـ PDF غير مدعوم أو تالف');
   });
 
-  const pageCount = Math.min(pdf.numPages, MAX_PDF_PAGES);
+  const totalPages = pdf.numPages;
+  const firstPage = Math.min(Math.max(1, startPage), totalPages);
+  const lastPage = Math.min(totalPages, firstPage + Math.max(1, maxPages) - 1);
   const urls: string[] = [];
 
-  for (let pageNumber = 1; pageNumber <= pageCount; pageNumber++) {
+  for (let pageNumber = firstPage; pageNumber <= lastPage; pageNumber++) {
     const page = await pdf.getPage(pageNumber);
     const baseViewport = page.getViewport({ scale: 1 });
     const scale = Math.min(1, MAX_DIMENSION / Math.max(baseViewport.width, baseViewport.height)) || 1;
@@ -133,15 +139,40 @@ async function pdfFileToDataUrls(file: File): Promise<string[]> {
   if (urls.length === 0) {
     throw new Error('تعذر قراءة صفحات ملف الـ PDF');
   }
-  return urls;
+  return { urls, totalPages };
 }
 
 export type ExtractionFileKind = 'image' | 'pdf';
 
+export interface DocumentImagesResult {
+  images: string[];
+  totalPages: number;
+  truncated: boolean;
+}
+
+/**
+ * نسخة metadata لصفحات الاستيراد التى تحتاج معرفة العدد الحقيقى للصفحات.
+ * maxPdfPages افتراضياً 4 حفاظاً على سلوك ميزات استخراج نموذج واحد القديمة.
+ */
+export async function documentFileToImagesWithMeta(
+  file: File,
+  kind: ExtractionFileKind,
+  maxPdfPages = DEFAULT_MAX_PDF_PAGES,
+  startPdfPage = 1,
+): Promise<DocumentImagesResult> {
+  if (kind === 'pdf') {
+    const { urls, totalPages } = await pdfFileToDataUrls(file, maxPdfPages, startPdfPage);
+    return {
+      images: urls,
+      totalPages,
+      truncated: startPdfPage - 1 + urls.length < totalPages,
+    };
+  }
+  return { images: [await imageFileToDataUrl(file)], totalPages: 1, truncated: false };
+}
+
 /** يحوّل ملف الصورة أو الـ PDF المختار إلى صورة/صور Data URL جاهزة للإرسال لمنظومة الذكاء الاصطناعي */
 export async function documentFileToImages(file: File, kind: ExtractionFileKind): Promise<string[]> {
-  if (kind === 'pdf') {
-    return pdfFileToDataUrls(file);
-  }
-  return [await imageFileToDataUrl(file)];
+  const result = await documentFileToImagesWithMeta(file, kind, DEFAULT_MAX_PDF_PAGES);
+  return result.images;
 }
