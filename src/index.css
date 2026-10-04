@@ -5123,3 +5123,122 @@ html.dark .card-section-head,
 html.dark .report-section-head {
   border-color: rgb(143 212 183 / 0.08);
 }
+
+
+/* ============================================================================
+   MOBILE DASHBOARD DENSITY + CARD SEPARATION
+   Compact the leadership hero and make KPI cards visually distinct on phones.
+============================================================================ */
+@media (max-width: 767px) {
+  .dashboard-page {
+    row-gap: 1rem !important;
+  }
+
+  .dashboard-page .dashboard-intro {
+    padding: 0.72rem 0.82rem 0.78rem !important;
+    gap: 0.48rem !important;
+    border-radius: 1.15rem !important;
+    box-shadow: 0 12px 28px -18px rgb(6 52 43 / 0.52) !important;
+  }
+
+  .dashboard-page .dashboard-kicker {
+    margin-bottom: 0.12rem !important;
+    font-size: 0.64rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .dashboard-page .dashboard-intro :is(h1, h2) {
+    font-size: 1.08rem !important;
+    line-height: 1.18 !important;
+  }
+
+  .dashboard-page .dashboard-intro p {
+    margin-top: 0.08rem !important;
+    font-size: 0.64rem !important;
+    line-height: 1.4 !important;
+  }
+
+  /* The month is already visible in the toolbar, so this duplicate chip only
+     consumes vertical space on small screens. */
+  .dashboard-page .dashboard-context-chip {
+    display: none !important;
+  }
+
+  .dashboard-page .dashboard-toolbar-inline {
+    margin-top: 0.08rem;
+    padding: 0.18rem 0.26rem !important;
+    gap: 0.35rem !important;
+    border-radius: 0.78rem !important;
+  }
+
+  .dashboard-page .dashboard-refresh-control button {
+    padding-inline: 0.55rem !important;
+  }
+
+  .dashboard-page .dashboard-section-block {
+    padding-top: 0 !important;
+  }
+
+  .dashboard-page .dashboard-section-heading {
+    margin-bottom: 0.62rem !important;
+    padding-inline: 0.12rem !important;
+  }
+
+  .dashboard-page .dashboard-stats-grid {
+    gap: 0.72rem !important;
+  }
+
+  .dashboard-page .dashboard-stats-grid .kpi-card,
+  .dashboard-page .dashboard-kpis-grid .kpi-card,
+  .dashboard-page .dashboard-section-block > .card,
+  .dashboard-page .dashboard-targets-panel,
+  .dashboard-page .dashboard-performance-panel {
+    border: 1px solid #d2e0d8 !important;
+    box-shadow:
+      0 2px 5px rgb(13 59 51 / 0.06),
+      0 10px 24px -18px rgb(13 59 51 / 0.28) !important;
+    background: #ffffff !important;
+  }
+
+  .dashboard-page .dashboard-stats-grid .kpi-card {
+    border-radius: 1rem !important;
+  }
+
+  .dashboard-page .dashboard-stats-grid .kpi-card:nth-child(-n + 2) {
+    min-height: 7.2rem;
+  }
+
+  .dashboard-page .dashboard-stats-grid .kpi-card:nth-child(n + 3) {
+    margin-top: 0.04rem;
+    padding: 0.9rem 0.82rem !important;
+  }
+
+  /* Financial detail tiles inside the large cards need their own surface
+     boundary so they do not visually merge into the parent card. */
+  .dashboard-page .drilldown-action,
+  .dashboard-page .drilldown-card {
+    border-color: #d5e2da !important;
+    background: #f5f9f7 !important;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.72) !important;
+  }
+
+  .dashboard-page .dashboard-stats-grid .kpi-card:nth-child(n + 3) .grid,
+  .dashboard-page .dashboard-kpis-grid {
+    gap: 0.62rem !important;
+  }
+}
+
+html.dark .dashboard-page .dashboard-stats-grid .kpi-card,
+html.dark .dashboard-page .dashboard-kpis-grid .kpi-card,
+html.dark .dashboard-page .dashboard-section-block > .card,
+html.dark .dashboard-page .dashboard-targets-panel,
+html.dark .dashboard-page .dashboard-performance-panel {
+  background: #0d1d19 !important;
+  border-color: rgb(143 212 183 / 0.14) !important;
+}
+
+html.dark .dashboard-page .drilldown-action,
+html.dark .dashboard-page .drilldown-card {
+  background: #10241f !important;
+  border-color: rgb(143 212 183 / 0.12) !important;
+}
