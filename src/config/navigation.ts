@@ -35,8 +35,12 @@ export function isNotAgent(role: UserRole): boolean {
 // صفحة "تقارير العمل اليومية" غير متاحة لدور "وسيط حر" (premium_agent)
 // إطلاقاً — لا تظهر له فى القائمة، ولا يمكنه الوصول إليها حتى لو كتب
 // الرابط مباشرة (محمية أيضاً على مستوى الـ Route فى App.tsx).
+export function canAccessOperationalPages(role: UserRole): boolean {
+  return role !== 'super_admin';
+}
+
 export function canAccessDailyReports(role: UserRole): boolean {
-  return role !== 'premium_agent';
+  return role !== 'super_admin' && role !== 'premium_agent';
 }
 
 // ==========================================================================
@@ -152,6 +156,16 @@ export const NAV_LAYOUT: NavLayoutEntry[] = [
 // المراقب فما فوق (المستوى 4 فأقل) يضاف له عنصر "المؤشرات" قبل الحاسبة مباشرة:
 //   الرئيسية، العملاء، الوثائق، التحصيل، المؤشرات، الحاسبة (6 عناصر)
 export function getBottomNavItems(role: UserRole): NavItem[] {
+  if (role === 'super_admin') {
+    return [
+      { path: '/', label: 'الرئيسية', icon: LayoutDashboard },
+      { path: '/users', label: 'المستخدمون', icon: UserCog },
+      { path: '/subscriptions-admin', label: 'الاشتراكات', icon: WalletCards },
+      { path: '/system-health', label: 'الصحة', icon: Activity },
+      { path: '/settings', label: 'الإعدادات', icon: Settings2 },
+    ];
+  }
+
   const items: NavItem[] = [
     { path: '/',           label: 'الرئيسية', icon: LayoutDashboard },
     { path: '/customers',  label: 'طلبات التأمين', icon: UsersRound },
@@ -187,6 +201,37 @@ export const FALLBACK_BRAND_ICON = Shield;
  * - العنصر المستقل يُحذف لو صاحب الدور مالوش صلاحية عليه (حالياً متاح للجميع).
  */
 export function getVisibleNavLayout(role: UserRole): NavLayoutEntry[] {
+  if (role === 'super_admin') {
+    const adminGroup: NavGroup = {
+      key: 'system',
+      label: 'إدارة المنظومة',
+      icon: Shield,
+      items: [
+        { path: '/', label: 'مركز التحكم', icon: LayoutDashboard },
+        { path: '/users', label: 'إدارة المستخدمين', icon: UserCog },
+        { path: '/subscriptions-admin', label: 'الاشتراكات', icon: WalletCards },
+        { path: '/branches', label: 'إدارة الفروع', icon: Building2 },
+        { path: '/activity-log', label: 'سجل العمليات', icon: History },
+        { path: '/ai-settings', label: 'إعدادات الذكاء الاصطناعي', icon: Sparkles },
+        { path: '/system-health', label: 'صحة النظام', icon: Activity },
+        { path: '/settings', label: 'إعدادات النظام', icon: Settings2 },
+      ],
+    };
+    const accountGroup: NavGroup = {
+      key: 'account',
+      label: 'الحساب',
+      icon: CircleUserRound,
+      items: [
+        { path: '/profile', label: 'الملف الشخصي', icon: CircleUserRound },
+        { path: '/help', label: 'دليل المستخدم', icon: HelpCircle },
+      ],
+    };
+    return [
+      { kind: 'group', group: adminGroup },
+      { kind: 'group', group: accountGroup },
+    ];
+  }
+
   return NAV_LAYOUT
     .map((entry): NavLayoutEntry | null => {
       if (entry.kind === 'standalone') {
