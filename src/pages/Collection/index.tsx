@@ -170,7 +170,7 @@ export function Collection() {
         <section aria-label="مؤشرات التحصيل" className="space-y-2.5">
           <h2 className="col-panel-title px-0.5">
             <Gauge aria-hidden="true" />
-            <span>مؤشرات التحصيل</span>
+            <span>مؤشرات السنة الأولى</span>
           </h2>
           <CollectionStats quickStats={quickStats} quickStatsLoading={quickStatsLoading} />
         </section>
