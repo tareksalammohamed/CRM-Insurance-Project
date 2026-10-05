@@ -142,7 +142,7 @@ export function Collection() {
   const [detailsView, setDetailsView] = useState<{ installment: InstallmentWithRelations; view: 'customer' | 'policy' } | null>(null);
 
   return (
-    <div className="workspace-page workspace-page-collection col-page space-y-4 md:space-y-5 animate-fadeIn pb-2">
+    <div className="workspace-page workspace-page-collection col-page space-y-3 md:space-y-3.5 animate-fadeIn pb-2">
 
       <CollectionHeader />
 
@@ -167,7 +167,7 @@ export function Collection() {
 
       {/* ===== لوح المؤشرات المالية ===== */}
       {yearMode === 'year1' ? (
-        <section aria-label="مؤشرات التحصيل" className="space-y-2.5">
+        <section aria-label="مؤشرات التحصيل" className="collection-stats-section space-y-1.5">
           <h2 className="col-panel-title px-0.5">
             <Gauge aria-hidden="true" />
             <span>مؤشرات السنة الأولى</span>
@@ -225,7 +225,7 @@ export function Collection() {
           </section>
 
           {/* ===== قائمة الأقساط ===== */}
-          <section aria-label="قائمة الأقساط" className="space-y-2.5">
+          <section aria-label="قائمة الأقساط" className="collection-list-section space-y-1.5">
             <h2 className="col-panel-title px-0.5">
               <ReceiptText aria-hidden="true" />
               <span>الأقساط</span>
