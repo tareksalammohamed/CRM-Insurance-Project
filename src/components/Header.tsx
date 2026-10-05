@@ -192,6 +192,8 @@ export function Header() {
 
   if (!user) return null;
 
+  const isSuperAdmin = user.role === 'super_admin';
+
   return (
     <>
       {/* ===========================  HEADER BAR  =========================== */}
@@ -211,8 +213,8 @@ export function Header() {
           <BrandMark className="w-6 h-6 md:hidden flex-shrink-0" />
           <div className="min-w-0 flex items-baseline gap-2">
             <h1 className="truncate">{getPageTitle()}</h1>
-            <span className="hidden lg:inline-flex items-center rounded-full bg-primary-50 px-2 py-0.5 text-[10px] font-bold text-primary-700">
-              لوحة التشغيل
+            <span className="header-context-badge hidden lg:inline-flex items-center rounded-full bg-primary-50 px-2 py-0.5 text-[10px] font-bold text-primary-700">
+              {isSuperAdmin ? 'إدارة المنظومة' : 'لوحة التشغيل'}
             </span>
           </div>
         </div>
@@ -220,8 +222,8 @@ export function Header() {
         {/* ===== يسار: الأدوات ===== */}
         <div className="flex items-center gap-0.5 md:gap-1.5 flex-shrink-0">
 
-          {/* سلكتور الفرع — يظهر بس للمستخدمين اللي عندهم أكتر من فرع */}
-          <BranchSelector />
+          {/* مدير النظام لا يعمل داخل سياق فرع تشغيلي */}
+          {!isSuperAdmin && <BranchSelector />}
 
           <button
             type="button"
@@ -233,34 +235,40 @@ export function Header() {
             {isDark ? <Sun className="w-[21px] h-[21px]" /> : <Moon className="w-[21px] h-[21px]" />}
           </button>
 
-          {/* بحث — على الديسكتوب حقل مدمج؛ وعلى الموبايل يفتح شريط بحث
-              بعرض الشاشة كاملة (مساحة كتابة مريحة بدل حقل ضيق) */}
-          {searchOpen ? (
-            <form
-              onSubmit={handleSearch}
-              className={clsx(
-                'flex items-center gap-1.5',
-                'absolute inset-x-2 top-1/2 -translate-y-1/2 z-10 bg-white rounded-xl',
-                'md:static md:inset-auto md:translate-y-0 md:bg-transparent'
-              )}
-            >
-              <div className="relative flex-1 md:w-64 md:flex-none">
-                <Search className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary-400" />
-                <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="بحث عن عميل..." className="input-field !min-h-10 pr-9 text-sm" autoFocus />
-              </div>
-              <button type="button" onClick={() => setSearchOpen(false)} aria-label="إغلاق البحث" className="icon-button flex-shrink-0">
-                <X className="w-5 h-5" />
+          {!isSuperAdmin && (
+            <>
+            {/* بحث — على الديسكتوب حقل مدمج؛ وعلى الموبايل يفتح شريط بحث
+                بعرض الشاشة كاملة (مساحة كتابة مريحة بدل حقل ضيق) */}
+            {searchOpen ? (
+              <form
+                onSubmit={handleSearch}
+                className={clsx(
+                  'flex items-center gap-1.5',
+                  'absolute inset-x-2 top-1/2 -translate-y-1/2 z-10 bg-white rounded-xl',
+                  'md:static md:inset-auto md:translate-y-0 md:bg-transparent'
+                )}
+              >
+                <div className="relative flex-1 md:w-64 md:flex-none">
+                  <Search className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary-400" />
+                  <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="بحث عن عميل..." className="input-field !min-h-10 pr-9 text-sm" autoFocus />
+                </div>
+                <button type="button" onClick={() => setSearchOpen(false)} aria-label="إغلاق البحث" className="icon-button flex-shrink-0">
+                  <X className="w-5 h-5" />
+                </button>
+              </form>
+            ) : (
+              <button data-tour-id="header-search" onClick={() => setSearchOpen(true)} aria-label="البحث" className="icon-button">
+                <Search className="w-[22px] h-[22px]" />
               </button>
-            </form>
-          ) : (
-            <button data-tour-id="header-search" onClick={() => setSearchOpen(true)} aria-label="البحث" className="icon-button">
-              <Search className="w-[22px] h-[22px]" />
-            </button>
+            )}
+  
+            {/* مساعدة الصفحة الحالية (؟) — يظهر أعلى كل صفحة بالتطبيق */}
+            <HelpButton />
+  
+  
+            </>
           )}
-
-          {/* مساعدة الصفحة الحالية (؟) — يظهر أعلى كل صفحة بالتطبيق */}
-          <HelpButton />
 
           {/* إشعارات */}
           <div className="relative" ref={notificationRef}>
