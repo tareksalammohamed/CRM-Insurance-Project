@@ -1,4 +1,4 @@
-import { AlertTriangle, Banknote, BellRing, ListChecks } from 'lucide-react';
+import { AlertTriangle, Banknote, BellRing, History, ListChecks } from 'lucide-react';
 import type { CollectionQuickStats } from '../services/collectionService';
 import { formatCurrency } from '../utils/formatCurrency';
 import { KpiTile } from './KpiTile';
