@@ -1,5 +1,10 @@
 -- Durable, resumable data-import checkpoints and private source files.
 
+ALTER TABLE public.app_jobs DROP CONSTRAINT IF EXISTS app_jobs_status_check;
+ALTER TABLE public.app_jobs
+  ADD CONSTRAINT app_jobs_status_check
+  CHECK (status IN ('queued','running','ready','completed','partial','failed','cancelled','interrupted'));
+
 CREATE TABLE IF NOT EXISTS public.import_job_checkpoints (
   job_id uuid PRIMARY KEY REFERENCES public.app_jobs(id) ON DELETE CASCADE,
   user_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
