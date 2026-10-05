@@ -59,6 +59,8 @@ export function DataImport() {
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [parsing, setParsing] = useState(false);
   const [resumePending, setResumePending] = useState(false);
+  const [confirmIgnoreRemainder, setConfirmIgnoreRemainder] = useState(false);
+  const [ignoringRemainder, setIgnoringRemainder] = useState(false);
   const activeJobIdRef = useRef<string | null>(null);
   const activeBranchIdRef = useRef<string | null>(null);
   const resumeAvailableRef = useRef(false);
@@ -120,6 +122,8 @@ export function DataImport() {
     setSummary(null);
     setAiExtractionProgress(null);
     setResumePending(false);
+    setConfirmIgnoreRemainder(false);
+    setIgnoringRemainder(false);
     activeJobIdRef.current = null;
     activeBranchIdRef.current = null;
     resumeAvailableRef.current = false;
@@ -565,6 +569,55 @@ export function DataImport() {
     setDragOver(false);
     const file = e.dataTransfer.files?.[0];
     if (file) handleFile(file);
+  };
+
+  const ignoreRemainingFile = async () => {
+    const jobId = activeJobIdRef.current;
+    if (!jobId) return;
+
+    setIgnoringRemainder(true);
+    setHeaderError(null);
+
+    try {
+      const checkpoint = await getImportCheckpoint(jobId);
+      const remainingPages = checkpoint && checkpoint.total_pages > checkpoint.processed_pages
+        ? checkpoint.total_pages - checkpoint.processed_pages
+        : 0;
+
+      await cleanupImportResumeData(jobId);
+      await updateAppJob(jobId, {
+        status: 'completed',
+        stage: 'مكتملة',
+        message: remainingPages > 0
+          ? `تم اعتماد الجزء المستورد وإنهاء المهمة مع تجاهل ${remainingPages} صفحة متبقية بناءً على اختيار المستخدم.`
+          : 'تم اعتماد الجزء المستورد وإنهاء المهمة وتجاهل أي جزء متبقٍ بناءً على اختيار المستخدم.',
+        progress_current: progress.done,
+        progress_total: progress.total,
+        metadata: {
+          file_name: fileName,
+          imported_count: summary?.importedCount ?? progress.done,
+          failed_count: summary?.failedCount ?? 0,
+          remainder_ignored: true,
+          ignored_pages: remainingPages,
+          resumable: false,
+        },
+      });
+
+      setResumePending(false);
+      resumeAvailableRef.current = false;
+      setConfirmIgnoreRemainder(false);
+      setAiNotice(
+        remainingPages > 0
+          ? `تم إنهاء المهمة نهائيًا وتجاهل ${remainingPages} صفحة متبقية. تم حذف ملف الاستكمال والـCheckpoint، والبيانات التي تم استيرادها بالفعل محفوظة كما هي.`
+          : 'تم إنهاء المهمة نهائيًا وحذف بيانات الاستكمال المؤقتة. البيانات التي تم استيرادها بالفعل محفوظة كما هي.'
+      );
+    } catch (err) {
+      setHeaderError(
+        friendlyError(err, 'تعذر إنهاء المهمة وحذف بيانات الاستكمال. لم يتم إلغاء إمكانية الاستكمال.')
+      );
+    } finally {
+      setIgnoringRemainder(false);
+    }
   };
 
   const startImport = async () => {
@@ -1063,13 +1116,22 @@ export function DataImport() {
             <h3 className="font-semibold text-secondary-900">٣. تقرير الاستيراد</h3>
             <div className="flex flex-wrap items-center gap-2">
               {resumePending && activeJobIdRef.current && (
-                <button
-                  onClick={() => resumeFromCheckpoint(activeJobIdRef.current!)}
-                  className="btn btn-primary btn-sm"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  استكمال باقي الملف
-                </button>
+                <>
+                  <button
+                    onClick={() => resumeFromCheckpoint(activeJobIdRef.current!)}
+                    className="btn btn-primary btn-sm"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    استكمال باقي الملف
+                  </button>
+                  <button
+                    onClick={() => setConfirmIgnoreRemainder(true)}
+                    className="btn btn-secondary btn-sm text-warning-700"
+                  >
+                    <Ban className="w-4 h-4" />
+                    إنهاء المهمة وتجاهل الباقي
+                  </button>
+                </>
               )}
               {summary.failedCount > 0 && (
                 <>
@@ -1164,6 +1226,57 @@ export function DataImport() {
           <button onClick={resetAll} className="btn btn-secondary">
             استيراد ملف آخر
           </button>
+        </div>
+      )}
+
+      {confirmIgnoreRemainder && (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            className="modal-content max-w-lg"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ignore-remainder-title"
+          >
+            <div className="p-5 sm:p-6 space-y-4">
+              <div className="flex items-start gap-3">
+                <span className="w-11 h-11 rounded-xl bg-warning-50 text-warning-700 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 id="ignore-remainder-title" className="text-lg font-bold text-secondary-900">
+                    إنهاء المهمة وتجاهل الجزء المتبقي؟
+                  </h3>
+                  <p className="mt-1.5 text-sm leading-6 text-secondary-600">
+                    البيانات التي تم استيرادها بالفعل ستظل محفوظة ولن تتغير. لكن سيتم حذف ملف الاستكمال والـCheckpoint نهائيًا، ولن تستطيع استكمال الصفحات المتبقية من هذه المهمة بعد ذلك.
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-warning-200 bg-warning-50/60 p-3 text-sm text-warning-800">
+                استخدم هذا الخيار فقط إذا كنت متأكدًا أنك لا تحتاج باقي الملف.
+              </div>
+
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={ignoringRemainder}
+                  onClick={() => setConfirmIgnoreRemainder(false)}
+                >
+                  رجوع
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  disabled={ignoringRemainder}
+                  onClick={ignoreRemainingFile}
+                >
+                  {ignoringRemainder ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
+                  {ignoringRemainder ? 'جاري الإنهاء...' : 'نعم، تجاهل الباقي نهائيًا'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
