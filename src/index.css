@@ -7658,7 +7658,7 @@ html.dark .admin-quick-action__icon {
   }
 
   .workspace-page-collection .col-statustab {
-    min-height: 2.5rem;
+    min-height: 2.75rem;
     gap: .28rem;
     padding: .34rem .58rem;
     border-radius: .72rem;
@@ -7715,7 +7715,7 @@ html.dark .admin-quick-action__icon {
   }
 
   .workspace-page-collection .collection-year2-list-card .input-field {
-    min-height: 2.6rem;
+    min-height: 2.75rem;
   }
 
   .workspace-page-collection .collection-year2-list-card button[class*="rounded-full"] {
