@@ -153,7 +153,7 @@ export async function fetchYear2EligiblePolicies(
           const now = new Date();
           const filtered = candidates.filter((policy) => {
             const status = classifyYear2Status(policy.start_date, lastPaidMonthByPolicy.get(policy.id) ?? null, now);
-            return status === quickFilter;
+            return quickFilter === 'attention' ? status !== 'paid' : status === quickFilter;
           });
 
           totalCount = filtered.length;
