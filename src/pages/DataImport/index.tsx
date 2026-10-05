@@ -1,5 +1,6 @@
 import { friendlyError } from '../../lib/errorMessages';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Download,
   UploadCloud,
@@ -26,6 +27,14 @@ import { downloadTemplateFile, parseWorkbookFile, importRows, fetchImportAgents,
 import { detectDocumentKind, extractRowsFromDocument } from './services/aiDocumentExtractor';
 import { RowEditModal } from './components/RowEditModal';
 import { createAppJob, finishAppJob, updateAppJob } from '../../features/jobs/jobService';
+import {
+  cleanupImportResumeData,
+  createImportCheckpoint,
+  downloadCheckpointFile,
+  getCompletedImportRowNumbers,
+  getImportCheckpoint,
+  updateImportCheckpoint,
+} from '../../features/jobs/importResumeService';
 
 type Stage = 'idle' | 'parsed' | 'importing' | 'done';
 
@@ -33,6 +42,8 @@ export function DataImport() {
   const { user } = useAuth();
   const { currentBranchId } = useBranchContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const resumeLoadedRef = useRef(false);
   const [dragOver, setDragOver] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [headerError, setHeaderError] = useState<string | null>(null);
@@ -47,8 +58,7 @@ export function DataImport() {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [parsing, setParsing] = useState(false);
-  const activeParseJobIdRef = useRef<string | null>(null);
-  const activeImportJobIdRef = useRef<string | null>(null);
+  const activeJobIdRef = useRef<string | null>(null);
   const [aiExtractionProgress, setAiExtractionProgress] = useState<{
     processedPages: number;
     totalPages: number;
@@ -75,6 +85,16 @@ export function DataImport() {
       .catch((err) => console.warn('Job Center finish failed:', err));
   };
 
+
+  const safeUpdateCheckpoint = (
+    jobId: string | null,
+    patch: Parameters<typeof updateImportCheckpoint>[1],
+  ) => {
+    if (!jobId) return;
+    void updateImportCheckpoint(jobId, patch)
+      .catch((err) => console.warn('Import checkpoint update failed:', err));
+  };
+
   const activeRows = parsedRows.filter((r) => !excludedRows.has(r.rowNumber));
   const validRowsCount = activeRows.filter((r) => r.payload !== null).length;
   const invalidRowsCount = activeRows.length - validRowsCount;
@@ -96,6 +116,12 @@ export function DataImport() {
     setProgress({ done: 0, total: 0 });
     setSummary(null);
     setAiExtractionProgress(null);
+    activeJobIdRef.current = null;
+    if (searchParams.has('resume')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('resume');
+      setSearchParams(next, { replace: true });
+    }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -114,10 +140,34 @@ export function DataImport() {
           title: documentKind ? `استخراج بيانات: ${file.name}` : `تحليل ملف: ${file.name}`,
           stage: documentKind ? 'تحليل المستند بالذكاء الاصطناعي' : 'قراءة الملف ومطابقة الأعمدة',
           message: 'بدأت المهمة',
-          metadata: { file_name: file.name, file_size: file.size, file_type: file.type || null },
+          metadata: {
+            file_name: file.name,
+            file_size: file.size,
+            file_type: file.type || null,
+            resumable: true,
+          },
         });
         jobId = job.id;
-        activeParseJobIdRef.current = job.id;
+        activeJobIdRef.current = job.id;
+        try {
+          await createImportCheckpoint({
+            jobId: job.id,
+            userId: user.id,
+            branchId: currentBranchId,
+            file,
+            documentKind: documentKind || 'spreadsheet',
+          });
+        } catch (checkpointErr) {
+          console.warn('Import checkpoint create failed:', checkpointErr);
+          safeUpdateJob(job.id, {
+            metadata: {
+              file_name: file.name,
+              file_size: file.size,
+              file_type: file.type || null,
+              resumable: false,
+            },
+          });
+        }
       } catch (jobErr) {
         console.warn('Job Center create failed:', jobErr);
       }
@@ -150,6 +200,7 @@ export function DataImport() {
                 provider: progress.provider ?? null,
                 model: progress.model ?? null,
                 extracted_rows: progress.extractedRows,
+                resumable: true,
               },
             });
           },
@@ -197,7 +248,6 @@ export function DataImport() {
           );
           setStage('parsed');
         }
-        activeParseJobIdRef.current = null;
         return;
       }
 
@@ -219,12 +269,10 @@ export function DataImport() {
         );
         setStage('parsed');
       }
-      activeParseJobIdRef.current = null;
     } catch (err: unknown) {
       const message = friendlyError(err, 'تعذر قراءة الملف. تأكد أنه ملف صحيح غير تالف');
       setHeaderError(message);
       safeFinishJob(jobId, 'failed', message, 0, 0, { file_name: file.name });
-      activeParseJobIdRef.current = null;
     } finally {
       setParsing(false);
     }
