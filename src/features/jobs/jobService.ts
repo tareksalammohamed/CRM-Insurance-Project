@@ -87,7 +87,7 @@ export async function updateAppJob(
 
 export async function finishAppJob(
   jobId: string,
-  status: Extract<AppJobStatus, 'completed' | 'partial' | 'failed' | 'cancelled'>,
+  status: Extract<AppJobStatus, 'completed' | 'partial' | 'failed' | 'cancelled' | 'interrupted'>,
   message?: string,
   progressCurrent?: number,
   progressTotal?: number,
