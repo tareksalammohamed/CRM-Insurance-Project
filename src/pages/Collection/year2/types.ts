@@ -38,7 +38,7 @@ export type Year2EligiblePolicy = Policy & {
   // تصنيف حالة تحصيل السنة الثانية لهذه الوثيقة (مستحق/متأخر/تم السداد) —
   // نفس معيار classifyYear2Status المستخدم أصلاً فى الفلتر السريع، محسوب هنا
   // كمان لتلوين الكارت بنفس نبرة السنة الأولى
-  year2_status?: Year2QuickFilter;
+  year2_status?: Year2CollectionStatus;
 };
 
 // فورم "تسجيل تحصيل" — قيمة التحصيل تُؤخذ تلقائياً من قيمة القسط فى الوثيقة
@@ -63,7 +63,8 @@ export interface Year2ReportRow extends Year2Payment {
 // year2_payments نفسه (آخر شهر تم تحصيله فعلياً لكل وثيقة) بدل جدول أقساط
 // منفصل، لأن تحصيل السنة الثانية مفيهوش جدول جدولة مستقل. هذا الفلتر لا
 // يغيّر ولا يُستخدم في أي تارجت/محقق/إحصائية أخرى بالنظام.
-export type Year2QuickFilter = 'attention' | 'month' | 'overdue' | 'paid';
+export type Year2CollectionStatus = 'month' | 'overdue' | 'paid';
+export type Year2QuickFilter = 'attention' | Year2CollectionStatus;
 
 export const YEAR2_QUICK_FILTERS: { id: Year2QuickFilter; label: string }[] = [
   { id: 'attention', label: 'تحتاج تحصيل' },
