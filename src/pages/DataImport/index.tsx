@@ -60,6 +60,7 @@ export function DataImport() {
   const [parsing, setParsing] = useState(false);
   const activeJobIdRef = useRef<string | null>(null);
   const activeBranchIdRef = useRef<string | null>(null);
+  const resumeAvailableRef = useRef(false);
   const [aiExtractionProgress, setAiExtractionProgress] = useState<{
     processedPages: number;
     totalPages: number;
@@ -119,6 +120,7 @@ export function DataImport() {
     setAiExtractionProgress(null);
     activeJobIdRef.current = null;
     activeBranchIdRef.current = null;
+    resumeAvailableRef.current = false;
     if (searchParams.has('resume')) {
       const next = new URLSearchParams(searchParams);
       next.delete('resume');
@@ -146,7 +148,7 @@ export function DataImport() {
             file_name: file.name,
             file_size: file.size,
             file_type: file.type || null,
-            resumable: true,
+            resumable: resumeAvailableRef.current,
           },
         });
         jobId = job.id;
@@ -160,8 +162,10 @@ export function DataImport() {
             file,
             documentKind: documentKind || 'spreadsheet',
           });
+          resumeAvailableRef.current = true;
         } catch (checkpointErr) {
           console.warn('Import checkpoint create failed:', checkpointErr);
+          resumeAvailableRef.current = false;
           safeUpdateJob(job.id, {
             metadata: {
               file_name: file.name,
@@ -203,7 +207,7 @@ export function DataImport() {
                 provider: progress.provider ?? null,
                 model: progress.model ?? null,
                 extracted_rows: progress.extractedRows,
-                resumable: true,
+                resumable: resumeAvailableRef.current,
               },
             });
           },
@@ -288,7 +292,7 @@ export function DataImport() {
               metadata: {
                 file_name: file.name,
                 extracted_rows: extraction.rows.length,
-                resumable: true,
+                resumable: resumeAvailableRef.current,
               },
             });
           }
@@ -321,7 +325,7 @@ export function DataImport() {
             file_name: file.name,
             rows: rows.length,
             ai_column_mapping: !!aiUsed,
-            resumable: true,
+            resumable: resumeAvailableRef.current,
           },
         });
         setStage('parsed');
@@ -351,6 +355,7 @@ export function DataImport() {
 
       activeJobIdRef.current = jobId;
       activeBranchIdRef.current = checkpoint.branch_id;
+      resumeAvailableRef.current = true;
       setFileName(checkpoint.file_name);
       setParsedRows(checkpoint.parsed_rows || []);
       setExcludedRows(new Set(checkpoint.excluded_rows || []));
@@ -368,6 +373,7 @@ export function DataImport() {
         (checkpoint.document_kind === 'pdf' || checkpoint.document_kind === 'image') &&
         checkpoint.total_pages > 0 &&
         checkpoint.processed_pages < checkpoint.total_pages &&
+        checkpoint.processed_pages < 60 &&
         ['extracting', 'partial', 'failed'].includes(checkpoint.phase);
 
       if (canContinueDocument) {
@@ -382,7 +388,7 @@ export function DataImport() {
           progress_total: checkpoint.total_pages,
           metadata: {
             file_name: checkpoint.file_name,
-            resumable: true,
+            resumable: resumeAvailableRef.current,
             resumed: true,
           },
         });
@@ -404,7 +410,7 @@ export function DataImport() {
                 provider: nextProgress.provider ?? null,
                 model: nextProgress.model ?? null,
                 extracted_rows: nextProgress.extractedRows,
-                resumable: true,
+                resumable: resumeAvailableRef.current,
                 resumed: true,
               },
             });
@@ -442,7 +448,7 @@ export function DataImport() {
             extraction.error,
             extraction.processedPages,
             extraction.totalPages,
-            { file_name: checkpoint.file_name, resumable: true, resumed: true },
+            { file_name: checkpoint.file_name, resumable: resumeAvailableRef.current, resumed: true },
           );
           setStage(extraction.rows.length > 0 ? 'parsed' : 'idle');
           return;
@@ -463,7 +469,7 @@ export function DataImport() {
             'توقف الاستكمال مؤقتًا بعد حفظ آخر صفحة مكتملة. يمكن المحاولة مرة أخرى لاحقًا.',
             extraction.processedPages,
             extraction.totalPages,
-            { file_name: checkpoint.file_name, resumable: true, resumed: true },
+            { file_name: checkpoint.file_name, resumable: resumeAvailableRef.current, resumed: true },
           );
           setAiNotice(
             `تم استكمال الملف حتى الصفحة ${extraction.processedPages} من ${extraction.totalPages}. كل ما تم استخراجه محفوظ ويمكن استكمال الباقي لاحقًا.`
@@ -478,7 +484,7 @@ export function DataImport() {
             metadata: {
               file_name: checkpoint.file_name,
               extracted_rows: extraction.rows.length,
-              resumable: true,
+              resumable: resumeAvailableRef.current,
               resumed: true,
             },
           });
@@ -506,7 +512,7 @@ export function DataImport() {
         progress_total: checkpoint.parsed_rows.length,
         metadata: {
           file_name: checkpoint.file_name,
-          resumable: true,
+          resumable: resumeAvailableRef.current,
           resumed: true,
         },
       });
@@ -569,7 +575,7 @@ export function DataImport() {
       metadata: {
         file_name: fileName,
         total_rows: rowsToImport.length,
-        resumable: true,
+        resumable: resumeAvailableRef.current,
       },
     });
     safeUpdateCheckpoint(jobId, {
@@ -593,7 +599,7 @@ export function DataImport() {
             metadata: {
               file_name: fileName,
               total_rows: total,
-              resumable: true,
+              resumable: resumeAvailableRef.current,
             },
           });
         },
@@ -621,7 +627,7 @@ export function DataImport() {
             file_name: fileName,
             imported_count: result.importedCount,
             failed_count: result.failedCount,
-            resumable: true,
+            resumable: resumeAvailableRef.current,
           },
         );
       } else {
@@ -677,6 +683,11 @@ export function DataImport() {
     );
     const failedRows = parsedRows.filter((r) => failedRowNumbers.has(r.rowNumber));
     setParsedRows(failedRows);
+    safeUpdateCheckpoint(activeJobIdRef.current, {
+      phase: 'parsed',
+      parsed_rows: failedRows,
+      excluded_rows: [],
+    });
     setExcludedRows(new Set());
     setShowErrorsOnly(false);
     setRetryMode(true);
@@ -685,7 +696,11 @@ export function DataImport() {
   };
 
   const handleRowSaved = (updatedRow: ParsedRow) => {
-    setParsedRows((prev) => prev.map((r) => (r.rowNumber === updatedRow.rowNumber ? updatedRow : r)));
+    setParsedRows((prev) => {
+      const next = prev.map((r) => (r.rowNumber === updatedRow.rowNumber ? updatedRow : r));
+      safeUpdateCheckpoint(activeJobIdRef.current, { parsed_rows: next });
+      return next;
+    });
     setEditingRow(null);
   };
 
@@ -694,7 +709,11 @@ export function DataImport() {
       ...row,
       raw: { ...row.raw, agent_name: agentName },
     }, agents);
-    setParsedRows((prev) => prev.map((item) => item.rowNumber === row.rowNumber ? updated : item));
+    setParsedRows((prev) => {
+      const next = prev.map((item) => item.rowNumber === row.rowNumber ? updated : item);
+      safeUpdateCheckpoint(activeJobIdRef.current, { parsed_rows: next });
+      return next;
+    });
   };
 
   const toggleExcludeRow = (rowNumber: number) => {
@@ -702,6 +721,7 @@ export function DataImport() {
       const next = new Set(prev);
       if (next.has(rowNumber)) next.delete(rowNumber);
       else next.add(rowNumber);
+      safeUpdateCheckpoint(activeJobIdRef.current, { excluded_rows: [...next] });
       return next;
     });
   };
