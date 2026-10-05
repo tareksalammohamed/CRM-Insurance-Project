@@ -47,7 +47,7 @@ const EMPTY_YEAR2_POLICIES: FetchYear2PoliciesResult = { policies: [], totalCoun
 // فعلي غير ملغى للوثيقة، وإلا فمن أول شهر استحقاق للسنة الثانية نفسها
 // (سنة كاملة بعد start_date) لو لسه معهاش أي تحصيل. المعيار نفسه المستخدم
 // فى فلتر "متأخر" بالسنة الأولى: فوات شهر كامل أو أكثر = متأخر.
-function classifyYear2Status(startDate: string, lastPaidMonth: string | null, now: Date): Year2QuickFilter {
+export function classifyYear2Status(startDate: string, lastPaidMonth: string | null, now: Date): Year2QuickFilter {
   const currentMonthStart = startOfMonth(now);
   const currentMonthStr = format(currentMonthStart, 'yyyy-MM-dd');
 
