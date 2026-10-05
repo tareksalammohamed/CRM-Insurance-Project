@@ -50,7 +50,7 @@ export function Year2Collection({ branchId = null, onDataChanged }: Year2Collect
   const [totalCount, setTotalCount] = useState(0);
   const [localSearch, setLocalSearch] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [quickFilter, setQuickFilter] = useState<Year2QuickFilter>('month');
+  const [quickFilter, setQuickFilter] = useState<Year2QuickFilter>('attention');
 
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedPolicy, setSelectedPolicy] = useState<Year2EligiblePolicy | null>(null);
@@ -239,8 +239,8 @@ export function Year2Collection({ branchId = null, onDataChanged }: Year2Collect
             />
           </div>
 
-          {/* شرائح سريعة: المستحق / متأخر / تم السداد — بنفس منطق فلتر
-              السنة الأولى، محسوبة من آخر تحصيل فعلي لكل وثيقة */}
+          {/* شرائح سريعة للعرض فقط. "تحتاج تحصيل" = مستحق + متأخر بنفس
+              classifier الحالي، ولا تدخل هذه الفلاتر في أي تارجت أو محقق. */}
           <div className="flex gap-2 overflow-x-auto scrollbar-thin pb-1 -mx-1 px-1">
             {YEAR2_QUICK_FILTERS.map((f) => (
               <button
