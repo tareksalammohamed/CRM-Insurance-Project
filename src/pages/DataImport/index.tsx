@@ -26,6 +26,7 @@ import type { ParsedRow, ImportSummary } from './types';
 import { downloadTemplateFile, parseWorkbookFile, importRows, fetchImportAgents, exportErrorReport, revalidateRow, type ImportAgent } from './services/dataImportService';
 import { detectDocumentKind, extractRowsFromDocument } from './services/aiDocumentExtractor';
 import { RowEditModal } from './components/RowEditModal';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { createAppJob, finishAppJob, updateAppJob } from '../../features/jobs/jobService';
 import {
   cleanupImportResumeData,
@@ -1230,54 +1231,18 @@ export function DataImport() {
       )}
 
       {confirmIgnoreRemainder && (
-        <div className="modal-backdrop" role="presentation">
-          <div
-            className="modal-content max-w-lg"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="ignore-remainder-title"
-          >
-            <div className="p-5 sm:p-6 space-y-4">
-              <div className="flex items-start gap-3">
-                <span className="w-11 h-11 rounded-xl bg-warning-50 text-warning-700 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-5 h-5" />
-                </span>
-                <div>
-                  <h3 id="ignore-remainder-title" className="text-lg font-bold text-secondary-900">
-                    إنهاء المهمة وتجاهل الجزء المتبقي؟
-                  </h3>
-                  <p className="mt-1.5 text-sm leading-6 text-secondary-600">
-                    البيانات التي تم استيرادها بالفعل ستظل محفوظة ولن تتغير. لكن سيتم حذف ملف الاستكمال والـCheckpoint نهائيًا، ولن تستطيع استكمال الصفحات المتبقية من هذه المهمة بعد ذلك.
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-warning-200 bg-warning-50/60 p-3 text-sm text-warning-800">
-                استخدم هذا الخيار فقط إذا كنت متأكدًا أنك لا تحتاج باقي الملف.
-              </div>
-
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  disabled={ignoringRemainder}
-                  onClick={() => setConfirmIgnoreRemainder(false)}
-                >
-                  رجوع
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  disabled={ignoringRemainder}
-                  onClick={ignoreRemainingFile}
-                >
-                  {ignoringRemainder ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
-                  {ignoringRemainder ? 'جاري الإنهاء...' : 'نعم، تجاهل الباقي نهائيًا'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          icon={Ban}
+          title="إنهاء المهمة وتجاهل الجزء المتبقي؟"
+          message="البيانات التي تم استيرادها بالفعل ستظل محفوظة كما هي. سيتم حذف ملف الاستكمال وكل بيانات الـCheckpoint المؤقتة، ولن تستطيع استكمال الجزء المتبقي من هذه المهمة بعد ذلك."
+          warning="استخدم هذا الخيار فقط إذا كنت متأكدًا أنك لا تحتاج باقي الملف."
+          confirmLabel="نعم، تجاهل الباقي نهائيًا"
+          confirmBusyLabel="جاري إنهاء المهمة..."
+          cancelLabel="رجوع"
+          busy={ignoringRemainder}
+          onConfirm={ignoreRemainingFile}
+          onClose={() => setConfirmIgnoreRemainder(false)}
+        />
       )}
 
       {editingRow && (
