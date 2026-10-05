@@ -7448,3 +7448,326 @@ html.dark .admin-quick-action__icon {
     border-color: #111d29;
   }
 }
+
+
+/* ============================================================================
+   COLLECTION — COMPACT ABOVE-THE-FOLD
+   Keep Year 1 / Year 2 context highly visible while bringing the actual
+   receivables list much closer to the top of the screen.
+============================================================================ */
+@media screen {
+  .workspace-page-collection .collection-route-panel .col-panel-head,
+  .workspace-page-collection .collection-filter-panel .col-panel-head {
+    padding-block: .42rem !important;
+  }
+
+  .workspace-page-collection .collection-route-panel .col-panel-body,
+  .workspace-page-collection .collection-filter-panel .col-panel-body {
+    padding: .52rem .62rem .6rem !important;
+  }
+
+  .workspace-page-collection .collection-route-panel .col-panel-title,
+  .workspace-page-collection .collection-filter-panel .col-panel-title,
+  .workspace-page-collection .collection-stats-section > .col-panel-title,
+  .workspace-page-collection .collection-list-section > .col-panel-title {
+    font-size: .74rem !important;
+  }
+
+  .workspace-page-collection .collection-route-panel .col-panel-title svg,
+  .workspace-page-collection .collection-filter-panel .col-panel-title svg,
+  .workspace-page-collection .collection-stats-section > .col-panel-title svg,
+  .workspace-page-collection .collection-list-section > .col-panel-title svg {
+    width: .82rem !important;
+    height: .82rem !important;
+  }
+
+  /* Year gateway cards: same information, less vertical footprint. */
+  .workspace-page-collection .collection-year-gateway {
+    gap: .55rem;
+  }
+
+  .workspace-page-collection .collection-year-card {
+    gap: .5rem;
+    padding: .68rem .72rem;
+    border-radius: .95rem;
+  }
+
+  .workspace-page-collection .collection-year-card__accent {
+    width: 3px;
+  }
+
+  .workspace-page-collection .collection-year-card__head {
+    gap: .5rem;
+  }
+
+  .workspace-page-collection .collection-year-card__icon {
+    width: 2.15rem;
+    height: 2.15rem;
+    border-radius: .72rem;
+  }
+
+  .workspace-page-collection .collection-year-card__icon svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .workspace-page-collection .collection-year-card__eyebrow {
+    font-size: .56rem;
+    line-height: 1.25;
+  }
+
+  .workspace-page-collection .collection-year-card__title {
+    margin-top: .04rem;
+    font-size: .86rem;
+    line-height: 1.25;
+  }
+
+  .workspace-page-collection .collection-year-card__active-mark {
+    width: 1.65rem;
+    height: 1.65rem;
+    border-radius: .58rem;
+  }
+
+  .workspace-page-collection .collection-year-card__active-mark svg {
+    width: .78rem;
+    height: .78rem;
+  }
+
+  .workspace-page-collection .collection-year-card__metrics {
+    gap: .32rem;
+  }
+
+  .workspace-page-collection .collection-year-card__metrics > div {
+    padding: .4rem .46rem;
+    border-radius: .62rem;
+  }
+
+  .workspace-page-collection .collection-year-card__metric-label {
+    margin-bottom: .08rem;
+    font-size: .55rem;
+  }
+
+  .workspace-page-collection .collection-year-card__metrics strong {
+    font-size: .72rem;
+  }
+
+  .workspace-page-collection .collection-year-card__rule {
+    min-height: 1.75rem;
+    gap: .3rem;
+    padding: .32rem .45rem;
+    border-radius: .62rem;
+    font-size: .56rem;
+    line-height: 1.35;
+  }
+
+  .workspace-page-collection .collection-year-card__rule > svg {
+    width: .76rem;
+    height: .76rem;
+  }
+
+  .workspace-page-collection .collection-year-card__overdue-chip {
+    padding: .12rem .3rem;
+    font-size: .54rem;
+  }
+
+  .workspace-page-collection .collection-year-card__notification {
+    top: .38rem;
+    inset-inline-end: .38rem;
+    min-width: 1.75rem;
+    height: 1.4rem;
+    padding-inline: .34rem;
+    font-size: .58rem;
+  }
+
+  .workspace-page-collection .collection-year-card--year2 .collection-year-card__head {
+    padding-inline-end: 2.15rem;
+  }
+
+  /* KPI boards become compact summary tiles instead of tall dashboard cards. */
+  .workspace-page-collection .col-board {
+    gap: .48rem !important;
+  }
+
+  .workspace-page-collection .col-kpi {
+    gap: .28rem;
+    min-height: 5.45rem;
+    padding: .56rem .62rem .5rem;
+    padding-top: .62rem;
+    border-radius: .9rem;
+  }
+
+  .workspace-page-collection .col-kpi::before {
+    height: 2px;
+  }
+
+  .workspace-page-collection .col-kpi-top {
+    gap: .35rem;
+  }
+
+  .workspace-page-collection .col-kpi-label {
+    font-size: .61rem !important;
+    line-height: 1.3;
+  }
+
+  .workspace-page-collection .col-kpi-tile {
+    width: 1.72rem !important;
+    height: 1.72rem !important;
+    border-radius: .62rem;
+  }
+
+  .workspace-page-collection .col-kpi-tile svg {
+    width: .82rem !important;
+    height: .82rem !important;
+  }
+
+  .workspace-page-collection .col-kpi-value {
+    margin-top: 0;
+    font-size: clamp(.96rem, 4.4vw, 1.2rem) !important;
+    line-height: 1.05;
+  }
+
+  .workspace-page-collection .col-kpi-foot {
+    gap: .25rem;
+    padding-inline-end: .82rem;
+    font-size: .58rem;
+    line-height: 1.3;
+  }
+
+  .workspace-page-collection .col-kpi-chip {
+    min-height: 1.1rem;
+    padding-inline: .28rem;
+    font-size: .54rem;
+  }
+
+  .workspace-page-collection .col-kpi-cue {
+    width: .72rem;
+    height: .72rem;
+    inset-inline-end: .42rem;
+    bottom: .42rem;
+  }
+
+  /* Search and filters stay touch-friendly while shedding unused whitespace. */
+  .workspace-page-collection .col-toolbar {
+    gap: .4rem;
+  }
+
+  .workspace-page-collection .col-statustabs {
+    gap: .25rem;
+    padding: .18rem;
+    border-radius: .85rem;
+  }
+
+  .workspace-page-collection .col-statustab {
+    min-height: 2.5rem;
+    gap: .28rem;
+    padding: .34rem .58rem;
+    border-radius: .72rem;
+    font-size: .72rem;
+  }
+
+  .workspace-page-collection .col-statustab-count {
+    min-width: 1.2rem;
+    height: 1.05rem;
+    font-size: .56rem;
+  }
+
+  .workspace-page-collection .col-summary {
+    gap: .25rem .45rem;
+    padding-top: .38rem;
+    font-size: .61rem;
+  }
+
+  .workspace-page-collection .col-filters {
+    padding: .58rem;
+  }
+
+  .workspace-page-collection .col-filters-grid {
+    gap: .45rem;
+  }
+
+  .workspace-page-collection .col-filters-actions {
+    margin-top: .52rem;
+    padding-top: .5rem;
+  }
+
+  /* Year 2 has extra explanatory controls; make them concise too. */
+  .workspace-page-collection .collection-year2-note {
+    padding: .58rem .7rem !important;
+    gap: .48rem !important;
+  }
+
+  .workspace-page-collection .collection-year2-note p {
+    font-size: .72rem !important;
+    line-height: 1.5;
+  }
+
+  .workspace-page-collection .collection-year2-heading h2 {
+    font-size: 1rem !important;
+  }
+
+  .workspace-page-collection .collection-year2-heading p {
+    margin-top: .12rem !important;
+    font-size: .7rem !important;
+  }
+
+  .workspace-page-collection .collection-year2-list-card {
+    padding: .72rem !important;
+  }
+
+  .workspace-page-collection .collection-year2-list-card .input-field {
+    min-height: 2.6rem;
+  }
+
+  .workspace-page-collection .collection-year2-list-card button[class*="rounded-full"] {
+    padding-block: .34rem !important;
+    font-size: .72rem !important;
+  }
+
+  @media (min-width: 768px) {
+    .workspace-page-collection .collection-route-panel .col-panel-body,
+    .workspace-page-collection .collection-filter-panel .col-panel-body {
+      padding: .58rem .72rem .66rem !important;
+    }
+
+    .workspace-page-collection .collection-year-card {
+      padding: .72rem .78rem;
+    }
+
+    .workspace-page-collection .col-kpi {
+      min-height: 5.8rem !important;
+      padding: .62rem .7rem .56rem !important;
+      padding-top: .68rem !important;
+    }
+
+    .workspace-page-collection .col-kpi-value {
+      font-size: 1.18rem !important;
+    }
+  }
+
+  @media (max-width: 479px) {
+    .workspace-page-collection .collection-year-card {
+      gap: .46rem;
+      padding: .62rem .66rem;
+    }
+
+    .workspace-page-collection .collection-year-card--year2 .collection-year-card__metrics {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .workspace-page-collection .collection-year-card__metric-wide {
+      grid-column: auto;
+    }
+
+    .workspace-page-collection .collection-year-card__metrics > div {
+      padding-inline: .35rem;
+    }
+
+    .workspace-page-collection .collection-year-card__rule {
+      align-items: center;
+    }
+
+    .workspace-page-collection .collection-year-card__overdue-chip {
+      display: none;
+    }
+  }
+}
