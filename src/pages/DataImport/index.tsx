@@ -59,6 +59,7 @@ export function DataImport() {
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [parsing, setParsing] = useState(false);
   const activeJobIdRef = useRef<string | null>(null);
+  const activeBranchIdRef = useRef<string | null>(null);
   const [aiExtractionProgress, setAiExtractionProgress] = useState<{
     processedPages: number;
     totalPages: number;
@@ -117,6 +118,7 @@ export function DataImport() {
     setSummary(null);
     setAiExtractionProgress(null);
     activeJobIdRef.current = null;
+    activeBranchIdRef.current = null;
     if (searchParams.has('resume')) {
       const next = new URLSearchParams(searchParams);
       next.delete('resume');
@@ -149,6 +151,7 @@ export function DataImport() {
         });
         jobId = job.id;
         activeJobIdRef.current = job.id;
+        activeBranchIdRef.current = currentBranchId;
         try {
           await createImportCheckpoint({
             jobId: job.id,
@@ -346,60 +349,128 @@ export function DataImport() {
 
   const startImport = async () => {
     const rowsToImport = parsedRows.filter((r) => !excludedRows.has(r.rowNumber));
-    setStage('importing');
-    setProgress({ done: 0, total: rowsToImport.length });
+    const jobId = activeJobIdRef.current;
+    const branchId = activeBranchIdRef.current ?? currentBranchId;
 
-    let jobId: string | null = null;
-    if (user) {
+    let completedRowNumbers = new Set<number>();
+    if (jobId) {
       try {
-        const job = await createAppJob({
-          userId: user.id,
-          branchId: currentBranchId,
-          jobType: 'data_import_commit',
-          title: `استيراد البيانات${fileName ? `: ${fileName}` : ''}`,
-          stage: 'إضافة العملاء والوثائق',
-          message: 'بدأ الاستيراد إلى قاعدة البيانات',
-          progressTotal: rowsToImport.length,
-          metadata: { file_name: fileName, total_rows: rowsToImport.length },
-        });
-        jobId = job.id;
-        activeImportJobIdRef.current = job.id;
-      } catch (jobErr) {
-        console.warn('Job Center create failed:', jobErr);
+        completedRowNumbers = await getCompletedImportRowNumbers(jobId);
+      } catch (checkpointErr) {
+        console.warn('Completed-row checkpoint read failed:', checkpointErr);
       }
     }
 
+    setStage('importing');
+    setProgress({ done: completedRowNumbers.size, total: rowsToImport.length });
+
+    safeUpdateJob(jobId, {
+      status: 'running',
+      stage: 'استيراد الصفوف',
+      message: completedRowNumbers.size > 0
+        ? `استكمال الاستيراد من آخر نقطة — تم إنجاز ${completedRowNumbers.size} صف مسبقًا`
+        : 'بدأ الاستيراد إلى قاعدة البيانات',
+      progress_current: completedRowNumbers.size,
+      progress_total: rowsToImport.length,
+      metadata: {
+        file_name: fileName,
+        total_rows: rowsToImport.length,
+        resumable: true,
+      },
+    });
+    safeUpdateCheckpoint(jobId, {
+      phase: 'importing',
+      parsed_rows: parsedRows,
+      excluded_rows: [...excludedRows],
+      branch_id: branchId,
+    });
+
     try {
-      const result = await importRows(rowsToImport, currentBranchId, (_r, done, total) => {
-        setProgress({ done, total });
-        safeUpdateJob(jobId, {
-          progress_current: done,
-          progress_total: total,
-          stage: 'استيراد الصفوف',
-          message: `تمت معالجة ${done} من ${total} صف`,
-        });
-      });
-      setSummary(result);
-      safeFinishJob(
-        jobId,
-        result.failedCount > 0 ? 'partial' : 'completed',
-        result.failedCount > 0
-          ? `تم استيراد ${result.importedCount} صف وفشل ${result.failedCount} صف.`
-          : `تم استيراد ${result.importedCount} صف بنجاح.`,
-        result.totalRows,
-        result.totalRows,
+      const result = await importRows(
+        rowsToImport,
+        branchId,
+        (_r, done, total) => {
+          setProgress({ done, total });
+          safeUpdateJob(jobId, {
+            progress_current: done,
+            progress_total: total,
+            stage: 'استيراد الصفوف',
+            message: `تمت معالجة ${done} من ${total} صف`,
+            metadata: {
+              file_name: fileName,
+              total_rows: total,
+              resumable: true,
+            },
+          });
+        },
         {
-          file_name: fileName,
-          imported_count: result.importedCount,
-          failed_count: result.failedCount,
+          jobId,
+          completedRowNumbers,
         },
       );
-      activeImportJobIdRef.current = null;
+
+      setSummary(result);
+
+      if (result.failedCount > 0) {
+        safeUpdateCheckpoint(jobId, {
+          phase: 'partial',
+          parsed_rows: parsedRows,
+          excluded_rows: [...excludedRows],
+        });
+        safeFinishJob(
+          jobId,
+          'partial',
+          `تم استيراد ${result.importedCount} صف وفشل ${result.failedCount} صف. يمكنك استكمال الصفوف المتبقية لاحقًا.`,
+          result.importedCount,
+          result.totalRows,
+          {
+            file_name: fileName,
+            imported_count: result.importedCount,
+            failed_count: result.failedCount,
+            resumable: true,
+          },
+        );
+      } else {
+        safeUpdateCheckpoint(jobId, {
+          phase: 'completed',
+          parsed_rows: parsedRows,
+          excluded_rows: [...excludedRows],
+        });
+        safeFinishJob(
+          jobId,
+          'completed',
+          `تم استيراد ${result.importedCount} صف بنجاح.`,
+          result.totalRows,
+          result.totalRows,
+          {
+            file_name: fileName,
+            imported_count: result.importedCount,
+            failed_count: 0,
+            resumable: false,
+          },
+        );
+        if (jobId) {
+          void cleanupImportResumeData(jobId)
+            .catch((cleanupErr) => console.warn('Import resume cleanup failed:', cleanupErr));
+        }
+      }
+
       setStage('done');
     } catch (err) {
       const message = friendlyError(err, 'تعذر إكمال الاستيراد');
-      safeFinishJob(jobId, 'failed', message, progress.done, rowsToImport.length, { file_name: fileName });
-      activeImportJobIdRef.current = null;
+      safeUpdateCheckpoint(jobId, {
+        phase: 'partial',
+        parsed_rows: parsedRows,
+        excluded_rows: [...excludedRows],
+      });
+      safeFinishJob(
+        jobId,
+        'interrupted' as never,
+        message,
+        progress.done,
+        rowsToImport.length,
+        { file_name: fileName, resumable: true },
+      );
       setHeaderError(message);
       setStage('parsed');
     }
