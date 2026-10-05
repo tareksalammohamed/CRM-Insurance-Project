@@ -205,8 +205,8 @@ export function Year2Collection({ branchId = null, onDataChanged }: Year2Collect
   const printTotal = printRows.reduce((sum, r) => sum + Number(r.amount), 0);
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-      <div className="bg-primary-50 border border-primary-100 rounded-lg p-4 flex items-start gap-3 print:hidden">
+    <div className="collection-year2-body space-y-3 animate-fadeIn">
+      <div className="collection-year2-note bg-primary-50 border border-primary-100 rounded-lg p-3 flex items-start gap-2.5 print:hidden">
         <Info className="w-5 h-5 text-primary-600 mt-0.5 flex-shrink-0" />
         <p className="text-sm text-primary-800">
           هذه الشاشة لمتابعة تحصيل السنة الثانية وما بعدها فقط — لا تدخل في التارجت أو المحقق
@@ -215,7 +215,7 @@ export function Year2Collection({ branchId = null, onDataChanged }: Year2Collect
         </p>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 print:hidden">
+      <div className="collection-year2-heading flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 print:hidden">
         <div>
           <h2 className="text-xl font-bold text-secondary-900">تحصيلات السنة الثانية وما بعدها</h2>
           <p className="text-sm text-secondary-500 mt-1">متابعة وتسديد التحصيل المنفصل لوثائق السنوات اللاحقة</p>
@@ -226,8 +226,8 @@ export function Year2Collection({ branchId = null, onDataChanged }: Year2Collect
         </button>
       </div>
 
-      <div className="card print:hidden">
-        <div className="mb-6 space-y-3">
+      <div className="card collection-year2-list-card print:hidden">
+        <div className="mb-3 space-y-2">
           <div className="relative max-w-md">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary-400" />
             <input
