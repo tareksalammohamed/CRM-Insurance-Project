@@ -5,7 +5,7 @@ import {
   differenceInCalendarMonths,
   startOfQuarter, endOfQuarter, startOfYear, endOfYear,
 } from 'date-fns';
-import type { Year2Payment, Year2EligiblePolicy, Year2ReportRow, PrintPeriodType, Year2QuickFilter } from './types';
+import type { Year2Payment, Year2EligiblePolicy, Year2ReportRow, PrintPeriodType, Year2QuickFilter, Year2CollectionStatus } from './types';
 import { dalRead } from '../../../lib/dataAccessLayer';
 
 const PAGE_SIZE = 10;
@@ -47,7 +47,7 @@ const EMPTY_YEAR2_POLICIES: FetchYear2PoliciesResult = { policies: [], totalCoun
 // فعلي غير ملغى للوثيقة، وإلا فمن أول شهر استحقاق للسنة الثانية نفسها
 // (سنة كاملة بعد start_date) لو لسه معهاش أي تحصيل. المعيار نفسه المستخدم
 // فى فلتر "متأخر" بالسنة الأولى: فوات شهر كامل أو أكثر = متأخر.
-export function classifyYear2Status(startDate: string, lastPaidMonth: string | null, now: Date): Year2QuickFilter {
+export function classifyYear2Status(startDate: string, lastPaidMonth: string | null, now: Date): Year2CollectionStatus {
   const currentMonthStart = startOfMonth(now);
   const currentMonthStr = format(currentMonthStart, 'yyyy-MM-dd');
 
