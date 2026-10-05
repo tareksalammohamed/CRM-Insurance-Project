@@ -237,38 +237,35 @@ export function Header() {
 
           {!isSuperAdmin && (
             <>
-            {/* بحث — على الديسكتوب حقل مدمج؛ وعلى الموبايل يفتح شريط بحث
-                بعرض الشاشة كاملة (مساحة كتابة مريحة بدل حقل ضيق) */}
-            {searchOpen ? (
-              <form
-                onSubmit={handleSearch}
-                className={clsx(
-                  'flex items-center gap-1.5',
-                  'absolute inset-x-2 top-1/2 -translate-y-1/2 z-10 bg-white rounded-xl',
-                  'md:static md:inset-auto md:translate-y-0 md:bg-transparent'
-                )}
-              >
-                <div className="relative flex-1 md:w-64 md:flex-none">
-                  <Search className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary-400" />
-                  <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="بحث عن عميل..." className="input-field !min-h-10 pr-9 text-sm" autoFocus />
-                </div>
-                <button type="button" onClick={() => setSearchOpen(false)} aria-label="إغلاق البحث" className="icon-button flex-shrink-0">
-                  <X className="w-5 h-5" />
+              {/* بحث تشغيلي عن العملاء — غير مطلوب لمدير النظام */}
+              {searchOpen ? (
+                <form
+                  onSubmit={handleSearch}
+                  className={clsx(
+                    'flex items-center gap-1.5',
+                    'absolute inset-x-2 top-1/2 -translate-y-1/2 z-10 bg-white rounded-xl',
+                    'md:static md:inset-auto md:translate-y-0 md:bg-transparent'
+                  )}
+                >
+                  <div className="relative flex-1 md:w-64 md:flex-none">
+                    <Search className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary-400" />
+                    <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="بحث عن عميل..." className="input-field !min-h-10 pr-9 text-sm" autoFocus />
+                  </div>
+                  <button type="button" onClick={() => setSearchOpen(false)} aria-label="إغلاق البحث" className="icon-button flex-shrink-0">
+                    <X className="w-5 h-5" />
+                  </button>
+                </form>
+              ) : (
+                <button data-tour-id="header-search" onClick={() => setSearchOpen(true)} aria-label="البحث" className="icon-button">
+                  <Search className="w-[22px] h-[22px]" />
                 </button>
-              </form>
-            ) : (
-              <button data-tour-id="header-search" onClick={() => setSearchOpen(true)} aria-label="البحث" className="icon-button">
-                <Search className="w-[22px] h-[22px]" />
-              </button>
-            )}
-  
-            {/* مساعدة الصفحة الحالية (؟) — يظهر أعلى كل صفحة بالتطبيق */}
-            <HelpButton />
-  
-  
+              )}
             </>
           )}
+
+          {/* مساعدة الصفحة الحالية (؟) — متاحة لكل الأدوار */}
+          <HelpButton />
 
           {/* إشعارات */}
           <div className="relative" ref={notificationRef}>
