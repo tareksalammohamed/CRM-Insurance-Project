@@ -698,15 +698,18 @@ export function DataImport() {
     const failedRowNumbers = new Set(
       summary.results.filter((r) => r.status === 'error').map((r) => r.rowNumber)
     );
-    const failedRows = parsedRows.filter((r) => failedRowNumbers.has(r.rowNumber));
-    setParsedRows(failedRows);
+    const successfulRowNumbers = parsedRows
+      .filter((r) => !failedRowNumbers.has(r.rowNumber))
+      .map((r) => r.rowNumber);
+    const nextExcluded = new Set(successfulRowNumbers);
+
+    setExcludedRows(nextExcluded);
     safeUpdateCheckpoint(activeJobIdRef.current, {
       phase: 'parsed',
-      parsed_rows: failedRows,
-      excluded_rows: [],
+      parsed_rows: parsedRows,
+      excluded_rows: [...nextExcluded],
     });
-    setExcludedRows(new Set());
-    setShowErrorsOnly(false);
+    setShowErrorsOnly(true);
     setRetryMode(true);
     setSummary(null);
     setStage('parsed');
@@ -908,7 +911,7 @@ export function DataImport() {
                 className="btn btn-primary flex-shrink-0"
               >
                 <PlayCircle className="w-4 h-4" />
-                بدء الاستيراد
+                {progress.done > 0 ? 'استكمال الاستيراد' : 'بدء الاستيراد'}
               </button>
               </div>
             </div>
