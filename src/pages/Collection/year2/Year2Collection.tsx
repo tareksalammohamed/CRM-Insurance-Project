@@ -35,9 +35,12 @@ interface Year2CollectionProps {
   // غير عرض/تحصيل وثائق هذا الفرع تحديداً، وما زالت الشاشة معزولة تماماً
   // عن التارجت/المحقق/أي إحصائية أخرى بالنظام.
   branchId?: string | null;
+  // تحديث مؤشرات الصفحة الأب بعد نجاح تسجيل/إلغاء التحصيل فقط.
+  // لا يشارك في تنفيذ العملية نفسها ولا يغيّر أي قاعدة عمل.
+  onDataChanged?: () => void | Promise<void>;
 }
 
-export function Year2Collection({ branchId = null }: Year2CollectionProps) {
+export function Year2Collection({ branchId = null, onDataChanged }: Year2CollectionProps) {
   const { user } = useAuth();
   const notify = useNotify();
   const [policies, setPolicies] = useState<Year2EligiblePolicy[]>([]);
@@ -149,6 +152,7 @@ export function Year2Collection({ branchId = null }: Year2CollectionProps) {
       await addYear2Payment(selectedPolicy.id, Number(selectedPolicy.premium_amount), new Date(data.paymentDate), user.id, data.notes || '');
       setShowAddModal(false);
       loadPolicies();
+      void onDataChanged?.();
       if (showHistoryModal) openHistory(selectedPolicy);
     } catch (error: unknown) {
       console.error(error);
@@ -171,6 +175,7 @@ export function Year2Collection({ branchId = null }: Year2CollectionProps) {
       await cancelYear2Payment(selectedPayment, user.id, cancelReason);
       setShowCancelModal(false);
       loadPolicies();
+      void onDataChanged?.();
       if (selectedPolicy) openHistory(selectedPolicy);
     } catch (error) {
       console.error(error);
