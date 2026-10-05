@@ -11,6 +11,7 @@ import { CancelInstallmentModal } from '../../features/installments/CancelInstal
 import { useCollectionUrlParams } from './hooks/useCollectionUrlParams';
 import { useCollectionFilters } from './hooks/useCollectionFilters';
 import { useTeamMembers } from './hooks/useTeamMembers';
+import { useCollectionMaintenance } from './hooks/useCollectionMaintenance';
 import { useCollectionInstallments } from './hooks/useCollectionInstallments';
 import { useCollectionQuickStats } from './hooks/useCollectionQuickStats';
 import { usePolicyInstallmentsModal } from './hooks/usePolicyInstallmentsModal';
@@ -34,6 +35,7 @@ type YearMode = 'year1' | 'year2';
 export function Collection() {
   const { user } = useAuth();
   const { currentBranchId } = useBranchContext();
+  const ensureMaintenance = useCollectionMaintenance(user?.id);
 
   const { initialSubType, initialQuickFilter, initialOwnerFilter, initialMonth, initialSearch, highlightInstallmentId, hasUrlNavigation } =
     useCollectionUrlParams();
@@ -71,7 +73,7 @@ export function Collection() {
     localSearch,
     setLocalSearch,
     loadInstallments,
-  } = useCollectionInstallments({ user, yearMode, quickFilter, subType, ownerFilter, branchId: currentBranchId, monthStart: initialMonth, initialSearch });
+  } = useCollectionInstallments({ user, ensureMaintenance, yearMode, quickFilter, subType, ownerFilter, branchId: currentBranchId, monthStart: initialMonth, initialSearch });
 
   // المستخدم وصل للصفحة من نقرة على بطاقة/رقم بفلتر جاهز فى الرابط —
   // لازم يشوف دليل واضح إن القائمة مفلترة بالفعل مع مخرج للرجوع للكل.
@@ -93,7 +95,7 @@ export function Collection() {
   const hasActiveFilters = activeFilterCount > 0 || !!searchQuery;
 
   const teamMembers = useTeamMembers(user, currentBranchId);
-  const { quickStats, quickStatsLoading, loadQuickStats } = useCollectionQuickStats(user, currentBranchId);
+  const { quickStats, quickStatsLoading, loadQuickStats } = useCollectionQuickStats(user, currentBranchId, ensureMaintenance);
 
   const {
     showPolicyModal,

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { User } from '../../../lib/supabase';
 import type { QuickFilter, SubType, OwnerFilter, InstallmentWithRelations } from '../types';
-import { fetchInstallments, cancelSeverelyOverduePolicies } from '../services/collectionService';
+import { fetchInstallments } from '../services/collectionService';
 import { useReconnectRefetch } from '../../../hooks/useReconnectRefetch';
 
 interface UseCollectionInstallmentsArgs {
   user: User | null | undefined;
+  ensureMaintenance: () => Promise<void>;
   yearMode: 'year1' | 'year2' | null;
   quickFilter: QuickFilter;
   subType: SubType;
@@ -15,7 +16,7 @@ interface UseCollectionInstallmentsArgs {
   initialSearch?: string | null;
 }
 
-export function useCollectionInstallments({ user, yearMode, quickFilter, subType, ownerFilter, branchId = null, monthStart = null, initialSearch = null }: UseCollectionInstallmentsArgs) {
+export function useCollectionInstallments({ user, ensureMaintenance, yearMode, quickFilter, subType, ownerFilter, branchId = null, monthStart = null, initialSearch = null }: UseCollectionInstallmentsArgs) {
   const [installments, setInstallments] = useState<InstallmentWithRelations[]>([]);
   const [loading, setLoading]           = useState(true);
   // أول تحميل فقط (لسه مفيش أي بيانات) هو اللي يستحق Skeleton كامل —
@@ -32,38 +33,35 @@ export function useCollectionInstallments({ user, yearMode, quickFilter, subType
   const searchQueryRef = useRef(searchQuery);
   searchQueryRef.current = searchQuery;
 
+  const requestId = useRef(0);
   const loadInstallments = useCallback(async () => {
+    const currentRequest = ++requestId.current;
     setLoading(true);
     try {
-      // فحص وإلغاء أي وثيقة فاتها 3 شهور أو أكثر على قسط غير مسدد — قبل عرض
-      // فلتر "المتأخر"، عشان الوثائق دي تختفي منه أول ما توصل للحد ده.
-      // بيتنفذ هنا (عند فتح الصفحة) بدل جدولة دورية غير متاحة حالياً.
-      try {
-        await cancelSeverelyOverduePolicies();
-      } catch (err) {
-        // فشل هذا الفحص لا يجب أن يمنع عرض بيانات التحصيل نفسها
-        console.error('Error cancelling severely overdue policies:', err);
-      }
+      await ensureMaintenance();
+      if (currentRequest !== requestId.current) return;
 
       const { installments: results, totalCount: count, totalPages: pages } =
         await fetchInstallments({ quickFilter, subType, ownerFilter, page, searchQuery, branchId, monthStart });
 
+      if (currentRequest !== requestId.current) return;
       setInstallments(results);
       setTotalCount(count);
       setTotalPages(pages);
     } catch (error) {
       console.error('Error loading installments:', error);
     } finally {
-      setLoading(false);
+      if (currentRequest === requestId.current) setLoading(false);
     }
-  }, [quickFilter, subType, ownerFilter, page, searchQuery, branchId, monthStart]);
+  }, [ensureMaintenance, quickFilter, subType, ownerFilter, page, searchQuery, branchId, monthStart]);
 
   // نفس شروط التحميل بالظبط زي ما كانت: أي تغيير فى الفلاتر/الصفحة/البحث
   // بيغيّر مرجع loadInstallments (useCallback فوق بنفس الـdeps القديمة
   // للـeffect ده)، فالسلوك متطابق تمامًا — الفرق إن الاعتمادية بقت معلنة
   // بشكل صحيح بدل eslint-disable.
   useEffect(() => {
-    if (user && yearMode === 'year1') loadInstallments();
+    if (user && yearMode === 'year1') void loadInstallments();
+    return () => { requestId.current += 1; };
   }, [user, yearMode, loadInstallments]);
 
   // تأخير بسيط (debounce) لتقليل عدد طلبات البحث أثناء الكتابة.

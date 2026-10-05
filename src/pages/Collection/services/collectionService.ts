@@ -1,7 +1,6 @@
 import { supabase, type User, type UserRole } from '../../../lib/supabase';
 import { format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay, parseISO, isValid } from 'date-fns';
 import type { QuickFilter, SubType, InstallmentWithRelations, OwnerFilter } from '../types';
-import { groupInstallmentsForDisplay } from '../business/collectionGrouping';
 import {
   fetchInstallmentsByPolicyId, payInstallment, cancelInstallmentPayment,
 } from '../../../features/installments/installmentsService';
@@ -9,7 +8,6 @@ import { dalRead } from '../../../lib/dataAccessLayer';
 import { fetchUserSubtreeIdsBranchAware } from '../../../lib/branchHierarchy';
 import { classifyYear2Status } from '../year2/year2CollectionService';
 
-const PAGE_SIZE = 10;
 
 export interface FetchInstallmentsParams {
   quickFilter: QuickFilter;
@@ -83,69 +81,6 @@ export async function cancelSeverelyOverduePolicies(): Promise<void> {
   if (error) throw error;
 }
 
-// البحث عن معرّفات الوثائق (policy_id) التي تطابق نص البحث في: رقم الوثيقة،
-// اسم العميل، رقم الهاتف، الرقم القومي، أو اسم الوكيل (المسؤول عن الوثيقة).
-// هذا امتداد لواجهة البحث فقط — لا يغيّر أي منطق حساب أو فلترة للتحصيل.
-async function resolveSearchPolicyIds(searchQuery: string): Promise<string[] | null> {
-  const q = searchQuery.trim();
-  if (!q) return null;
-
-  const [byNumber, byCustomer, byAgent] = await Promise.all([
-    supabase.from('policies').select('id').ilike('policy_number', `%${q}%`),
-    supabase.from('customers').select('id').or(`name.ilike.%${q}%,phone.ilike.%${q}%,national_id.ilike.%${q}%`),
-    supabase.from('users').select('id').ilike('name', `%${q}%`),
-  ]);
-
-  const ids = new Set<string>();
-  (byNumber.data || []).forEach((p) => ids.add(p.id));
-
-  const customerIds = (byCustomer.data || []).map((c) => c.id);
-  const agentIds = (byAgent.data || []).map((a) => a.id);
-
-  const extraLookups: Promise<void>[] = [];
-  if (customerIds.length) {
-    extraLookups.push(
-      Promise.resolve(
-        supabase.from('policies').select('id').in('customer_id', customerIds)
-      ).then(({ data }) => {
-        (data || []).forEach((p) => ids.add(p.id));
-      })
-    );
-  }
-  if (agentIds.length) {
-    extraLookups.push(
-      Promise.resolve(
-        supabase.from('policies').select('id').in('owner_id', agentIds)
-      ).then(({ data }) => {
-        (data || []).forEach((p) => ids.add(p.id));
-      })
-    );
-  }
-  await Promise.all(extraLookups);
-
-  return Array.from(ids);
-}
-
-// البحث عن معرّفات الوثائق (policy_id) التي وكيلها (owner) هو الشخص المختار
-// فى فلتر "الفريق" نفسه أو أي شخص تحته فى الهيكل الإداري (get_user_subtree_branch_aware
-// الخاصة بالشخص المختار، مش المستخدم الحالي، وفى نطاق نفس الفرع المختار لو
-// موجود). بالطريقة دي اختيار رئيس مجموعة واحد بيجيب معاه تلقائياً مستحقات
-// كل وكلائه، واختيار مراقب بيجيب معاه كل رؤساء المجموعات والوكلاء تحته...
-// إلخ. يُستخدم فقط عند اختيار شخص محدد بخلاف "الكل" — لا يغيّر أي فلتر أو
-// منطق حساب آخر.
-async function resolveOwnerFilterPolicyIds(ownerFilter: OwnerFilter, branchId: string | null = null): Promise<string[]> {
-  if (ownerFilter === 'all') return [];
-
-  const ownerIds = await fetchUserSubtreeIdsBranchAware('collection', ownerFilter, branchId);
-
-  let query = supabase.from('policies').select('id').in('owner_id', ownerIds);
-  if (branchId) query = query.eq('branch_id', branchId);
-  const { data: policyRows, error: policyErr } = await query;
-  if (policyErr) throw policyErr;
-
-  return (policyRows || []).map((p) => p.id);
-}
-
 const EMPTY_INSTALLMENTS_RESULT: FetchInstallmentsResult = { installments: [], totalCount: 0, totalPages: 1 };
 
 export async function fetchInstallments({ quickFilter, subType, ownerFilter, page, searchQuery, branchId = null, monthStart = null }: FetchInstallmentsParams): Promise<FetchInstallmentsResult> {
@@ -163,174 +98,19 @@ export async function fetchInstallments({ quickFilter, subType, ownerFilter, pag
 
 async function fetchInstallmentsOnline({ quickFilter, subType, ownerFilter, page, searchQuery, branchId = null, monthStart: monthStartParam = null }: FetchInstallmentsParams): Promise<FetchInstallmentsResult> {
   const requestedMonth = monthStartParam ? parseISO(monthStartParam) : new Date();
-  const now        = isValid(requestedMonth) ? requestedMonth : new Date();
-  const monthStart = startOfMonth(now);
-  const monthEnd   = endOfMonth(now);
-  const monthStartStr = format(monthStart, 'yyyy-MM-dd');
-  const monthEndStr   = format(monthEnd,   'yyyy-MM-dd');
-
-  // حدود فلتر "المتأخر": من شهر فات لحد شهرين فاتوا على تاريخ الاستحقاق
-  // (شهر فات = يبدأ يظهر، شهرين = أقصى مدة، بعد كده تتلغي الوثيقة ولا يظهر
-  // القسط هنا أصلاً - راجع cancelSeverelyOverduePolicies أعلاه)
-  const overdueRangeStartStr = format(startOfMonth(subMonths(now, 2)), 'yyyy-MM-dd'); // بداية شهر -2 (أقصى مدة قبل الإلغاء)
-  const overdueRangeEndExclusiveStr = format(startOfMonth(now), 'yyyy-MM-dd'); // بداية الشهر الحالي (أي قسط قبله يُعتبر "فاته شهر" على الأقل)
-
-  const needsPaymentsJoin = quickFilter === 'paid';
-
-  // !inner على policy_id ضروري عشان نقدر نفلتر لاحقاً على policy.status أو
-  // policy.branch_id (مسموح دايماً هنا لأن installments.policy_id مفتاح
-  // أجنبي إلزامي، فكل قسط له وثيقة مؤكد — استخدام !inner دايماً بغض النظر
-  // عن needsPaymentsJoin لا يُسقط أي صف كان ظاهر قبل كده)
-  //
-  // نفس نصوص الـselect بالحرف زي ما كانت، بس مكتوبة كـ literals ثابتة لكل
-  // فرع على حدة بدل تمرير اتحاد نصوص لـ .select(): محلّل أنواع PostgREST
-  // بيحلّل النص وقت الترجمة، والاتحاد بيمنعه من استنتاج شكل الصف (وهو سبب
-  // الحاجة السابقة لتأكيد نوع غير آمن على النتيجة).
-  const installmentsTable = supabase.from('installments');
-
-  let query = needsPaymentsJoin
-    ? installmentsTable.select(
-        `*,
-           policy:policy_id!inner(
-             *,
-             customer:customer_id(name, phone, national_id),
-             owner:owner_id(name)
-           ),
-           payments!inner(payment_month, is_cancelled)`,
-        { count: 'exact' },
-      )
-    : installmentsTable.select(
-        `*,
-           policy:policy_id!inner(
-             *,
-             customer:customer_id(name, phone, national_id),
-             owner:owner_id(name)
-           )`,
-        { count: 'exact' },
-      );
-
-  // الوثيقة الملغاة لا تُعرض في أي من قوائم التحصيل، حتى لو بقيت أقساط
-  // قديمة مرتبطة بها في قاعدة البيانات.
-  query = query.neq('policy.status', 'cancelled');
-
-  // فلتر الفرع الحالي (BranchProvider العام) — فاضي/null يعني بدون فلترة
-  // إضافية (السلوك القديم، معتمد على RLS بس)
-  if (branchId) {
-    query = query.eq('policy.branch_id', branchId);
-  }
-
-  // ===== فلتر سريع (quickFilter) =====
-  // نفس معايير الحساب الأصلية بالضبط (نفس المتغيرات الزمنية والحالات)، وكل
-  // ما تغيّر هو تجميع تبويبي "الإنتاج الجديد" و"التحصيل الدوري" السابقين تحت
-  // فلتر واحد ("الشهر" / "تم السداد")، مع إمكانية تضييقهما اختيارياً عبر
-  // subType لو احتاج المستخدم يفرّق بينهما.
-  switch (quickFilter) {
-    case 'month':
-      // كل قسط "مستحق" خلال الشهر الحالي (لسه معلّق) — إنتاج جديد + تحصيل دوري معاً
-      query = query
-        .eq('status', 'pending')
-        .gte('due_date', monthStartStr)
-        .lte('due_date', monthEndStr);
-      break;
-    case 'overdue':
-      // بيُحسب مباشرة من تاريخ الاستحقاق (مش من عمود status المخزّن، لأنه
-      // محتاج جدولة دورية مش متوفرة حالياً) — يعرض بس اللي فاته شهر لحد
-      // شهرين، ويستبعد أي وثيقة اتلغت فعلاً (احتياطاً، رغم إننا بنلغيها قبل
-      // النداء ده مباشرة في نفس تحميل الصفحة)
-      // status ممكن يكون 'pending' (لسه ما اتحدّثش) أو 'overdue' (بعد ما فنكشن
-      // update_overdue_installments في القاعدة تحدّثه تلقائياً) — لازم الفلتر
-      // يقبل الاتنين مع بعض، وإلا الأقساط اللي القاعدة حدّثت status بتاعها
-      // بتختفي من هنا رغم إنها لسه متأخرة وغير مسدد
-      query = query
-        .in('status', ['pending', 'overdue'])
-        .gte('due_date', overdueRangeStartStr)
-        .lt('due_date', overdueRangeEndExclusiveStr)
-        .neq('policy.status', 'cancelled');
-      break;
-    case 'paid':
-      // مسدد فعلاً في الشهر الحالي تحديداً (حسب تاريخ السداد الفعلي payment_month
-      // مش تاريخ الاستحقاق) — مش كل سداد تاريخي من أول ما الوثيقة اتعملت
-      query = query
-        .eq('status', 'paid')
-        .eq('payments.payment_month', monthStartStr)
-        .eq('payments.is_cancelled', false);
-      break;
-  }
-
-  // فلتر فرعي اختياري: تحديد إنتاج جديد فقط أو تحصيل دوري فقط (نفس عمود
-  // is_first المستخدم أصلاً في النظام، بدون أي تغيير في تفسيره)
-  if (subType === 'new') {
-    query = query.eq('is_first', true);
-  } else if (subType === 'periodic') {
-    query = query.eq('is_first', false);
-  }
-
-  // البحث الفوري — يغطي رقم الوثيقة، اسم العميل، رقم الهاتف، الرقم القومي،
-  // واسم الوكيل. يتم حل معرّفات الوثائق المطابقة أولاً (Supabase لا يدعم
-  // البحث المباشر عبر علاقات متداخلة بـ or())
-  // البحث وفلتر "الفريق" مستقلان تمامًا عن بعضهما — تنفيذهما بالتوازي بدل
-  // التسلسل يقلّل زمن الاستجابة دون أي تغيير فى النتيجة النهائية
-  const [searchIds, ownerFilterIds] = await Promise.all([
-    resolveSearchPolicyIds(searchQuery),
-    ownerFilter !== 'all' ? resolveOwnerFilterPolicyIds(ownerFilter, branchId) : Promise.resolve(null),
-  ]);
-
-  let combinedIds: string[] | null = null;
-  if (searchIds !== null && ownerFilterIds !== null) {
-    const ownerFilterSet = new Set(ownerFilterIds);
-    combinedIds = searchIds.filter((id) => ownerFilterSet.has(id));
-  } else if (searchIds !== null) {
-    combinedIds = searchIds;
-  } else if (ownerFilterIds !== null) {
-    combinedIds = ownerFilterIds;
-  }
-
-  if (combinedIds !== null) {
-    if (combinedIds.length === 0) {
-      return { installments: [], totalCount: 0, totalPages: 1 };
-    }
-    query = query.in('policy_id', combinedIds);
-  }
-
-  const { data, error } = await query
-    .order('due_date', { ascending: true })
-    .limit(10000);
-
+  const month = format(startOfMonth(isValid(requestedMonth) ? requestedMonth : new Date()), 'yyyy-MM-dd');
+  // One RLS-protected read returns ten complete display groups and exact totals.
+  const { data, error } = await supabase.rpc('get_collection_page', {
+    p_filter: quickFilter,
+    p_sub_type: subType,
+    p_page: page,
+    p_search: searchQuery.trim(),
+    p_branch_id: branchId,
+    p_owner_id: ownerFilter === 'all' ? null : ownerFilter,
+    p_month: month,
+  });
   if (error) throw error;
-
-  const allInstallments = (data as InstallmentWithRelations[]) || [];
-  const entries = groupInstallmentsForDisplay(allInstallments);
-  const from = (page - 1) * PAGE_SIZE;
-  const pageEntries = entries.slice(from, from + PAGE_SIZE);
-  const pageInstallments = pageEntries.flatMap((entry) =>
-    entry.kind === 'group' ? entry.members : [entry.installment]
-  );
-
-  // عدد الأقساط المسددة لكل وثيقة — يُحسب فقط لوثائق الصفحة الحالية (بعد
-  // التقسيم لصفحات أعلاه)، مش كل الوثائق فى النظام، عشان يفضل الاستعلام خفيف
-  const pagePolicyIds = [...new Set(pageInstallments.map((i) => i.policy_id))];
-  const paidCountByPolicy = new Map<string, number>();
-  if (pagePolicyIds.length > 0) {
-    const { data: paidRows, error: paidCountError } = await supabase
-      .from('installments')
-      .select('policy_id')
-      .eq('status', 'paid')
-      .in('policy_id', pagePolicyIds);
-    if (paidCountError) throw paidCountError;
-    for (const row of (paidRows as { policy_id: string }[]) || []) {
-      paidCountByPolicy.set(row.policy_id, (paidCountByPolicy.get(row.policy_id) || 0) + 1);
-    }
-  }
-  const enrichedInstallments = pageInstallments.map((inst) => ({
-    ...inst,
-    paid_installments_count: paidCountByPolicy.get(inst.policy_id) || 0,
-  }));
-
-  return {
-    installments: enrichedInstallments,
-    totalCount: entries.length,
-    totalPages: Math.max(1, Math.ceil(entries.length / PAGE_SIZE)),
-  };
+  return data as FetchInstallmentsResult;
 }
 
 // ===================================
