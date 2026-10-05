@@ -63,9 +63,10 @@ export interface Year2ReportRow extends Year2Payment {
 // year2_payments نفسه (آخر شهر تم تحصيله فعلياً لكل وثيقة) بدل جدول أقساط
 // منفصل، لأن تحصيل السنة الثانية مفيهوش جدول جدولة مستقل. هذا الفلتر لا
 // يغيّر ولا يُستخدم في أي تارجت/محقق/إحصائية أخرى بالنظام.
-export type Year2QuickFilter = 'month' | 'overdue' | 'paid';
+export type Year2QuickFilter = 'attention' | 'month' | 'overdue' | 'paid';
 
 export const YEAR2_QUICK_FILTERS: { id: Year2QuickFilter; label: string }[] = [
+  { id: 'attention', label: 'تحتاج تحصيل' },
   { id: 'month', label: 'المستحق' },
   { id: 'overdue', label: 'متأخر' },
   { id: 'paid', label: 'تم السداد' },
