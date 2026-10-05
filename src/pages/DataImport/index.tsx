@@ -553,13 +553,27 @@ export function DataImport() {
     const branchId = activeBranchIdRef.current ?? currentBranchId;
 
     let completedRowNumbers = new Set<number>();
+    let checkpointBeforeImport = null as Awaited<ReturnType<typeof getImportCheckpoint>>;
     if (jobId) {
       try {
-        completedRowNumbers = await getCompletedImportRowNumbers(jobId);
+        const [completedRows, checkpoint] = await Promise.all([
+          getCompletedImportRowNumbers(jobId),
+          getImportCheckpoint(jobId),
+        ]);
+        const currentRowNumbers = new Set(rowsToImport.map((row) => row.rowNumber));
+        completedRowNumbers = new Set(
+          [...completedRows].filter((rowNumber) => currentRowNumbers.has(rowNumber))
+        );
+        checkpointBeforeImport = checkpoint;
       } catch (checkpointErr) {
-        console.warn('Completed-row checkpoint read failed:', checkpointErr);
+        console.warn('Import resume checkpoint read failed:', checkpointErr);
       }
     }
+
+    const documentHasRemainingPages = !!checkpointBeforeImport
+      && checkpointBeforeImport.document_kind !== 'spreadsheet'
+      && checkpointBeforeImport.total_pages > 0
+      && checkpointBeforeImport.processed_pages < checkpointBeforeImport.total_pages;
 
     setStage('importing');
     setProgress({ done: completedRowNumbers.size, total: rowsToImport.length });
@@ -611,7 +625,7 @@ export function DataImport() {
 
       setSummary(result);
 
-      if (result.failedCount > 0) {
+      if (result.failedCount > 0 || documentHasRemainingPages) {
         safeUpdateCheckpoint(jobId, {
           phase: 'partial',
           parsed_rows: parsedRows,
@@ -620,13 +634,16 @@ export function DataImport() {
         safeFinishJob(
           jobId,
           'partial',
-          `تم استيراد ${result.importedCount} صف وفشل ${result.failedCount} صف. يمكنك استكمال الصفوف المتبقية لاحقًا.`,
+          result.failedCount > 0
+            ? `تم استيراد ${result.importedCount} صف وفشل ${result.failedCount} صف. يمكنك استكمال الصفوف المتبقية لاحقًا.`
+            : `تم استيراد الصفوف المستخرجة الحالية بنجاح، وما زال المستند يحتوي صفحات لم تُحلل. يمكن استكمالها لاحقًا من الصفحة ${(checkpointBeforeImport?.processed_pages || 0) + 1}.`,
           result.importedCount,
           result.totalRows,
           {
             file_name: fileName,
             imported_count: result.importedCount,
             failed_count: result.failedCount,
+            remaining_document_pages: documentHasRemainingPages,
             resumable: resumeAvailableRef.current,
           },
         );
@@ -669,7 +686,7 @@ export function DataImport() {
         message,
         progress.done,
         rowsToImport.length,
-        { file_name: fileName, resumable: true },
+        { file_name: fileName, resumable: resumeAvailableRef.current },
       );
       setHeaderError(message);
       setStage('parsed');
