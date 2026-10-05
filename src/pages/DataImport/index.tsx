@@ -204,17 +204,40 @@ export function DataImport() {
               },
             });
           },
+          {
+            startPage: 1,
+            existingRows: [],
+            onCheckpoint: async (checkpoint) => {
+              if (!jobId) return;
+              try {
+                await updateImportCheckpoint(jobId, {
+                  phase: 'extracting',
+                  processed_pages: checkpoint.processedPages,
+                  total_pages: checkpoint.totalPages,
+                  parsed_rows: checkpoint.rows,
+                });
+              } catch (checkpointErr) {
+                console.warn('Page checkpoint save failed:', checkpointErr);
+              }
+            },
+          },
         );
         if (extraction.error) {
           setHeaderError(extraction.error);
           setStage('idle');
+          safeUpdateCheckpoint(jobId, {
+            phase: 'failed',
+            processed_pages: extraction.processedPages,
+            total_pages: extraction.totalPages,
+            parsed_rows: extraction.rows,
+          });
           safeFinishJob(
             jobId,
             'failed',
             extraction.error,
             extraction.processedPages,
             extraction.totalPages,
-            { file_name: file.name, extracted_rows: extraction.rows.length },
+            { file_name: file.name, extracted_rows: extraction.rows.length, resumable: true },
           );
         } else {
           setParsedRows(extraction.rows);
@@ -236,16 +259,36 @@ export function DataImport() {
               `تم استخراج بيانات الملف بالكامل بواسطة الذكاء الاصطناعي (${extraction.processedPages} صفحة، ${extraction.rows.length} سجل). راجع الصفوف أدناه بعناية قبل الاستيراد.`
             );
           }
-          safeFinishJob(
-            jobId,
-            extraction.partial ? 'partial' : 'completed',
-            extraction.partial
-              ? 'اكتمل جزء من المستند ويمكن مراجعة الصفوف المستخرجة الآن.'
-              : 'اكتمل استخراج المستند وأصبح جاهزًا للمراجعة.',
-            extraction.processedPages,
-            extraction.totalPages,
-            { file_name: file.name, extracted_rows: extraction.rows.length },
-          );
+          safeUpdateCheckpoint(jobId, {
+            phase: extraction.partial ? 'partial' : 'parsed',
+            processed_pages: extraction.processedPages,
+            total_pages: extraction.totalPages,
+            parsed_rows: extraction.rows,
+          });
+
+          if (extraction.partial) {
+            safeFinishJob(
+              jobId,
+              'partial',
+              'اكتمل جزء من المستند ويمكن استكماله لاحقًا من آخر صفحة محفوظة.',
+              extraction.processedPages,
+              extraction.totalPages,
+              { file_name: file.name, extracted_rows: extraction.rows.length, resumable: true },
+            );
+          } else {
+            safeUpdateJob(jobId, {
+              status: 'ready',
+              stage: 'جاهزة للاستيراد',
+              message: 'اكتمل التحليل ويمكن بدء الاستيراد.',
+              progress_current: extraction.processedPages,
+              progress_total: extraction.totalPages,
+              metadata: {
+                file_name: file.name,
+                extracted_rows: extraction.rows.length,
+                resumable: true,
+              },
+            });
+          }
           setStage('parsed');
         }
         return;
@@ -259,14 +302,25 @@ export function DataImport() {
       } else {
         setParsedRows(rows);
         setAiNotice(aiUsed ? 'لم يطابق الملف نموذج الاستيراد حرفياً، فتم استخدام الذكاء الاصطناعي لمطابقة الأعمدة تلقائياً. راجع الصفوف أدناه قبل الاستيراد.' : null);
-        safeFinishJob(
-          jobId,
-          'completed',
-          `تم تحليل الملف والعثور على ${rows.length} صف للمراجعة.`,
-          rows.length,
-          rows.length,
-          { file_name: file.name, rows: rows.length, ai_column_mapping: !!aiUsed },
-        );
+        safeUpdateCheckpoint(jobId, {
+          phase: 'parsed',
+          parsed_rows: rows,
+          processed_pages: 0,
+          total_pages: 0,
+        });
+        safeUpdateJob(jobId, {
+          status: 'ready',
+          stage: 'جاهزة للاستيراد',
+          message: `تم تحليل الملف والعثور على ${rows.length} صف للمراجعة.`,
+          progress_current: rows.length,
+          progress_total: rows.length,
+          metadata: {
+            file_name: file.name,
+            rows: rows.length,
+            ai_column_mapping: !!aiUsed,
+            resumable: true,
+          },
+        });
         setStage('parsed');
       }
     } catch (err: unknown) {
