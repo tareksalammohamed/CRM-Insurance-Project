@@ -150,9 +150,8 @@ export async function cleanupImportResumeData(jobId: string): Promise<void> {
     .remove([checkpoint.file_path]);
   if (storageError) throw storageError;
 
-  const { error: checkpointError } = await supabase
-    .from('import_job_checkpoints')
-    .delete()
-    .eq('job_id', jobId);
-  if (checkpointError) throw checkpointError;
+  const { error: cleanupError } = await supabase.rpc('cleanup_import_resume_metadata', {
+    p_job_id: jobId,
+  });
+  if (cleanupError) throw cleanupError;
 }
