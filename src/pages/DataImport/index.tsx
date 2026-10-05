@@ -465,7 +465,7 @@ export function DataImport() {
       });
       safeFinishJob(
         jobId,
-        'interrupted' as never,
+        'interrupted',
         message,
         progress.done,
         rowsToImport.length,
