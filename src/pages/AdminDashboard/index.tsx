@@ -46,15 +46,15 @@ export function AdminDashboard() {
     return () => window.clearInterval(id);
   }, [load]);
 
-  const aiProviders = data?.health.ai.providers ?? [];
+  const aiProviders = data?.health?.ai.providers ?? [];
   const enabledAi = aiProviders.filter((p) => p.enabled);
   const healthyAi = enabledAi.filter((p) => p.status === 'active');
   const coolingAi = enabledAi.filter((p) => p.runtime.cooldown_until && new Date(p.runtime.cooldown_until).getTime() > Date.now());
-  const failedCron = data?.health.cron.filter((job) => job.active && job.last_run && job.last_run.status !== 'succeeded') ?? [];
+  const failedCron = data?.health?.cron.filter((job) => job.active && job.last_run && job.last_run.status !== 'succeeded') ?? [];
 
   const systemStatus = useMemo(() => {
     if (!data) return { label: 'جاري الفحص', ok: true };
-    const ok = data.health.database.status === 'healthy' && failedCron.length === 0 && healthyAi.length === enabledAi.length;
+    const ok = !!data.health && data.health.database.status === 'healthy' && failedCron.length === 0 && healthyAi.length === enabledAi.length;
     return { label: ok ? 'النظام يعمل بصورة طبيعية' : 'يوجد عنصر يحتاج مراجعة', ok };
   }, [data, failedCron.length, healthyAi.length, enabledAi.length]);
 
@@ -92,6 +92,15 @@ export function AdminDashboard() {
       </section>
 
       {error && <div className="card border-error-200 bg-error-50 text-error-700 flex items-start gap-2"><AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" /><span>{error}</span></div>}
+      {data && data.warnings.length > 0 && (
+        <div className="card border-warning-200 bg-warning-50/60 text-warning-800 flex items-start gap-2">
+          <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-bold">تم تحميل لوحة الإدارة مع بعض البيانات غير المتاحة مؤقتًا</p>
+            <p className="text-sm mt-1">الأجزاء المتأثرة: {data.warnings.join('، ')}</p>
+          </div>
+        </div>
+      )}
 
       {data && <>
         <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -141,9 +150,9 @@ export function AdminDashboard() {
             <div><p className="workspace-section-kicker">System Signals</p><h2 className="text-lg font-black text-secondary-900">إشارات تحتاج انتباه</h2></div>
             <div className="space-y-2.5">
               <button onClick={() => navigate('/subscriptions-admin')} className="admin-signal-row"><span className="admin-signal-icon bg-warning-50 text-warning-700"><CreditCard className="w-4 h-4" /></span><span className="flex-1 text-right"><strong className="block text-sm text-secondary-900">طلبات الدفع المعلقة</strong><span className="text-xs text-secondary-500">{formatNumber(data.subscriptions.pendingPayments)} طلب ينتظر قرارك</span></span><span className="text-lg font-black text-warning-700">{formatNumber(data.subscriptions.pendingPayments)}</span></button>
-              <button onClick={() => navigate('/system-health')} className="admin-signal-row"><span className="admin-signal-icon bg-primary-50 text-primary-700"><Bot className="w-4 h-4" /></span><span className="flex-1 text-right"><strong className="block text-sm text-secondary-900">مزودو الذكاء الاصطناعي</strong><span className="text-xs text-secondary-500">جاهزية المزودين المفعّلين</span></span><span className="text-sm font-black text-secondary-900">{healthyAi.length}/{enabledAi.length}</span></button>
+              <button onClick={() => navigate('/system-health')} className="admin-signal-row"><span className="admin-signal-icon bg-primary-50 text-primary-700"><Bot className="w-4 h-4" /></span><span className="flex-1 text-right"><strong className="block text-sm text-secondary-900">مزودو الذكاء الاصطناعي</strong><span className="text-xs text-secondary-500">جاهزية المزودين المفعّلين</span></span><span className="text-sm font-black text-secondary-900">{data.health ? `${healthyAi.length}/${enabledAi.length}` : '—'}</span></button>
               <button onClick={() => navigate('/system-health')} className="admin-signal-row"><span className="admin-signal-icon bg-secondary-50 text-secondary-700"><Clock3 className="w-4 h-4" /></span><span className="flex-1 text-right"><strong className="block text-sm text-secondary-900">المهام المجدولة</strong><span className="text-xs text-secondary-500">Cron jobs التي تحتاج مراجعة</span></span><span className={clsx('text-sm font-black', failedCron.length ? 'text-error-600' : 'text-success-700')}>{failedCron.length ? failedCron.length + ' مشكلة' : 'سليمة'}</span></button>
-              <div className="admin-signal-row cursor-default"><span className="admin-signal-icon bg-success-50 text-success-700"><ShieldCheck className="w-4 h-4" /></span><span className="flex-1 text-right"><strong className="block text-sm text-secondary-900">قاعدة البيانات</strong><span className="text-xs text-secondary-500">آخر فحص {formatDate(data.health.database.server_time)}</span></span><span className="text-sm font-black text-success-700">متاحة</span></div>
+              <div className="admin-signal-row cursor-default"><span className="admin-signal-icon bg-success-50 text-success-700"><ShieldCheck className="w-4 h-4" /></span><span className="flex-1 text-right"><strong className="block text-sm text-secondary-900">قاعدة البيانات</strong><span className="text-xs text-secondary-500">{data.health ? `آخر فحص ${formatDate(data.health.database.server_time)}` : 'تعذر تحميل حالة قاعدة البيانات'}</span></span><span className={clsx('text-sm font-black', data.health ? 'text-success-700' : 'text-warning-700')}>{data.health ? 'متاحة' : 'غير متاح'}</span></div>
             </div>
           </div>
         </section>
