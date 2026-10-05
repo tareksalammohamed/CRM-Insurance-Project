@@ -9,7 +9,7 @@ import { useRef, useState, type KeyboardEvent } from 'react';
 // html2canvas لأي محتوى عربي).
 import { toPng } from 'html-to-image';
 import {
-  Calculator, RotateCcw, PlusCircle, Copy, Printer, Check, AlertCircle,
+  Calculator, Printer, Check, AlertCircle,
   DollarSign, Percent, ImageDown, Loader2, ShieldCheck, BadgeCheck, ArrowLeft,
 } from 'lucide-react';
 
@@ -108,7 +108,6 @@ export function PriceCalculator() {
   const [sumInsured, setSumInsured] = useState('');
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [result, setResult] = useState<CalculationResult | null>(null);
-  const [copied, setCopied] = useState(false);
   const [savingImage, setSavingImage] = useState(false);
   const [imageLogoSrc, setImageLogoSrc] = useState<string | null>(null);
   const [pensionCashPercent, setPensionCashPercent] = useState<PensionCashPercent | null>(null);
@@ -167,43 +166,6 @@ export function PriceCalculator() {
     } catch (err) {
       setErrors({ variantKey: friendlyError(err, 'حدث خطأ فى الحساب') });
       setResult(null);
-    }
-  }
-
-  function handleReset() {
-    setAge('');
-    setVariantKey('');
-    setSumInsured('');
-    setErrors({});
-    setResult(null);
-    setCopied(false);
-    setPensionCashPercent(null);
-    setCalculatedPensionCashPercent(undefined);
-    setPensionOptionError('');
-  }
-
-  function handleNewCalculation() {
-    handleReset();
-    requestAnimationFrame(() => ageInputRef.current?.focus());
-  }
-
-  async function handleCopyResults() {
-    if (!result) return;
-    const text = [
-      `نوع الوثيقة: ${result.variant.label}`,
-      `السن: ${result.age} سنة`,
-      `مبلغ التأمين: ${formatCurrency(result.sumInsured)}`,
-      `القسط السنوي: ${formatCurrency(result.annualPremium)}`,
-      `القسط النصف سنوي: ${formatCurrency(result.semiAnnualPremium)}`,
-      `القسط الربع سنوي: ${formatCurrency(result.quarterlyPremium)}`,
-      `القسط الشهري: ${formatCurrency(result.monthlyPremium)}`,
-    ].join('\n');
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // فشل النسخ (متصفح لا يدعم الحافظة) — تجاهل بصمت
     }
   }
 
@@ -454,16 +416,6 @@ export function PriceCalculator() {
       {/* ===== أزرار الإجراءات: تحت النتائج ومزايا الوثيقة ===== */}
       {result && (
         <div className="price-action-bar flex flex-wrap gap-2 print:hidden">
-          <button onClick={handleNewCalculation} className="btn btn-outline btn-sm">
-            <PlusCircle className="w-4 h-4" /> حساب جديد
-          </button>
-          <button onClick={handleReset} className="btn btn-secondary btn-sm">
-            <RotateCcw className="w-4 h-4" /> إعادة تعيين
-          </button>
-          <button onClick={handleCopyResults} className="btn btn-secondary btn-sm">
-            {copied ? <Check className="w-4 h-4 text-success-600" /> : <Copy className="w-4 h-4" />}
-            {copied ? 'تم النسخ' : 'نسخ النتائج'}
-          </button>
           <button onClick={handlePrint} className="btn btn-success btn-sm">
             <Printer className="w-4 h-4" /> طباعة / حفظ PDF
           </button>
