@@ -5,7 +5,7 @@
    FinTech — هدوء بصري، تسلسل واضح، أرقام بارزة، ومساحات مريحة على الموبايل.
 
    قواعد النظام:
-   1) الهوية اللونية كما هي (أخضر عميق / زمردي / تيل / لايم) — لا ألوان جديدة.
+   1) Palette مالية حديثة متعددة النغمات: Navy / Teal / Cyan / Indigo مع ألوان حالات واضحة.
    2) طبقة واحدة من الـtokens (متغيرات CSS) هى مصدر الحقيقة لكل الأسطح
       والحدود والظلال والحركة، فلا تتكرر القيم داخل الكومبوننتس.
    3) ضجيج بصري أقل: حدود 1px + ظل خفيف، بدل التدرّجات والزخارف المتراكمة.
@@ -6141,6 +6141,14 @@ html.dark .admin-quick-action__icon {
     letter-spacing: -0.028em !important;
   }
 
+  .header-context-badge {
+    color: #087563 !important;
+    border: 1px solid rgb(20 184 154 / 0.12);
+    background:
+      linear-gradient(90deg, rgb(20 184 154 / 0.11), rgb(34 211 238 / 0.07), rgb(99 102 241 / 0.055)) !important;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.65);
+  }
+
   .app-header .icon-button {
     border: 1px solid transparent;
     background: transparent;
@@ -6438,13 +6446,10 @@ html.dark .admin-quick-action__icon {
      Tables
   ──────────────────────────────────────────────────────────────────────── */
   .table-container {
-    overflow: hidden;
+    overflow-x: auto !important;
+    overflow-y: hidden;
     border-radius: 1.1rem !important;
-  }
-
-  .table-container > div,
-  .table-container > table {
-    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .table-container thead,
@@ -6751,6 +6756,14 @@ html.dark .admin-quick-action__icon {
 
   html.dark .app-header h1 {
     color: #f8fafc !important;
+  }
+
+  html.dark .header-context-badge {
+    color: #5eead4 !important;
+    border-color: rgb(45 212 191 / 0.11);
+    background:
+      linear-gradient(90deg, rgb(20 184 154 / 0.11), rgb(34 211 238 / 0.055), rgb(99 102 241 / 0.07)) !important;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.025);
   }
 
   html.dark .app-header .icon-button:hover {
