@@ -58,6 +58,7 @@ export function DataImport() {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [parsing, setParsing] = useState(false);
+  const [resumePending, setResumePending] = useState(false);
   const activeJobIdRef = useRef<string | null>(null);
   const activeBranchIdRef = useRef<string | null>(null);
   const resumeAvailableRef = useRef(false);
@@ -118,6 +119,7 @@ export function DataImport() {
     setProgress({ done: 0, total: 0 });
     setSummary(null);
     setAiExtractionProgress(null);
+    setResumePending(false);
     activeJobIdRef.current = null;
     activeBranchIdRef.current = null;
     resumeAvailableRef.current = false;
@@ -272,6 +274,12 @@ export function DataImport() {
             total_pages: extraction.totalPages,
             parsed_rows: extraction.rows,
           });
+
+          setResumePending(
+            extraction.partial &&
+            extraction.processedPages < extraction.totalPages &&
+            extraction.processedPages < 60
+          );
 
           if (extraction.partial) {
             safeFinishJob(
@@ -462,6 +470,12 @@ export function DataImport() {
           parsed_rows: extraction.rows,
         });
 
+        setResumePending(
+          extraction.partial &&
+          extraction.processedPages < extraction.totalPages &&
+          extraction.processedPages < 60
+        );
+
         if (extraction.partial) {
           safeFinishJob(
             jobId,
@@ -497,6 +511,12 @@ export function DataImport() {
         return;
       }
 
+      setResumePending(
+        checkpoint.document_kind !== 'spreadsheet' &&
+        checkpoint.total_pages > 0 &&
+        checkpoint.processed_pages < checkpoint.total_pages &&
+        checkpoint.processed_pages < 60
+      );
       setAiNotice(
         completed.size > 0
           ? `تم استعادة المهمة من آخر نقطة. ${completed.size} صف تم استيراده سابقًا ولن يُعاد إدخاله؛ اضغط استكمال الاستيراد للباقي.`
@@ -624,6 +644,8 @@ export function DataImport() {
       );
 
       setSummary(result);
+
+      setResumePending(documentHasRemainingPages);
 
       if (result.failedCount > 0 || documentHasRemainingPages) {
         safeUpdateCheckpoint(jobId, {
@@ -1039,18 +1061,29 @@ export function DataImport() {
         <div className="card space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h3 className="font-semibold text-secondary-900">٣. تقرير الاستيراد</h3>
-            {summary.failedCount > 0 && (
-              <div className="flex items-center gap-2">
-                <button onClick={() => exportErrorReport(summary)} className="btn btn-secondary btn-sm">
-                  <FileDown className="w-4 h-4" />
-                  تصدير تقرير الأخطاء
-                </button>
-                <button onClick={retryFailedRows} className="btn btn-primary btn-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              {resumePending && activeJobIdRef.current && (
+                <button
+                  onClick={() => resumeFromCheckpoint(activeJobIdRef.current!)}
+                  className="btn btn-primary btn-sm"
+                >
                   <RotateCcw className="w-4 h-4" />
-                  إعادة محاولة الصفوف الفاشلة
+                  استكمال باقي الملف
                 </button>
-              </div>
-            )}
+              )}
+              {summary.failedCount > 0 && (
+                <>
+                  <button onClick={() => exportErrorReport(summary)} className="btn btn-secondary btn-sm">
+                    <FileDown className="w-4 h-4" />
+                    تصدير تقرير الأخطاء
+                  </button>
+                  <button onClick={retryFailedRows} className="btn btn-primary btn-sm">
+                    <RotateCcw className="w-4 h-4" />
+                    إعادة محاولة الصفوف الفاشلة
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
