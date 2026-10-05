@@ -1,4 +1,4 @@
-import { Banknote, FileCheck2, History, ListChecks } from 'lucide-react';
+import { AlertTriangle, Banknote, BellRing, History, ListChecks } from 'lucide-react';
 import type { CollectionQuickStats } from '../services/collectionService';
 import { formatCurrency } from '../utils/formatCurrency';
 import { KpiTile } from './KpiTile';
@@ -44,11 +44,23 @@ export function Year2CollectionStats({ quickStats, quickStatsLoading }: Year2Col
         ) : (
           <>
             <KpiTile
-              label="وثائق مؤهلة للتحصيل"
-              value={quickStats?.year2EligiblePoliciesCount ?? 0}
-              icon={FileCheck2}
-              tone="info"
-              footer={<span>وثيقة نشطة دخلت السنة الثانية</span>}
+              label="تحتاج تحصيل"
+              value={quickStats?.year2AttentionPoliciesCount ?? 0}
+              icon={BellRing}
+              tone="due"
+              footer={
+                <span>
+                  مستحق + متأخر من أصل {quickStats?.year2EligiblePoliciesCount ?? 0} وثيقة مؤهلة
+                </span>
+              }
+            />
+            <KpiTile
+              label="متأخر"
+              value={quickStats?.year2OverduePoliciesCount ?? 0}
+              icon={AlertTriangle}
+              tone="overdue"
+              valueTone={(quickStats?.year2OverduePoliciesCount ?? 0) > 0 ? 'danger' : undefined}
+              footer={<span>يحتاج متابعة قبل التحصيلات الجديدة</span>}
             />
             <KpiTile
               label="محصل هذا الشهر"
@@ -56,21 +68,14 @@ export function Year2CollectionStats({ quickStats, quickStatsLoading }: Year2Col
               icon={Banknote}
               tone="paid"
               valueTone="success"
-              footer={<span>من تحصيلات السنة الثانية وما بعدها</span>}
+              footer={<span>تحصيل منفصل — لا يدخل في التارجت</span>}
             />
             <KpiTile
               label="عمليات التحصيل هذا الشهر"
               value={quickStats?.year2CollectedMonthCount ?? 0}
               icon={ListChecks}
-              tone="brand"
-              footer={<span>عدد عمليات السداد المسجلة</span>}
-            />
-            <KpiTile
-              label="إجمالي المحصل تاريخيًا"
-              value={formatCurrency(quickStats?.year2TotalCollectedAmount || 0)}
-              icon={History}
-              tone="brand"
-              footer={<span>منذ بداية تحصيل السنوات اللاحقة</span>}
+              tone="info"
+              footer={<span>عدد عمليات السداد المسجلة للسنوات اللاحقة</span>}
             />
           </>
         )}

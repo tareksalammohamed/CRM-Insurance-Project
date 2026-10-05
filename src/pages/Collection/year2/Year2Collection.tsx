@@ -35,9 +35,12 @@ interface Year2CollectionProps {
   // غير عرض/تحصيل وثائق هذا الفرع تحديداً، وما زالت الشاشة معزولة تماماً
   // عن التارجت/المحقق/أي إحصائية أخرى بالنظام.
   branchId?: string | null;
+  // تحديث مؤشرات الصفحة الأب بعد نجاح تسجيل/إلغاء التحصيل فقط.
+  // لا يشارك في تنفيذ العملية نفسها ولا يغيّر أي قاعدة عمل.
+  onDataChanged?: () => void | Promise<void>;
 }
 
-export function Year2Collection({ branchId = null }: Year2CollectionProps) {
+export function Year2Collection({ branchId = null, onDataChanged }: Year2CollectionProps) {
   const { user } = useAuth();
   const notify = useNotify();
   const [policies, setPolicies] = useState<Year2EligiblePolicy[]>([]);
@@ -47,7 +50,7 @@ export function Year2Collection({ branchId = null }: Year2CollectionProps) {
   const [totalCount, setTotalCount] = useState(0);
   const [localSearch, setLocalSearch] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [quickFilter, setQuickFilter] = useState<Year2QuickFilter>('month');
+  const [quickFilter, setQuickFilter] = useState<Year2QuickFilter>('attention');
 
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedPolicy, setSelectedPolicy] = useState<Year2EligiblePolicy | null>(null);
@@ -149,6 +152,7 @@ export function Year2Collection({ branchId = null }: Year2CollectionProps) {
       await addYear2Payment(selectedPolicy.id, Number(selectedPolicy.premium_amount), new Date(data.paymentDate), user.id, data.notes || '');
       setShowAddModal(false);
       loadPolicies();
+      void onDataChanged?.();
       if (showHistoryModal) openHistory(selectedPolicy);
     } catch (error: unknown) {
       console.error(error);
@@ -171,6 +175,7 @@ export function Year2Collection({ branchId = null }: Year2CollectionProps) {
       await cancelYear2Payment(selectedPayment, user.id, cancelReason);
       setShowCancelModal(false);
       loadPolicies();
+      void onDataChanged?.();
       if (selectedPolicy) openHistory(selectedPolicy);
     } catch (error) {
       console.error(error);
@@ -234,8 +239,8 @@ export function Year2Collection({ branchId = null }: Year2CollectionProps) {
             />
           </div>
 
-          {/* شرائح سريعة: المستحق / متأخر / تم السداد — بنفس منطق فلتر
-              السنة الأولى، محسوبة من آخر تحصيل فعلي لكل وثيقة */}
+          {/* شرائح سريعة للعرض فقط. "تحتاج تحصيل" = مستحق + متأخر بنفس
+              classifier الحالي، ولا تدخل هذه الفلاتر في أي تارجت أو محقق. */}
           <div className="flex gap-2 overflow-x-auto scrollbar-thin pb-1 -mx-1 px-1">
             {YEAR2_QUICK_FILTERS.map((f) => (
               <button

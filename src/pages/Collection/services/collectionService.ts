@@ -7,6 +7,7 @@ import {
 } from '../../../features/installments/installmentsService';
 import { dalRead } from '../../../lib/dataAccessLayer';
 import { fetchUserSubtreeIdsBranchAware } from '../../../lib/branchHierarchy';
+import { classifyYear2Status } from '../year2/year2CollectionService';
 
 const PAGE_SIZE = 10;
 
@@ -354,6 +355,11 @@ export interface CollectionQuickStats {
   collectedMonthAmount: number;
   // مؤشرات تذكيرية لتحصيلات السنة الثانية وما بعدها — مستقلة عن السنة الأولى.
   year2EligiblePoliciesCount: number;
+  // نفس تصنيف شاشة السنة الثانية نفسها: مستحق + متأخر = يحتاج تحصيل.
+  // مؤشرات عرض/تذكير فقط ولا تدخل في أي تارجت أو محقق.
+  year2DuePoliciesCount: number;
+  year2OverduePoliciesCount: number;
+  year2AttentionPoliciesCount: number;
   year2CollectedMonthAmount: number;
   year2CollectedMonthCount: number;
   year2TotalCollectedAmount: number;
@@ -367,6 +373,9 @@ const EMPTY_COLLECTION_QUICK_STATS: CollectionQuickStats = {
   collectedTodayCount: 0,
   collectedMonthAmount: 0,
   year2EligiblePoliciesCount: 0,
+  year2DuePoliciesCount: 0,
+  year2OverduePoliciesCount: 0,
+  year2AttentionPoliciesCount: 0,
   year2CollectedMonthAmount: 0,
   year2CollectedMonthCount: 0,
   year2TotalCollectedAmount: 0,
@@ -399,14 +408,14 @@ export async function fetchCollectionQuickStats(branchId: string | null = null):
 
       let year2PoliciesQuery = supabase
         .from('policies')
-        .select('id')
+        .select('id, start_date')
         .eq('status', 'active')
         .lte('start_date', format(subMonths(now, 12), 'yyyy-MM-dd'));
       if (branchId) year2PoliciesQuery = year2PoliciesQuery.eq('branch_id', branchId);
 
       let year2PaymentsQuery = supabase
         .from('year2_payments')
-        .select('amount, payment_month, policy:policy_id!inner(start_date,status,branch_id)')
+        .select('policy_id, amount, payment_month, policy:policy_id!inner(start_date,status,branch_id)')
         .eq('is_cancelled', false)
         .eq('policy.status', 'active')
         .lte('policy.start_date', format(subMonths(now, 12), 'yyyy-MM-dd'));
@@ -472,6 +481,31 @@ export async function fetchCollectionQuickStats(branchId: string | null = null):
       const year2CollectedMonthAmount = year2CollectedMonthRowsForCurrentMonth.reduce((sum, r) => sum + Number(r.amount), 0);
       const year2TotalCollectedAmount = year2CollectedMonthRows.reduce((sum, r) => sum + Number(r.amount), 0);
 
+      // تنبيه السنة الثانية مبني على نفس classifier المستخدم في شاشة السنة
+      // الثانية نفسها. لا ننشئ "أقساط" افتراضية ولا نغيّر أي قاعدة حسابية.
+      const lastPaidMonthByPolicy = new Map<string, string>();
+      for (const row of year2CollectedMonthRows) {
+        const policyId = String(row.policy_id || '');
+        if (!policyId) continue;
+        const current = lastPaidMonthByPolicy.get(policyId);
+        if (!current || row.payment_month > current) {
+          lastPaidMonthByPolicy.set(policyId, row.payment_month);
+        }
+      }
+
+      let year2DuePoliciesCount = 0;
+      let year2OverduePoliciesCount = 0;
+      for (const policy of (year2PoliciesRes.data || []) as Array<{ id: string; start_date: string }>) {
+        const status = classifyYear2Status(
+          policy.start_date,
+          lastPaidMonthByPolicy.get(policy.id) ?? null,
+          now,
+        );
+        if (status === 'month') year2DuePoliciesCount += 1;
+        if (status === 'overdue') year2OverduePoliciesCount += 1;
+      }
+      const year2AttentionPoliciesCount = year2DuePoliciesCount + year2OverduePoliciesCount;
+
       return {
         dueMonthAmount,
         dueMonthCount: dueRows.length,
@@ -480,6 +514,9 @@ export async function fetchCollectionQuickStats(branchId: string | null = null):
         collectedTodayCount: collectedRows.length,
         collectedMonthAmount,
         year2EligiblePoliciesCount: year2PoliciesRes.data?.length || 0,
+        year2DuePoliciesCount,
+        year2OverduePoliciesCount,
+        year2AttentionPoliciesCount,
         year2CollectedMonthAmount,
         year2CollectedMonthCount: year2CollectedMonthRowsForCurrentMonth.length,
         year2TotalCollectedAmount,
