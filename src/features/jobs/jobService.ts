@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 export type AppJobStatus =
   | 'queued'
   | 'running'
+  | 'ready'
   | 'completed'
   | 'partial'
   | 'failed'
@@ -73,7 +74,11 @@ export async function updateAppJob(
     .update({
       ...patch,
       updated_at: new Date().toISOString(),
-      ...(terminal ? { completed_at: new Date().toISOString() } : {}),
+      ...(terminal
+        ? { completed_at: new Date().toISOString() }
+        : patch.status
+          ? { completed_at: null }
+          : {}),
     })
     .eq('id', jobId);
 
@@ -82,7 +87,7 @@ export async function updateAppJob(
 
 export async function finishAppJob(
   jobId: string,
-  status: Extract<AppJobStatus, 'completed' | 'partial' | 'failed' | 'cancelled'>,
+  status: Extract<AppJobStatus, 'completed' | 'partial' | 'failed' | 'cancelled' | 'interrupted'>,
   message?: string,
   progressCurrent?: number,
   progressTotal?: number,

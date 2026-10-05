@@ -822,15 +822,31 @@ export function exportErrorReport(summary: ImportSummary) {
 // ===================================================================
 const IMPORT_CONCURRENCY = 5;
 
+export interface ImportRowsResumeOptions {
+  jobId?: string | null;
+  completedRowNumbers?: Set<number>;
+}
+
 export async function importRows(
   rows: ParsedRow[],
   branchId: string | null,
-  onRowDone: (result: RowResult, doneCount: number, totalCount: number) => void
+  onRowDone: (result: RowResult, doneCount: number, totalCount: number) => void,
+  resume: ImportRowsResumeOptions = {},
 ): Promise<ImportSummary> {
-  const results: RowResult[] = [];
-  const rowsToProcess = rows.filter((r) => r.payload !== null);
+  const completed = resume.completedRowNumbers || new Set<number>();
+  const alreadyCompleted: RowResult[] = rows
+    .filter((r) => completed.has(r.rowNumber))
+    .map((r) => ({
+      rowNumber: r.rowNumber,
+      customerName: String(r.raw['customer_name'] || ''),
+      policyNumber: String(r.raw['policy_number'] || ''),
+      status: 'success' as const,
+    }));
+
+  const results: RowResult[] = [...alreadyCompleted];
+  const rowsToProcess = rows.filter((r) => !completed.has(r.rowNumber) && r.payload !== null);
   const skippedAsErrors: RowResult[] = rows
-    .filter((r) => r.payload === null)
+    .filter((r) => !completed.has(r.rowNumber) && r.payload === null)
     .map((r) => ({
       rowNumber: r.rowNumber,
       customerName: normalizeText(r.raw['customer_name']),
@@ -841,7 +857,7 @@ export async function importRows(
 
   results.push(...skippedAsErrors);
 
-  let done = 0;
+  let done = alreadyCompleted.length;
   const total = rows.length;
   skippedAsErrors.forEach((r) => onRowDone(r, ++done, total));
 
@@ -851,10 +867,17 @@ export async function importRows(
       const row = rowsToProcess[nextIndex++];
       const payload = row.payload!;
       try {
-        const { error } = await supabase.rpc('import_policy_row_v2', {
-          ...payload,
-          p_branch_id: branchId,
-        });
+        const { error } = resume.jobId
+          ? await supabase.rpc('import_policy_row_resumable', {
+              p_job_id: resume.jobId,
+              p_row_number: row.rowNumber,
+              p_payload: payload,
+              p_branch_id: branchId,
+            })
+          : await supabase.rpc('import_policy_row_v2', {
+              ...payload,
+              p_branch_id: branchId,
+            });
         if (error) throw error;
 
         const result: RowResult = {

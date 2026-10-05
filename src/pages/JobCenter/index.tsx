@@ -22,6 +22,7 @@ import {
 const STATUS_META: Record<AppJobStatus, { label: string; className: string }> = {
   queued: { label: 'في الانتظار', className: 'bg-secondary-100 text-secondary-700' },
   running: { label: 'جارية', className: 'bg-primary-50 text-primary-700' },
+  ready: { label: 'جاهزة للاستكمال', className: 'bg-primary-50 text-primary-700' },
   completed: { label: 'مكتملة', className: 'bg-success-50 text-success-700' },
   partial: { label: 'مكتملة جزئيًا', className: 'bg-warning-50 text-warning-700' },
   failed: { label: 'فشلت', className: 'bg-error-50 text-error-700' },
@@ -75,13 +76,13 @@ export function JobCenter() {
   }, [load]);
 
   const counts = useMemo(() => ({
-    active: jobs.filter((j) => j.status === 'running' || j.status === 'queued').length,
+    active: jobs.filter((j) => ['running', 'queued', 'ready'].includes(j.status)).length,
     attention: jobs.filter((j) => ['partial', 'failed', 'interrupted'].includes(j.status)).length,
     done: jobs.filter((j) => j.status === 'completed').length,
   }), [jobs]);
 
   const visibleJobs = useMemo(() => jobs.filter((job) => {
-    if (filter === 'active') return job.status === 'running' || job.status === 'queued';
+    if (filter === 'active') return ['running', 'queued', 'ready'].includes(job.status);
     if (filter === 'attention') return ['partial', 'failed', 'interrupted'].includes(job.status);
     if (filter === 'done') return job.status === 'completed';
     return true;
@@ -220,11 +221,19 @@ export function JobCenter() {
               )}
 
               <div className="flex flex-wrap gap-2 pt-1">
-                {source && (
+                {source && job.metadata?.resumable === true && ['ready', 'partial', 'interrupted', 'failed'].includes(job.status) ? (
+                  <button
+                    onClick={() => navigate(`${source}?resume=${encodeURIComponent(job.id)}`)}
+                    className="btn btn-primary btn-sm"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    استكمال من آخر نقطة
+                  </button>
+                ) : source ? (
                   <button onClick={() => navigate(source)} className="btn btn-secondary btn-sm">
                     فتح الصفحة المرتبطة
                   </button>
-                )}
+                ) : null}
                 {terminal && (
                   <button onClick={() => remove(job)} className="btn btn-ghost btn-sm text-error-600">
                     <Trash2 className="w-4 h-4" />
@@ -238,7 +247,7 @@ export function JobCenter() {
       </div>
 
       <p className="text-xs text-secondary-400">
-        ملاحظة: المهام التي تعتمد على المتصفح لا تدّعي الاستمرار بعد إغلاق التطبيق؛ إذا انقطع التنفيذ ستظهر كـ«انقطعت» بدل حالة جارية وهمية.
+        المهام القابلة للاستكمال تحفظ الملف وآخر Checkpoint بصورة خاصة. إذا انقطع التطبيق ستظهر «انقطعت» ويمكن استكمالها من آخر نقطة بدل إعادة الملف من البداية.
       </p>
     </div>
   );

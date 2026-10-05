@@ -1,5 +1,6 @@
 import { friendlyError } from '../../lib/errorMessages';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Download,
   UploadCloud,
@@ -26,6 +27,14 @@ import { downloadTemplateFile, parseWorkbookFile, importRows, fetchImportAgents,
 import { detectDocumentKind, extractRowsFromDocument } from './services/aiDocumentExtractor';
 import { RowEditModal } from './components/RowEditModal';
 import { createAppJob, finishAppJob, updateAppJob } from '../../features/jobs/jobService';
+import {
+  cleanupImportResumeData,
+  createImportCheckpoint,
+  downloadCheckpointFile,
+  getCompletedImportRowNumbers,
+  getImportCheckpoint,
+  updateImportCheckpoint,
+} from '../../features/jobs/importResumeService';
 
 type Stage = 'idle' | 'parsed' | 'importing' | 'done';
 
@@ -33,6 +42,8 @@ export function DataImport() {
   const { user } = useAuth();
   const { currentBranchId } = useBranchContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const resumeLoadedRef = useRef(false);
   const [dragOver, setDragOver] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [headerError, setHeaderError] = useState<string | null>(null);
@@ -47,8 +58,10 @@ export function DataImport() {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [parsing, setParsing] = useState(false);
-  const activeParseJobIdRef = useRef<string | null>(null);
-  const activeImportJobIdRef = useRef<string | null>(null);
+  const [resumePending, setResumePending] = useState(false);
+  const activeJobIdRef = useRef<string | null>(null);
+  const activeBranchIdRef = useRef<string | null>(null);
+  const resumeAvailableRef = useRef(false);
   const [aiExtractionProgress, setAiExtractionProgress] = useState<{
     processedPages: number;
     totalPages: number;
@@ -75,6 +88,16 @@ export function DataImport() {
       .catch((err) => console.warn('Job Center finish failed:', err));
   };
 
+
+  const safeUpdateCheckpoint = (
+    jobId: string | null,
+    patch: Parameters<typeof updateImportCheckpoint>[1],
+  ) => {
+    if (!jobId) return;
+    void updateImportCheckpoint(jobId, patch)
+      .catch((err) => console.warn('Import checkpoint update failed:', err));
+  };
+
   const activeRows = parsedRows.filter((r) => !excludedRows.has(r.rowNumber));
   const validRowsCount = activeRows.filter((r) => r.payload !== null).length;
   const invalidRowsCount = activeRows.length - validRowsCount;
@@ -96,6 +119,15 @@ export function DataImport() {
     setProgress({ done: 0, total: 0 });
     setSummary(null);
     setAiExtractionProgress(null);
+    setResumePending(false);
+    activeJobIdRef.current = null;
+    activeBranchIdRef.current = null;
+    resumeAvailableRef.current = false;
+    if (searchParams.has('resume')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('resume');
+      setSearchParams(next, { replace: true });
+    }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -114,10 +146,37 @@ export function DataImport() {
           title: documentKind ? `استخراج بيانات: ${file.name}` : `تحليل ملف: ${file.name}`,
           stage: documentKind ? 'تحليل المستند بالذكاء الاصطناعي' : 'قراءة الملف ومطابقة الأعمدة',
           message: 'بدأت المهمة',
-          metadata: { file_name: file.name, file_size: file.size, file_type: file.type || null },
+          metadata: {
+            file_name: file.name,
+            file_size: file.size,
+            file_type: file.type || null,
+            resumable: resumeAvailableRef.current,
+          },
         });
         jobId = job.id;
-        activeParseJobIdRef.current = job.id;
+        activeJobIdRef.current = job.id;
+        activeBranchIdRef.current = currentBranchId;
+        try {
+          await createImportCheckpoint({
+            jobId: job.id,
+            userId: user.id,
+            branchId: currentBranchId,
+            file,
+            documentKind: documentKind || 'spreadsheet',
+          });
+          resumeAvailableRef.current = true;
+        } catch (checkpointErr) {
+          console.warn('Import checkpoint create failed:', checkpointErr);
+          resumeAvailableRef.current = false;
+          safeUpdateJob(job.id, {
+            metadata: {
+              file_name: file.name,
+              file_size: file.size,
+              file_type: file.type || null,
+              resumable: false,
+            },
+          });
+        }
       } catch (jobErr) {
         console.warn('Job Center create failed:', jobErr);
       }
@@ -150,20 +209,44 @@ export function DataImport() {
                 provider: progress.provider ?? null,
                 model: progress.model ?? null,
                 extracted_rows: progress.extractedRows,
+                resumable: resumeAvailableRef.current,
               },
             });
+          },
+          {
+            startPage: 1,
+            existingRows: [],
+            onCheckpoint: async (checkpoint) => {
+              if (!jobId) return;
+              try {
+                await updateImportCheckpoint(jobId, {
+                  phase: 'extracting',
+                  processed_pages: checkpoint.processedPages,
+                  total_pages: checkpoint.totalPages,
+                  parsed_rows: checkpoint.rows,
+                });
+              } catch (checkpointErr) {
+                console.warn('Page checkpoint save failed:', checkpointErr);
+              }
+            },
           },
         );
         if (extraction.error) {
           setHeaderError(extraction.error);
           setStage('idle');
+          safeUpdateCheckpoint(jobId, {
+            phase: 'failed',
+            processed_pages: extraction.processedPages,
+            total_pages: extraction.totalPages,
+            parsed_rows: extraction.rows,
+          });
           safeFinishJob(
             jobId,
             'failed',
             extraction.error,
             extraction.processedPages,
             extraction.totalPages,
-            { file_name: file.name, extracted_rows: extraction.rows.length },
+            { file_name: file.name, extracted_rows: extraction.rows.length, resumable: true },
           );
         } else {
           setParsedRows(extraction.rows);
@@ -185,19 +268,44 @@ export function DataImport() {
               `تم استخراج بيانات الملف بالكامل بواسطة الذكاء الاصطناعي (${extraction.processedPages} صفحة، ${extraction.rows.length} سجل). راجع الصفوف أدناه بعناية قبل الاستيراد.`
             );
           }
-          safeFinishJob(
-            jobId,
-            extraction.partial ? 'partial' : 'completed',
-            extraction.partial
-              ? 'اكتمل جزء من المستند ويمكن مراجعة الصفوف المستخرجة الآن.'
-              : 'اكتمل استخراج المستند وأصبح جاهزًا للمراجعة.',
-            extraction.processedPages,
-            extraction.totalPages,
-            { file_name: file.name, extracted_rows: extraction.rows.length },
+          safeUpdateCheckpoint(jobId, {
+            phase: extraction.partial ? 'partial' : 'parsed',
+            processed_pages: extraction.processedPages,
+            total_pages: extraction.totalPages,
+            parsed_rows: extraction.rows,
+          });
+
+          setResumePending(
+            extraction.partial &&
+            extraction.processedPages < extraction.totalPages &&
+            extraction.processedPages < 60
           );
+
+          if (extraction.partial) {
+            safeFinishJob(
+              jobId,
+              'partial',
+              'اكتمل جزء من المستند ويمكن استكماله لاحقًا من آخر صفحة محفوظة.',
+              extraction.processedPages,
+              extraction.totalPages,
+              { file_name: file.name, extracted_rows: extraction.rows.length, resumable: true },
+            );
+          } else {
+            safeUpdateJob(jobId, {
+              status: 'ready',
+              stage: 'جاهزة للاستيراد',
+              message: 'اكتمل التحليل ويمكن بدء الاستيراد.',
+              progress_current: extraction.processedPages,
+              progress_total: extraction.totalPages,
+              metadata: {
+                file_name: file.name,
+                extracted_rows: extraction.rows.length,
+                resumable: resumeAvailableRef.current,
+              },
+            });
+          }
           setStage('parsed');
         }
-        activeParseJobIdRef.current = null;
         return;
       }
 
@@ -209,26 +317,243 @@ export function DataImport() {
       } else {
         setParsedRows(rows);
         setAiNotice(aiUsed ? 'لم يطابق الملف نموذج الاستيراد حرفياً، فتم استخدام الذكاء الاصطناعي لمطابقة الأعمدة تلقائياً. راجع الصفوف أدناه قبل الاستيراد.' : null);
-        safeFinishJob(
-          jobId,
-          'completed',
-          `تم تحليل الملف والعثور على ${rows.length} صف للمراجعة.`,
-          rows.length,
-          rows.length,
-          { file_name: file.name, rows: rows.length, ai_column_mapping: !!aiUsed },
-        );
+        safeUpdateCheckpoint(jobId, {
+          phase: 'parsed',
+          parsed_rows: rows,
+          processed_pages: 0,
+          total_pages: 0,
+        });
+        safeUpdateJob(jobId, {
+          status: 'ready',
+          stage: 'جاهزة للاستيراد',
+          message: `تم تحليل الملف والعثور على ${rows.length} صف للمراجعة.`,
+          progress_current: rows.length,
+          progress_total: rows.length,
+          metadata: {
+            file_name: file.name,
+            rows: rows.length,
+            ai_column_mapping: !!aiUsed,
+            resumable: resumeAvailableRef.current,
+          },
+        });
         setStage('parsed');
       }
-      activeParseJobIdRef.current = null;
     } catch (err: unknown) {
       const message = friendlyError(err, 'تعذر قراءة الملف. تأكد أنه ملف صحيح غير تالف');
       setHeaderError(message);
       safeFinishJob(jobId, 'failed', message, 0, 0, { file_name: file.name });
-      activeParseJobIdRef.current = null;
     } finally {
       setParsing(false);
     }
   };
+
+  const resumeFromCheckpoint = async (jobId: string) => {
+    if (!user) return;
+
+    setParsing(true);
+    setHeaderError(null);
+    setSummary(null);
+    setRetryMode(false);
+
+    try {
+      const checkpoint = await getImportCheckpoint(jobId);
+      if (!checkpoint) {
+        throw new Error('تعذر العثور على نقطة الاستكمال لهذه المهمة. ربما تم تنظيفها بعد اكتمال الاستيراد.');
+      }
+
+      activeJobIdRef.current = jobId;
+      activeBranchIdRef.current = checkpoint.branch_id;
+      resumeAvailableRef.current = true;
+      setFileName(checkpoint.file_name);
+      setParsedRows(checkpoint.parsed_rows || []);
+      setExcludedRows(new Set(checkpoint.excluded_rows || []));
+
+      const fetchedAgents = await fetchImportAgents(user, checkpoint.branch_id);
+      setAgents(fetchedAgents);
+
+      const completed = await getCompletedImportRowNumbers(jobId).catch(() => new Set<number>());
+      setProgress({
+        done: completed.size,
+        total: (checkpoint.parsed_rows || []).filter((row) => !(checkpoint.excluded_rows || []).includes(row.rowNumber)).length,
+      });
+
+      const canContinueDocument =
+        (checkpoint.document_kind === 'pdf' || checkpoint.document_kind === 'image') &&
+        checkpoint.total_pages > 0 &&
+        checkpoint.processed_pages < checkpoint.total_pages &&
+        checkpoint.processed_pages < 60 &&
+        ['extracting', 'partial', 'failed'].includes(checkpoint.phase);
+
+      if (canContinueDocument) {
+        const sourceFile = await downloadCheckpointFile(checkpoint);
+        const kind = checkpoint.document_kind as 'pdf' | 'image';
+
+        safeUpdateJob(jobId, {
+          status: 'running',
+          stage: 'استكمال استخراج المستند',
+          message: `استكمال من الصفحة ${checkpoint.processed_pages + 1} من ${checkpoint.total_pages}`,
+          progress_current: checkpoint.processed_pages,
+          progress_total: checkpoint.total_pages,
+          metadata: {
+            file_name: checkpoint.file_name,
+            resumable: resumeAvailableRef.current,
+            resumed: true,
+          },
+        });
+
+        const extraction = await extractRowsFromDocument(
+          sourceFile,
+          kind,
+          fetchedAgents,
+          (nextProgress) => {
+            setAiExtractionProgress(nextProgress);
+            safeUpdateJob(jobId, {
+              status: 'running',
+              stage: 'استكمال استخراج الصفحات',
+              progress_current: nextProgress.processedPages,
+              progress_total: nextProgress.totalPages,
+              message: `تم استخراج ${nextProgress.extractedRows} سجل حتى الآن`,
+              metadata: {
+                file_name: checkpoint.file_name,
+                provider: nextProgress.provider ?? null,
+                model: nextProgress.model ?? null,
+                extracted_rows: nextProgress.extractedRows,
+                resumable: resumeAvailableRef.current,
+                resumed: true,
+              },
+            });
+          },
+          {
+            startPage: checkpoint.processed_pages + 1,
+            existingRows: checkpoint.parsed_rows || [],
+            onCheckpoint: async (nextCheckpoint) => {
+              try {
+                await updateImportCheckpoint(jobId, {
+                  phase: 'extracting',
+                  processed_pages: nextCheckpoint.processedPages,
+                  total_pages: nextCheckpoint.totalPages,
+                  parsed_rows: nextCheckpoint.rows,
+                });
+              } catch (checkpointErr) {
+                console.warn('Resume page checkpoint save failed:', checkpointErr);
+              }
+            },
+          },
+        );
+
+        if (extraction.error) {
+          setParsedRows(extraction.rows);
+          setHeaderError(extraction.error);
+          safeUpdateCheckpoint(jobId, {
+            phase: 'failed',
+            processed_pages: extraction.processedPages,
+            total_pages: extraction.totalPages,
+            parsed_rows: extraction.rows,
+          });
+          safeFinishJob(
+            jobId,
+            'failed',
+            extraction.error,
+            extraction.processedPages,
+            extraction.totalPages,
+            { file_name: checkpoint.file_name, resumable: resumeAvailableRef.current, resumed: true },
+          );
+          setStage(extraction.rows.length > 0 ? 'parsed' : 'idle');
+          return;
+        }
+
+        setParsedRows(extraction.rows);
+        safeUpdateCheckpoint(jobId, {
+          phase: extraction.partial ? 'partial' : 'parsed',
+          processed_pages: extraction.processedPages,
+          total_pages: extraction.totalPages,
+          parsed_rows: extraction.rows,
+        });
+
+        setResumePending(
+          extraction.partial &&
+          extraction.processedPages < extraction.totalPages &&
+          extraction.processedPages < 60
+        );
+
+        if (extraction.partial) {
+          safeFinishJob(
+            jobId,
+            'partial',
+            'توقف الاستكمال مؤقتًا بعد حفظ آخر صفحة مكتملة. يمكن المحاولة مرة أخرى لاحقًا.',
+            extraction.processedPages,
+            extraction.totalPages,
+            { file_name: checkpoint.file_name, resumable: resumeAvailableRef.current, resumed: true },
+          );
+          setAiNotice(
+            `تم استكمال الملف حتى الصفحة ${extraction.processedPages} من ${extraction.totalPages}. كل ما تم استخراجه محفوظ ويمكن استكمال الباقي لاحقًا.`
+          );
+        } else {
+          safeUpdateJob(jobId, {
+            status: 'ready',
+            stage: 'جاهزة للاستيراد',
+            message: 'اكتمل استخراج الملف بعد الاستكمال ويمكن بدء الاستيراد.',
+            progress_current: extraction.processedPages,
+            progress_total: extraction.totalPages,
+            metadata: {
+              file_name: checkpoint.file_name,
+              extracted_rows: extraction.rows.length,
+              resumable: resumeAvailableRef.current,
+              resumed: true,
+            },
+          });
+          setAiNotice(
+            `تم استكمال استخراج الملف بنجاح من الصفحة ${checkpoint.processed_pages + 1} حتى النهاية. راجع الصفوف ثم ابدأ الاستيراد.`
+          );
+        }
+
+        setStage('parsed');
+        return;
+      }
+
+      setResumePending(
+        checkpoint.document_kind !== 'spreadsheet' &&
+        checkpoint.total_pages > 0 &&
+        checkpoint.processed_pages < checkpoint.total_pages &&
+        checkpoint.processed_pages < 60
+      );
+      setAiNotice(
+        completed.size > 0
+          ? `تم استعادة المهمة من آخر نقطة. ${completed.size} صف تم استيراده سابقًا ولن يُعاد إدخاله؛ اضغط استكمال الاستيراد للباقي.`
+          : 'تم استعادة الملف والصفوف والتعديلات المحفوظة. يمكنك استكمال الاستيراد من نفس النقطة.'
+      );
+      safeUpdateJob(jobId, {
+        status: 'ready',
+        stage: completed.size > 0 ? 'جاهزة لاستكمال الاستيراد' : 'جاهزة للاستيراد',
+        message: completed.size > 0
+          ? `${completed.size} صف مكتمل مسبقًا وسيتم تخطيه تلقائيًا`
+          : 'تمت استعادة المهمة من الـCheckpoint',
+        progress_current: completed.size,
+        progress_total: checkpoint.parsed_rows.length,
+        metadata: {
+          file_name: checkpoint.file_name,
+          resumable: resumeAvailableRef.current,
+          resumed: true,
+        },
+      });
+      setStage('parsed');
+    } catch (err) {
+      setHeaderError(friendlyError(err, 'تعذر استعادة مهمة الاستيراد'));
+      setStage('idle');
+    } finally {
+      setParsing(false);
+      const next = new URLSearchParams(searchParams);
+      next.delete('resume');
+      setSearchParams(next, { replace: true });
+    }
+  };
+
+  useEffect(() => {
+    const resumeJobId = searchParams.get('resume');
+    if (!user || !resumeJobId || resumeLoadedRef.current) return;
+    resumeLoadedRef.current = true;
+    void resumeFromCheckpoint(resumeJobId);
+  }, [user, searchParams]);
 
   const onFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -244,60 +569,147 @@ export function DataImport() {
 
   const startImport = async () => {
     const rowsToImport = parsedRows.filter((r) => !excludedRows.has(r.rowNumber));
-    setStage('importing');
-    setProgress({ done: 0, total: rowsToImport.length });
+    const jobId = activeJobIdRef.current;
+    const branchId = activeBranchIdRef.current ?? currentBranchId;
 
-    let jobId: string | null = null;
-    if (user) {
+    let completedRowNumbers = new Set<number>();
+    let checkpointBeforeImport = null as Awaited<ReturnType<typeof getImportCheckpoint>>;
+    if (jobId) {
       try {
-        const job = await createAppJob({
-          userId: user.id,
-          branchId: currentBranchId,
-          jobType: 'data_import_commit',
-          title: `استيراد البيانات${fileName ? `: ${fileName}` : ''}`,
-          stage: 'إضافة العملاء والوثائق',
-          message: 'بدأ الاستيراد إلى قاعدة البيانات',
-          progressTotal: rowsToImport.length,
-          metadata: { file_name: fileName, total_rows: rowsToImport.length },
-        });
-        jobId = job.id;
-        activeImportJobIdRef.current = job.id;
-      } catch (jobErr) {
-        console.warn('Job Center create failed:', jobErr);
+        const [completedRows, checkpoint] = await Promise.all([
+          getCompletedImportRowNumbers(jobId),
+          getImportCheckpoint(jobId),
+        ]);
+        const currentRowNumbers = new Set(rowsToImport.map((row) => row.rowNumber));
+        completedRowNumbers = new Set(
+          [...completedRows].filter((rowNumber) => currentRowNumbers.has(rowNumber))
+        );
+        checkpointBeforeImport = checkpoint;
+      } catch (checkpointErr) {
+        console.warn('Import resume checkpoint read failed:', checkpointErr);
       }
     }
 
+    const documentHasRemainingPages = !!checkpointBeforeImport
+      && checkpointBeforeImport.document_kind !== 'spreadsheet'
+      && checkpointBeforeImport.total_pages > 0
+      && checkpointBeforeImport.processed_pages < checkpointBeforeImport.total_pages;
+
+    setStage('importing');
+    setProgress({ done: completedRowNumbers.size, total: rowsToImport.length });
+
+    safeUpdateJob(jobId, {
+      status: 'running',
+      stage: 'استيراد الصفوف',
+      message: completedRowNumbers.size > 0
+        ? `استكمال الاستيراد من آخر نقطة — تم إنجاز ${completedRowNumbers.size} صف مسبقًا`
+        : 'بدأ الاستيراد إلى قاعدة البيانات',
+      progress_current: completedRowNumbers.size,
+      progress_total: rowsToImport.length,
+      metadata: {
+        file_name: fileName,
+        total_rows: rowsToImport.length,
+        resumable: resumeAvailableRef.current,
+      },
+    });
+    safeUpdateCheckpoint(jobId, {
+      phase: 'importing',
+      parsed_rows: parsedRows,
+      excluded_rows: [...excludedRows],
+      branch_id: branchId,
+    });
+
     try {
-      const result = await importRows(rowsToImport, currentBranchId, (_r, done, total) => {
-        setProgress({ done, total });
-        safeUpdateJob(jobId, {
-          progress_current: done,
-          progress_total: total,
-          stage: 'استيراد الصفوف',
-          message: `تمت معالجة ${done} من ${total} صف`,
-        });
-      });
-      setSummary(result);
-      safeFinishJob(
-        jobId,
-        result.failedCount > 0 ? 'partial' : 'completed',
-        result.failedCount > 0
-          ? `تم استيراد ${result.importedCount} صف وفشل ${result.failedCount} صف.`
-          : `تم استيراد ${result.importedCount} صف بنجاح.`,
-        result.totalRows,
-        result.totalRows,
+      const result = await importRows(
+        rowsToImport,
+        branchId,
+        (_r, done, total) => {
+          setProgress({ done, total });
+          safeUpdateJob(jobId, {
+            progress_current: done,
+            progress_total: total,
+            stage: 'استيراد الصفوف',
+            message: `تمت معالجة ${done} من ${total} صف`,
+            metadata: {
+              file_name: fileName,
+              total_rows: total,
+              resumable: resumeAvailableRef.current,
+            },
+          });
+        },
         {
-          file_name: fileName,
-          imported_count: result.importedCount,
-          failed_count: result.failedCount,
+          jobId,
+          completedRowNumbers,
         },
       );
-      activeImportJobIdRef.current = null;
+
+      setSummary(result);
+
+      setResumePending(documentHasRemainingPages);
+
+      if (result.failedCount > 0 || documentHasRemainingPages) {
+        safeUpdateCheckpoint(jobId, {
+          phase: 'partial',
+          parsed_rows: parsedRows,
+          excluded_rows: [...excludedRows],
+        });
+        safeFinishJob(
+          jobId,
+          'partial',
+          result.failedCount > 0
+            ? `تم استيراد ${result.importedCount} صف وفشل ${result.failedCount} صف. يمكنك استكمال الصفوف المتبقية لاحقًا.`
+            : `تم استيراد الصفوف المستخرجة الحالية بنجاح، وما زال المستند يحتوي صفحات لم تُحلل. يمكن استكمالها لاحقًا من الصفحة ${(checkpointBeforeImport?.processed_pages || 0) + 1}.`,
+          result.importedCount,
+          result.totalRows,
+          {
+            file_name: fileName,
+            imported_count: result.importedCount,
+            failed_count: result.failedCount,
+            remaining_document_pages: documentHasRemainingPages,
+            resumable: resumeAvailableRef.current,
+          },
+        );
+      } else {
+        safeUpdateCheckpoint(jobId, {
+          phase: 'completed',
+          parsed_rows: parsedRows,
+          excluded_rows: [...excludedRows],
+        });
+        safeFinishJob(
+          jobId,
+          'completed',
+          `تم استيراد ${result.importedCount} صف بنجاح.`,
+          result.totalRows,
+          result.totalRows,
+          {
+            file_name: fileName,
+            imported_count: result.importedCount,
+            failed_count: 0,
+            resumable: false,
+          },
+        );
+        if (jobId) {
+          void cleanupImportResumeData(jobId)
+            .catch((cleanupErr) => console.warn('Import resume cleanup failed:', cleanupErr));
+        }
+      }
+
       setStage('done');
     } catch (err) {
       const message = friendlyError(err, 'تعذر إكمال الاستيراد');
-      safeFinishJob(jobId, 'failed', message, progress.done, rowsToImport.length, { file_name: fileName });
-      activeImportJobIdRef.current = null;
+      safeUpdateCheckpoint(jobId, {
+        phase: 'partial',
+        parsed_rows: parsedRows,
+        excluded_rows: [...excludedRows],
+      });
+      safeFinishJob(
+        jobId,
+        'interrupted',
+        message,
+        progress.done,
+        rowsToImport.length,
+        { file_name: fileName, resumable: resumeAvailableRef.current },
+      );
       setHeaderError(message);
       setStage('parsed');
     }
@@ -308,17 +720,29 @@ export function DataImport() {
     const failedRowNumbers = new Set(
       summary.results.filter((r) => r.status === 'error').map((r) => r.rowNumber)
     );
-    const failedRows = parsedRows.filter((r) => failedRowNumbers.has(r.rowNumber));
-    setParsedRows(failedRows);
-    setExcludedRows(new Set());
-    setShowErrorsOnly(false);
+    const successfulRowNumbers = parsedRows
+      .filter((r) => !failedRowNumbers.has(r.rowNumber))
+      .map((r) => r.rowNumber);
+    const nextExcluded = new Set(successfulRowNumbers);
+
+    setExcludedRows(nextExcluded);
+    safeUpdateCheckpoint(activeJobIdRef.current, {
+      phase: 'parsed',
+      parsed_rows: parsedRows,
+      excluded_rows: [...nextExcluded],
+    });
+    setShowErrorsOnly(true);
     setRetryMode(true);
     setSummary(null);
     setStage('parsed');
   };
 
   const handleRowSaved = (updatedRow: ParsedRow) => {
-    setParsedRows((prev) => prev.map((r) => (r.rowNumber === updatedRow.rowNumber ? updatedRow : r)));
+    setParsedRows((prev) => {
+      const next = prev.map((r) => (r.rowNumber === updatedRow.rowNumber ? updatedRow : r));
+      safeUpdateCheckpoint(activeJobIdRef.current, { parsed_rows: next });
+      return next;
+    });
     setEditingRow(null);
   };
 
@@ -327,7 +751,11 @@ export function DataImport() {
       ...row,
       raw: { ...row.raw, agent_name: agentName },
     }, agents);
-    setParsedRows((prev) => prev.map((item) => item.rowNumber === row.rowNumber ? updated : item));
+    setParsedRows((prev) => {
+      const next = prev.map((item) => item.rowNumber === row.rowNumber ? updated : item);
+      safeUpdateCheckpoint(activeJobIdRef.current, { parsed_rows: next });
+      return next;
+    });
   };
 
   const toggleExcludeRow = (rowNumber: number) => {
@@ -335,6 +763,7 @@ export function DataImport() {
       const next = new Set(prev);
       if (next.has(rowNumber)) next.delete(rowNumber);
       else next.add(rowNumber);
+      safeUpdateCheckpoint(activeJobIdRef.current, { excluded_rows: [...next] });
       return next;
     });
   };
@@ -504,7 +933,7 @@ export function DataImport() {
                 className="btn btn-primary flex-shrink-0"
               >
                 <PlayCircle className="w-4 h-4" />
-                بدء الاستيراد
+                {progress.done > 0 ? 'استكمال الاستيراد' : 'بدء الاستيراد'}
               </button>
               </div>
             </div>
@@ -632,18 +1061,29 @@ export function DataImport() {
         <div className="card space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h3 className="font-semibold text-secondary-900">٣. تقرير الاستيراد</h3>
-            {summary.failedCount > 0 && (
-              <div className="flex items-center gap-2">
-                <button onClick={() => exportErrorReport(summary)} className="btn btn-secondary btn-sm">
-                  <FileDown className="w-4 h-4" />
-                  تصدير تقرير الأخطاء
-                </button>
-                <button onClick={retryFailedRows} className="btn btn-primary btn-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              {resumePending && activeJobIdRef.current && (
+                <button
+                  onClick={() => resumeFromCheckpoint(activeJobIdRef.current!)}
+                  className="btn btn-primary btn-sm"
+                >
                   <RotateCcw className="w-4 h-4" />
-                  إعادة محاولة الصفوف الفاشلة
+                  استكمال باقي الملف
                 </button>
-              </div>
-            )}
+              )}
+              {summary.failedCount > 0 && (
+                <>
+                  <button onClick={() => exportErrorReport(summary)} className="btn btn-secondary btn-sm">
+                    <FileDown className="w-4 h-4" />
+                    تصدير تقرير الأخطاء
+                  </button>
+                  <button onClick={retryFailedRows} className="btn btn-primary btn-sm">
+                    <RotateCcw className="w-4 h-4" />
+                    إعادة محاولة الصفوف الفاشلة
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
