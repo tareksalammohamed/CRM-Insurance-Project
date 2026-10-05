@@ -47,7 +47,8 @@ export type AdminDashboardData = {
     pendingPayments: number;
   };
   recentActivity: Array<ActivityLog & { user?: { name?: string | null } | null }>;
-  health: AdminDashboardHealth;
+  health: AdminDashboardHealth | null;
+  warnings: string[];
 };
 
 async function exactCount(query: PromiseLike<{ count: number | null; error: unknown }>) {
@@ -57,6 +58,8 @@ async function exactCount(query: PromiseLike<{ count: number | null; error: unkn
 }
 
 export async function fetchAdminDashboard(): Promise<AdminDashboardData> {
+  const warnings: string[] = [];
+
   const { data: sessionData } = await supabase.auth.getSession();
   const accessToken = sessionData.session?.access_token;
   if (!accessToken) throw new Error('الجلسة غير صالحة');
@@ -76,6 +79,19 @@ export async function fetchAdminDashboard(): Promise<AdminDashboardData> {
     return result.data as AdminDashboardHealth;
   });
 
+  async function safeCount(
+    label: string,
+    query: PromiseLike<{ count: number | null; error: unknown }>
+  ): Promise<number> {
+    try {
+      return await exactCount(query);
+    } catch (err) {
+      console.error(`[AdminDashboard] ${label} failed`, err);
+      warnings.push(label);
+      return 0;
+    }
+  }
+
   const [
     usersTotal,
     usersActive,
@@ -86,27 +102,45 @@ export async function fetchAdminDashboard(): Promise<AdminDashboardData> {
     subscriptionsExpired,
     subscriptionsSuspended,
     pendingPayments,
-    recentActivityResult,
-    health,
   ] = await Promise.all([
-    exactCount(supabase.from('users').select('id', { count: 'exact', head: true }).is('deleted_at', null)),
-    exactCount(supabase.from('users').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('is_active', true)),
-    exactCount(supabase.from('branches').select('id', { count: 'exact', head: true })),
-    exactCount(supabase.from('branches').select('id', { count: 'exact', head: true }).eq('is_active', true)),
-    exactCount(supabase.from('subscriptions').select('id', { count: 'exact', head: true }).eq('status', 'active')),
-    exactCount(supabase.from('subscriptions').select('id', { count: 'exact', head: true }).eq('status', 'trial')),
-    exactCount(supabase.from('subscriptions').select('id', { count: 'exact', head: true }).eq('status', 'expired')),
-    exactCount(supabase.from('subscriptions').select('id', { count: 'exact', head: true }).eq('status', 'suspended')),
-    exactCount(supabase.from('subscription_payments').select('id', { count: 'exact', head: true }).eq('status', 'pending')),
-    supabase
+    safeCount('عدد المستخدمين', supabase.from('users').select('id', { count: 'exact', head: true }).is('deleted_at', null)),
+    safeCount('المستخدمون النشطون', supabase.from('users').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('is_active', true)),
+    safeCount('عدد الفروع', supabase.from('branches').select('id', { count: 'exact', head: true })),
+    safeCount('الفروع النشطة', supabase.from('branches').select('id', { count: 'exact', head: true }).eq('is_active', true)),
+    safeCount('الاشتراكات النشطة', supabase.from('subscriptions').select('id', { count: 'exact', head: true }).eq('status', 'active')),
+    safeCount('الفترات التجريبية', supabase.from('subscriptions').select('id', { count: 'exact', head: true }).eq('status', 'trial')),
+    safeCount('الاشتراكات المنتهية', supabase.from('subscriptions').select('id', { count: 'exact', head: true }).eq('status', 'expired')),
+    safeCount('الاشتراكات الموقوفة', supabase.from('subscriptions').select('id', { count: 'exact', head: true }).eq('status', 'suspended')),
+    safeCount(
+      'طلبات الدفع المعلقة',
+      supabase
+        .from('subscription_payments')
+        .select('id', { count: 'exact', head: true })
+        .in('status', ['submitted', 'ocr_verified', 'ocr_mismatch'])
+    ),
+  ]);
+
+  let recentActivity: AdminDashboardData['recentActivity'] = [];
+  try {
+    const recentActivityResult = await supabase
       .from('activity_logs')
       .select('*, user:user_id(name)')
       .order('created_at', { ascending: false })
-      .limit(6),
-    healthPromise,
-  ]);
+      .limit(6);
+    if (recentActivityResult.error) throw recentActivityResult.error;
+    recentActivity = (recentActivityResult.data || []) as AdminDashboardData['recentActivity'];
+  } catch (err) {
+    console.error('[AdminDashboard] recent activity failed', err);
+    warnings.push('آخر النشاطات');
+  }
 
-  if (recentActivityResult.error) throw recentActivityResult.error;
+  let health: AdminDashboardHealth | null = null;
+  try {
+    health = await healthPromise;
+  } catch (err) {
+    console.error('[AdminDashboard] system health failed', err);
+    warnings.push('صحة النظام');
+  }
 
   return {
     users: {
@@ -125,7 +159,9 @@ export async function fetchAdminDashboard(): Promise<AdminDashboardData> {
       suspended: subscriptionsSuspended,
       pendingPayments,
     },
-    recentActivity: (recentActivityResult.data || []) as AdminDashboardData['recentActivity'],
+    recentActivity,
     health,
+    warnings,
   };
 }
+
