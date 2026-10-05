@@ -1,28 +1,33 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { User } from '../../../lib/supabase';
 import { fetchCollectionQuickStats, type CollectionQuickStats } from '../services/collectionService';
 import { useReconnectRefetch } from '../../../hooks/useReconnectRefetch';
 
 // ===== بطاقات إحصائية سريعة (لحظية من Supabase) =====
-export function useCollectionQuickStats(user: User | null | undefined, branchId: string | null = null) {
+export function useCollectionQuickStats(user: User | null | undefined, branchId: string | null, ensureMaintenance: () => Promise<void>) {
   const [quickStats, setQuickStats] = useState<CollectionQuickStats | null>(null);
   const [quickStatsLoading, setQuickStatsLoading] = useState(true);
 
-  const loadQuickStats = async () => {
+  const requestId = useRef(0);
+  const loadQuickStats = useCallback(async () => {
+    const currentRequest = ++requestId.current;
     setQuickStatsLoading(true);
     try {
-      setQuickStats(await fetchCollectionQuickStats(branchId));
+      await ensureMaintenance();
+      if (currentRequest !== requestId.current) return;
+      const stats = await fetchCollectionQuickStats(branchId);
+      if (currentRequest === requestId.current) setQuickStats(stats);
     } catch (error) {
       console.error('Error loading collection quick stats:', error);
     } finally {
-      setQuickStatsLoading(false);
+      if (currentRequest === requestId.current) setQuickStatsLoading(false);
     }
-  };
+  }, [branchId, ensureMaintenance]);
 
   useEffect(() => {
     if (user) loadQuickStats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, branchId]);
+    return () => { requestId.current += 1; };
+  }, [user, loadQuickStats]);
 
   useReconnectRefetch(() => { if (user) loadQuickStats(); });
 

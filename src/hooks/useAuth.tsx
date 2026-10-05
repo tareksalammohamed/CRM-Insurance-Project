@@ -81,14 +81,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (profile) {
             // تحديث "آخر دخول" عملية ثانوية — فشلها (مثلاً بسبب الشبكة)
             // ما ينفعش يمنع تسجيل الدخول نفسه
-            try {
-              await supabase
-                .from('users')
-                .update({ last_login: new Date().toISOString() })
-                .eq('id', session.user.id);
-            } catch (err) {
-              console.error('Error updating last_login:', err);
-            }
+            void (async () => {
+              try {
+                const { error } = await supabase
+                  .from('users')
+                  .update({ last_login: new Date().toISOString() })
+                  .eq('id', session.user.id);
+                if (error) throw error;
+              } catch (err) {
+                console.error('Error updating last_login:', err);
+              }
+            })();
           }
         }
       } catch (err) {
