@@ -143,11 +143,15 @@ export async function cleanupImportResumeData(jobId: string): Promise<void> {
   const checkpoint = await getImportCheckpoint(jobId);
   if (!checkpoint) return;
 
-  const [{ error: storageError }, { error: checkpointError }] = await Promise.all([
-    supabase.storage.from(BUCKET).remove([checkpoint.file_path]),
-    supabase.from('import_job_checkpoints').delete().eq('job_id', jobId),
-  ]);
-
+  // احذف الملف أولاً. لو الحذف فشل نُبقي الـCheckpoint كما هو حتى لا نفقد
+  // القدرة على الاستكمال بينما يظل الملف موجوداً بلا مرجع.
+  const { error: storageError } = await supabase.storage
+    .from(BUCKET)
+    .remove([checkpoint.file_path]);
   if (storageError) throw storageError;
-  if (checkpointError) throw checkpointError;
+
+  const { error: cleanupError } = await supabase.rpc('cleanup_import_resume_metadata', {
+    p_job_id: jobId,
+  });
+  if (cleanupError) throw cleanupError;
 }

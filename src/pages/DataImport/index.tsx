@@ -26,6 +26,7 @@ import type { ParsedRow, ImportSummary } from './types';
 import { downloadTemplateFile, parseWorkbookFile, importRows, fetchImportAgents, exportErrorReport, revalidateRow, type ImportAgent } from './services/dataImportService';
 import { detectDocumentKind, extractRowsFromDocument } from './services/aiDocumentExtractor';
 import { RowEditModal } from './components/RowEditModal';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { createAppJob, finishAppJob, updateAppJob } from '../../features/jobs/jobService';
 import {
   cleanupImportResumeData,
@@ -59,6 +60,8 @@ export function DataImport() {
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [parsing, setParsing] = useState(false);
   const [resumePending, setResumePending] = useState(false);
+  const [confirmIgnoreRemainder, setConfirmIgnoreRemainder] = useState(false);
+  const [ignoringRemainder, setIgnoringRemainder] = useState(false);
   const activeJobIdRef = useRef<string | null>(null);
   const activeBranchIdRef = useRef<string | null>(null);
   const resumeAvailableRef = useRef(false);
@@ -120,6 +123,8 @@ export function DataImport() {
     setSummary(null);
     setAiExtractionProgress(null);
     setResumePending(false);
+    setConfirmIgnoreRemainder(false);
+    setIgnoringRemainder(false);
     activeJobIdRef.current = null;
     activeBranchIdRef.current = null;
     resumeAvailableRef.current = false;
@@ -565,6 +570,55 @@ export function DataImport() {
     setDragOver(false);
     const file = e.dataTransfer.files?.[0];
     if (file) handleFile(file);
+  };
+
+  const ignoreRemainingFile = async () => {
+    const jobId = activeJobIdRef.current;
+    if (!jobId) return;
+
+    setIgnoringRemainder(true);
+    setHeaderError(null);
+
+    try {
+      const checkpoint = await getImportCheckpoint(jobId);
+      const remainingPages = checkpoint && checkpoint.total_pages > checkpoint.processed_pages
+        ? checkpoint.total_pages - checkpoint.processed_pages
+        : 0;
+
+      await cleanupImportResumeData(jobId);
+      await updateAppJob(jobId, {
+        status: 'completed',
+        stage: 'مكتملة',
+        message: remainingPages > 0
+          ? `تم اعتماد الجزء المستورد وإنهاء المهمة مع تجاهل ${remainingPages} صفحة متبقية بناءً على اختيار المستخدم.`
+          : 'تم اعتماد الجزء المستورد وإنهاء المهمة وتجاهل أي جزء متبقٍ بناءً على اختيار المستخدم.',
+        progress_current: progress.done,
+        progress_total: progress.total,
+        metadata: {
+          file_name: fileName,
+          imported_count: summary?.importedCount ?? progress.done,
+          failed_count: summary?.failedCount ?? 0,
+          remainder_ignored: true,
+          ignored_pages: remainingPages,
+          resumable: false,
+        },
+      });
+
+      setResumePending(false);
+      resumeAvailableRef.current = false;
+      setConfirmIgnoreRemainder(false);
+      setAiNotice(
+        remainingPages > 0
+          ? `تم إنهاء المهمة نهائيًا وتجاهل ${remainingPages} صفحة متبقية. تم حذف ملف الاستكمال والـCheckpoint، والبيانات التي تم استيرادها بالفعل محفوظة كما هي.`
+          : 'تم إنهاء المهمة نهائيًا وحذف بيانات الاستكمال المؤقتة. البيانات التي تم استيرادها بالفعل محفوظة كما هي.'
+      );
+    } catch (err) {
+      setHeaderError(
+        friendlyError(err, 'تعذر إنهاء المهمة وحذف بيانات الاستكمال. لم يتم إلغاء إمكانية الاستكمال.')
+      );
+    } finally {
+      setIgnoringRemainder(false);
+    }
   };
 
   const startImport = async () => {
@@ -1063,13 +1117,22 @@ export function DataImport() {
             <h3 className="font-semibold text-secondary-900">٣. تقرير الاستيراد</h3>
             <div className="flex flex-wrap items-center gap-2">
               {resumePending && activeJobIdRef.current && (
-                <button
-                  onClick={() => resumeFromCheckpoint(activeJobIdRef.current!)}
-                  className="btn btn-primary btn-sm"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  استكمال باقي الملف
-                </button>
+                <>
+                  <button
+                    onClick={() => resumeFromCheckpoint(activeJobIdRef.current!)}
+                    className="btn btn-primary btn-sm"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    استكمال باقي الملف
+                  </button>
+                  <button
+                    onClick={() => setConfirmIgnoreRemainder(true)}
+                    className="btn btn-secondary btn-sm text-warning-700"
+                  >
+                    <Ban className="w-4 h-4" />
+                    إنهاء المهمة وتجاهل الباقي
+                  </button>
+                </>
               )}
               {summary.failedCount > 0 && (
                 <>
@@ -1165,6 +1228,21 @@ export function DataImport() {
             استيراد ملف آخر
           </button>
         </div>
+      )}
+
+      {confirmIgnoreRemainder && (
+        <ConfirmDialog
+          icon={Ban}
+          title="إنهاء المهمة وتجاهل الجزء المتبقي؟"
+          message="البيانات التي تم استيرادها بالفعل ستظل محفوظة كما هي. سيتم حذف ملف الاستكمال وكل بيانات الـCheckpoint المؤقتة، ولن تستطيع استكمال الجزء المتبقي من هذه المهمة بعد ذلك."
+          warning="استخدم هذا الخيار فقط إذا كنت متأكدًا أنك لا تحتاج باقي الملف."
+          confirmLabel="نعم، تجاهل الباقي نهائيًا"
+          confirmBusyLabel="جاري إنهاء المهمة..."
+          cancelLabel="رجوع"
+          busy={ignoringRemainder}
+          onConfirm={ignoreRemainingFile}
+          onClose={() => setConfirmIgnoreRemainder(false)}
+        />
       )}
 
       {editingRow && (
