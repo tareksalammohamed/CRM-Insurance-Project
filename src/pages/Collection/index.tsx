@@ -156,7 +156,12 @@ export function Collection() {
           </h2>
         </div>
         <div className="col-panel-body">
-          <CollectionTabs yearMode={yearMode} onChange={setYearMode} />
+          <CollectionTabs
+            yearMode={yearMode}
+            onChange={setYearMode}
+            quickStats={quickStats}
+            quickStatsLoading={quickStatsLoading}
+          />
         </div>
       </section>
 
@@ -174,7 +179,7 @@ export function Collection() {
       )}
 
       {yearMode === 'year2' ? (
-        <Year2Collection branchId={currentBranchId} />
+        <Year2Collection branchId={currentBranchId} onDataChanged={loadQuickStats} />
       ) : (
         <>
           {/* ===== البحث والفلاتر ===== */}
