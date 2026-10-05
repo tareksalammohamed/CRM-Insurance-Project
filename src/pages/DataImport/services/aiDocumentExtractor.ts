@@ -103,6 +103,18 @@ export interface DocumentExtractionResult {
   pageLimitReached?: boolean;
 }
 
+export interface DocumentExtractionResumeOptions {
+  startPage?: number;
+  existingRows?: ParsedRow[];
+  onCheckpoint?: (checkpoint: {
+    processedPages: number;
+    totalPages: number;
+    rows: ParsedRow[];
+    provider?: string;
+    model?: string;
+  }) => void | Promise<void>;
+}
+
 const UNAVAILABLE_MESSAGE =
   'تعذر استخراج البيانات من هذا الملف حالياً لأن منظومة الذكاء الاصطناعي غير متاحة. يمكنك استخدام Excel/CSV أو إعادة المحاولة لاحقاً.';
 
@@ -119,16 +131,23 @@ export async function extractRowsFromDocument(
   kind: ExtractionFileKind,
   agents: ImportAgent[],
   onProgress?: (progress: DocumentExtractionProgress) => void,
+  resume?: DocumentExtractionResumeOptions,
 ): Promise<DocumentExtractionResult> {
   const MAX_IMPORT_PDF_PAGES = 60;
   const RENDER_CHUNK_PAGES = 6;
 
   try {
-    const extractedRawRows: Array<Record<string, unknown>> = [];
-    const seenPolicies = new Set<string>();
-    let processedPages = 0;
+    const extractedRawRows: Array<Record<string, unknown>> = (resume?.existingRows || [])
+      .map((row) => sanitizeExtractedRow(row.raw));
+    const seenPolicies = new Set<string>(
+      extractedRawRows
+        .map((row) => String(row.policy_number || '').trim().toLowerCase())
+        .filter(Boolean)
+    );
+    const requestedStartPage = Math.max(1, resume?.startPage || 1);
+    let processedPages = requestedStartPage - 1;
     let totalPages = kind === 'image' ? 1 : 0;
-    let nextPage = 1;
+    let nextPage = requestedStartPage;
     let lastRetryAfterSeconds: number | undefined;
 
     while (true) {
@@ -239,6 +258,16 @@ export async function extractRowsFromDocument(
         }
 
         processedPages = pageNumber;
+        const checkpointRows = extractedRawRows.map((extracted, idx) =>
+          buildParsedRow(idx + 2, sanitizeExtractedRow(extracted), agents)
+        );
+        await resume?.onCheckpoint?.({
+          processedPages,
+          totalPages,
+          rows: checkpointRows,
+          provider: result.provider,
+          model: result.model,
+        });
         onProgress?.({
           processedPages,
           totalPages,
