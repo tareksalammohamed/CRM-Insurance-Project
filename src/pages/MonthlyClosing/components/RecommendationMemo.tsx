@@ -25,13 +25,12 @@ function indefiniteRoleLabel(role: UserRole): string {
 // التوقيع اليدوي المعتمد لسمر يُستخدم في مذكرة فرق التنسيب
 // ويظهر أسفل اسمها مباشرةً داخل مساحة التوقيع.
 export function RecommendationMemo({
-  supervisor, branchName, monthLabel, printDate, branding, pageNumber,
+  supervisor, branchName, monthLabel, printDate, pageNumber,
 }: {
   supervisor: SupervisorAgg;
   branchName?: string;
   monthLabel: string;
   printDate: string;
-  branding: { company_name: string; company_logo_url: string | null };
   pageNumber: number;
 }) {
   // ورقة فرق التنسيب معتمدة بتوقيع المراقب العام سمر الهواري؛
@@ -42,10 +41,6 @@ export function RecommendationMemo({
 
   return (
     <div className="pr-page-break pr-memo-page">
-      <div className="pr-company-flat">
-        {branding.company_logo_url && <img src={branding.company_logo_url} alt={branding.company_name} />}
-        <span>{branding.company_name}</span>
-      </div>
       <div className="pr-memo-title">مذكرة صرف فرق التنسيب</div>
       <div className="pr-memo-sub">تقرير تقفيل الشهر — {monthLabel}</div>
       <div className="pr-memo-title-rule" />
@@ -72,7 +67,7 @@ export function RecommendationMemo({
       </div>
 
       <div className="pr-footer">
-        {branding.company_name} · تقرير تقفيل الشهر — {monthLabel} · صفحة {pageNumber}
+        تقرير تقفيل الشهر — {monthLabel} · صفحة {pageNumber}
       </div>
     </div>
   );

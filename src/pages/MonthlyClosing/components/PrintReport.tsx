@@ -488,6 +488,7 @@ export function PrintReport({
            (0.05) يضمنوا إنها تفضل خلفية بحتة تحت كل الجداول والنصوص ومتأثرش
            على قابلية القراءة أو أي تخطيط/ترقيم صفحات موجود حاليًا. */
         .print-report .pr-watermark {
+          display: none !important;
           position: fixed;
           top: 50%;
           left: 50%;
@@ -513,6 +514,7 @@ export function PrintReport({
            التانية بالظبط، فمفيش أي تأثير على قراءة المحتوى أو أي وظيفة
            طباعة تانية موجودة. */
         .print-report .pr-watermark-page1 {
+          display: none !important;
           position: absolute;
           top: 133mm;
           left: 50%;
@@ -526,13 +528,6 @@ export function PrintReport({
         }
       `}</style>
 
-      {branding.company_logo_url && (
-        <>
-          <img src={branding.company_logo_url} alt="" className="pr-watermark-page1" />
-          <img src={branding.company_logo_url} alt="" className="pr-watermark" />
-        </>
-      )}
-
       {/* ══ صفحة 1: التجميعات (هيكل إداري بحت — بدون تفاصيل عملاء) ══
           دايمًا صفحة واحدة بس — كل المراقبين ورؤساء مجموعاتهم بيترسموا
           ورا بعض من غير أي فاصل صفحات، وحجم الجداول/الخطوط بيصغر تلقائيًا
@@ -540,7 +535,6 @@ export function PrintReport({
           داخل صفحة واحدة. */}
       <div className={`pr-agg-section${aggTierClass}`}>
         <div className="pr-company">
-          {branding.company_logo_url && <img src={branding.company_logo_url} alt={branding.company_name} />}
           <span>{branding.company_name}</span>
         </div>
         <div className="pr-title">تقرير تقفيل الشهر</div>
@@ -604,7 +598,7 @@ export function PrintReport({
         </div>
 
         <div className="pr-footer">
-          {branding.company_name} · تقرير تقفيل الشهر — {monthLabel} · صفحة 1
+          تقرير تقفيل الشهر — {monthLabel} · صفحة 1
         </div>
       </div>
 
@@ -650,8 +644,7 @@ export function PrintReport({
                     <tr className="pr-detail-title-row">
                       <th scope="col" colSpan={4}>
                         <div className="pr-company-flat">
-                          {branding.company_logo_url && <img src={branding.company_logo_url} alt={branding.company_name} />}
-                          <span>{branding.company_name}</span>
+                                          <span>{branding.company_name}</span>
                         </div>
                         <div className="pr-title">تقرير تقفيل الشهر</div>
                         <div className={`pr-section-tag ${meta.tagClass}`}>قسم: {meta.label}</div>
@@ -673,7 +666,7 @@ export function PrintReport({
                   </tbody>
                 </table>
                 <div className="pr-footer">
-                  {branding.company_name} · تقرير تقفيل الشهر — {monthLabel} · صفحة {startPageNumber}
+                  تقرير تقفيل الشهر — {monthLabel} · صفحة {startPageNumber}
                 </div>
               </div>
             )];
@@ -695,8 +688,7 @@ export function PrintReport({
                     <tr className="pr-detail-title-row">
                       <th scope="col" colSpan={4}>
                         <div className="pr-company-flat">
-                          {branding.company_logo_url && <img src={branding.company_logo_url} alt={branding.company_name} />}
-                          <span>{branding.company_name}</span>
+                                          <span>{branding.company_name}</span>
                         </div>
                         <div className="pr-title">تقرير تقفيل الشهر</div>
                         <div className={`pr-section-tag ${meta.tagClass}`}>قسم: {meta.label}</div>
@@ -784,7 +776,7 @@ export function PrintReport({
                   )}
                 </table>
                 <div className="pr-footer">
-                  {branding.company_name} · تقرير تقفيل الشهر — {monthLabel} · صفحة {pageNumber}
+                  تقرير تقفيل الشهر — {monthLabel} · صفحة {pageNumber}
                 </div>
               </div>
             );
@@ -806,8 +798,7 @@ export function PrintReport({
           {selectedFormationUsers.length > 0 && (
             <div className="pr-formation-page">
               <div className="pr-company">
-                {branding.company_logo_url && <img src={branding.company_logo_url} alt={branding.company_name} />}
-                <span>{branding.company_name}</span>
+                      <span>{branding.company_name}</span>
               </div>
               <div className="pr-title">تشكيل الجهاز الإنتاجي</div>
               <div className="pr-sub">اعتبارًا من {formationDate || '01/—/——'}{branchName && ` — الفرع: ${branchName}`}</div>
@@ -825,7 +816,7 @@ export function PrintReport({
                   ))}
                 </tbody>
               </table>
-              <div className="pr-footer">{branding.company_name} · التشكيل · صفحة {formationPage}</div>
+              <div className="pr-footer">التشكيل · صفحة {formationPage}</div>
             </div>
           )}
           {memoSupervisors.map((sv, idx) => (
@@ -835,7 +826,6 @@ export function PrintReport({
               branchName={branchName}
               monthLabel={monthLabel}
               printDate={closingDate}
-              branding={branding}
               pageNumber={memoStartPage + idx}
             />
           ))}
