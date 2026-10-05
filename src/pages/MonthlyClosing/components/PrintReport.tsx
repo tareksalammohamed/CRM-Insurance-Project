@@ -1,537 +1,4 @@
-import type { Ref } from 'react';
-import { ROLE_LABELS, type UserRole } from '../../../lib/supabase';
-import { useSettings } from '../../../hooks/useSettings';
-import type { SupervisorAgg, PrintDetailRow } from '../types';
-import { fmt, last6 } from '../utils';
-import { PERSONAL_PRODUCTION_LABEL } from '../business/monthlyClosingCalculator';
-import { RecommendationMemo, qualifiesForRecommendationMemo } from './RecommendationMemo';
-
-export interface NewFormationUser {
-  id: string;
-  name: string;
-  role: UserRole;
-  managerName?: string;
-}
-
-// عدد صفوف عمليات السداد في كل صفحة مطبوعة. بنقسّم الصفوف يدويًا لمجموعات
-// بدل ما نسيب المتصفح يقسّم جدول واحد طويل على الصفحات، عشان:
-// 1) رقم الصفحة يبقى رقم حقيقي بنحسبه إحنا (مش عداد CSS اللي بيفشل
-//    ويكتب "١" في كل الصفحات لأنه بيتزوّد مرة واحدة بس مش بيتصفّر لكل صفحة).
-// 2) ترويسة كل صفحة (اسم المراقب + الشهر) تتكرر فعليًا فوق كل صفحة، لأنها
-//    بقت جزء من <thead> جدول مستقل لكل صفحة، مش اعتماد على تكرار تلقائي
-//    لجدول واحد طويل ممكن ما يشتغلش صح مع كل المتصفحات.
-const DETAIL_ROWS_PER_PAGE = 16;
-
-// بعض الصفوف بتاخد مساحة أطول من صف عادي فعليًا وقت الطباعة (لو اسم
-// العميل طويل وبيتلف على أكتر من سطر جوه عمود "العميل" مثلاً)، فبرضو ممكن
-// عدد الصفوف اللي احنا حاسبينه (DETAIL_ROWS_PER_PAGE) يبقى متفائل شوية
-// ومينفعش فعليًا على الورقة. عشان كده مش بنعتمد على العدّ بس؛ كل مجموعة
-// وكيل (صفوفه + صف إجماليه) بتترسم جوه <tbody> مستقل ليها لوحدها وعليه
-// page-break-inside: avoid — فلو حصل واتضح إن المجموعة مش هتِسّع فعليًا
-// فى الصفحة الحالية (حتى لو حسابنا قال إنها هتِسّع)، المتصفح نفسه هيلقّف
-// المجموعة كاملة (صفوفها + إجماليها) لأول الصفحة اللي بعدها بدل ما يقطّعها.
-// ده أمان إضافي فوق الحساب اليدوي، مش بديل عنه.
-
-// عنوان صف "إجمالي" لكل مجموعة فى صفحة تفاصيل عمليات السداد — للوكيل العادي
-// بيكتب اسمه مباشرة، لكن لصف "إنتاج شخصي" (رئيس مجموعة أو مراقب فما فوق
-// باع/حصّل بنفسه) كان بيكتب "إجمالي إنتاج شخصي" بس من غير ما يوضح اسم صاحبه؛
-// دلوقتي بيضيف اسمه الفعلي جنبها (نفس الاسم المكتوب أصلاً فى عمود "رئيس
-// المجموعة" أو "المراقب" بتاع نفس الصف).
-function subtotalLabel(entry: { supervisorName: string; groupLeaderName: string; agentName: string }): string {
-  if (entry.agentName !== PERSONAL_PRODUCTION_LABEL) return entry.agentName;
-  const ownerName = entry.groupLeaderName !== PERSONAL_PRODUCTION_LABEL ? entry.groupLeaderName : entry.supervisorName;
-  return ownerName ? `${PERSONAL_PRODUCTION_LABEL} — ${ownerName}` : PERSONAL_PRODUCTION_LABEL;
-}
-
-// صفوف عمليات السداد بترتيبها الأصلي (مجمّعة أصلاً بالوكيل)، وبعد كل مجموعة
-// صفوف تخص نفس الوكيل بنحط صف "إجمالي الوكيل" — عشان يبان إجمالي كل وكيل
-// في صفحة التفاصيل نفسها.
-type PrintDetailEntry =
-  | { kind: 'row'; row: PrintDetailRow }
-  | {
-      kind: 'subtotal';
-      supervisorName: string;
-      supervisorRole: PrintDetailRow['supervisorRole'];
-      groupLeaderName: string;
-      agentName: string;
-      groupLevelNote?: string;
-      groupLevelIsOwner?: boolean;
-      amount: number;
-    };
-
-// بنبني كل وكيل كـ"مجموعة" واحدة (صفوفه + صف إجماليه) بدل قائمة مسطّحة،
-// عشان صفحة التفاصيل تقدر تتعامل مع كل مجموعة ككتلة واحدة متلاصقة ومتقسّمش
-// نصفها فى صفحة والنص التاني فى الصفحة اللي بعدها.
-function buildDetailGroups(rows: PrintDetailRow[]): PrintDetailEntry[][] {
-  const groups: PrintDetailEntry[][] = [];
-  let i = 0;
-  while (i < rows.length) {
-    const start = i;
-    const cur = rows[i];
-    const groupEntries: PrintDetailEntry[] = [];
-    let sum = 0;
-    while (
-      i < rows.length &&
-      rows[i].supervisorName === cur.supervisorName &&
-      rows[i].groupLeaderName === cur.groupLeaderName &&
-      rows[i].agentName === cur.agentName
-    ) {
-      groupEntries.push({ kind: 'row', row: rows[i] });
-      sum += rows[i].amount;
-      i += 1;
-    }
-    if (i > start) {
-      groupEntries.push({
-        kind: 'subtotal',
-        supervisorName: cur.supervisorName,
-        supervisorRole: cur.supervisorRole,
-        groupLeaderName: cur.groupLeaderName,
-        agentName: cur.agentName,
-        groupLevelNote: cur.groupLevelNote,
-        groupLevelIsOwner: cur.groupLevelIsOwner,
-        amount: sum,
-      });
-      groups.push(groupEntries);
-    }
-  }
-  return groups;
-}
-
-// بنوزّع مجموعات الوكلاء على صفحات بحجم ثابت، بشرط إن أي مجموعة (صفوف وكيل
-// + صف إجماليه) ما تتقسمش على صفحتين: لو المجموعة مش هتكمل فى الصفحة الحالية،
-// بتتنقل كاملة لأول الصفحة الجديدة بدل ما تتقطع. الاستثناء الوحيد هو وكيل
-// عدد عملياته لوحده أكبر من سعة الصفحة كلها — ده مضطرين نقسّمه فعليًا لأنه
-// مش هيتظبط فى صفحة واحدة مهما كانت فاضية.
-function paginateDetailGroups(groups: PrintDetailEntry[][], pageSize: number): PrintDetailEntry[][] {
-  const pages: PrintDetailEntry[][] = [];
-  let current: PrintDetailEntry[] = [];
-  for (const group of groups) {
-    if (group.length > pageSize) {
-      if (current.length > 0) { pages.push(current); current = []; }
-      for (let idx = 0; idx < group.length; idx += pageSize) {
-        pages.push(group.slice(idx, idx + pageSize));
-      }
-      continue;
-    }
-    if (current.length > 0 && current.length + group.length > pageSize) {
-      pages.push(current);
-      current = [];
-    }
-    current.push(...group);
-  }
-  if (current.length > 0) pages.push(current);
-  return pages;
-}
-
-// بترجع لستة الصفوف المسطّحة بتاعة صفحة واحدة (بعد التقسيم على الصفحات)
-// لمجموعات صغيرة، كل مجموعة = صفوف وكيل واحد + صف إجماليه (لو وصل).
-// المجموعة دي هي اللي هترتسم جوه <tbody> مستقل بعدين — عشان لو المجموعة
-// مش هتِسّع فعليًا فى الصفحة، تتلقّف كاملة للصفحة اللي بعدها بدل ما تتقطّع.
-// (فى حالة وكيل عملياته لوحدها أكبر من صفحة كاملة، الصفوف اللي بتوصل آخر
-// الصفحة من غير ما توصل لصف الإجمالي بترجع كمجموعة من غير إجمالي — وده
-// متوقع، لأنها أصلاً متقسّمة عمدًا لأكتر من صفحة.)
-function chunkPageIntoAgentBlocks(entries: PrintDetailEntry[]): PrintDetailEntry[][] {
-  const chunks: PrintDetailEntry[][] = [];
-  let buffer: PrintDetailEntry[] = [];
-  for (const entry of entries) {
-    buffer.push(entry);
-    if (entry.kind === 'subtotal') {
-      chunks.push(buffer);
-      buffer = [];
-    }
-  }
-  if (buffer.length > 0) chunks.push(buffer);
-  return chunks;
-}
-
-// بيرجع بيانات المراقب/رئيس المجموعة/الوكيل بتاعة أي مجموعة (block) —
-// بناخدها من صف الإجمالي لو موجود، أو من أول صف عادي لو المجموعة اتقسّمت
-// على أكتر من صفحة (حالة نادرة: وكيل عملياته لوحدها أكبر من صفحة). ده مجرد
-// قراءة بيانات موجودة أصلاً فى الصفوف، من غير أي حساب جديد.
-function blockContext(block: PrintDetailEntry[]): {
-  supervisorName: string;
-  supervisorRole: PrintDetailRow['supervisorRole'];
-  groupLeaderName: string;
-  agentName: string;
-  groupLevelNote?: string;
-  groupLevelIsOwner?: boolean;
-} {
-  const withFields = block.find((e) => e.kind === 'subtotal') ?? block.find((e) => e.kind === 'row');
-  if (!withFields) return { supervisorName: '', supervisorRole: 'supervisor', groupLeaderName: '', agentName: '' };
-  return withFields.kind === 'subtotal'
-    ? withFields
-    : withFields.row;
-}
-
-// ─── Print Report (structured, print-only) ────────────────
-// يظهر فقط عند الطباعة — صفحة تجميعات أولى (هيكل إداري بحت) ثم صفحات تفاصيل العمليات المسددة
-export function PrintReport({
-  supervisorName, supervisorRoleLabel, monthLabel, closingDate, branchName,
-  printSupervisors, printDetailRows, formationUsers, formationDate,
-  grandProduction, grandCollection, grandTotal,
-  containerRef,
-}: {
-  supervisorName: string;
-  supervisorRoleLabel: string;
-  monthLabel: string;
-  closingDate: string;
-  branchName?: string;
-  printSupervisors: SupervisorAgg[];
-  printDetailRows: PrintDetailRow[];
-  formationUsers?: NewFormationUser[];
-  formationDate?: string;
-  grandProduction: number;
-  grandCollection: number;
-  grandTotal: number;
-  /** يمسك بعنصر التقرير نفسه عشان "حفظ كصورة" يقدر يصوّره كما هو */
-  containerRef?: Ref<HTMLDivElement>;
-}) {
-  const { branding } = useSettings();
-
-  // صفحة التجميعات بقت دايمًا صفحة واحدة بس (مهما كان عدد المراقبين
-  // العامين/المراقبين/رؤساء المجموعات)، فبنحسب هنا "مستوى تصغير" تلقائي
-  // (0 = الحجم العادي، 1/2/3 = أصغر فأصغر) على حسب إجمالي عدد الصفوف
-  // الفعلي اللي هتتعرض، عشان الجداول والخطوط تصغر وتسّع فى الصفحة بدل ما
-  // تتقسم على أكتر من صفحة. كل مراقب بياخد صفين ثابتين (اسمه + صف
-  // الإجمالي) بالإضافة لصف لكل رئيس مجموعة تابع له (أو صف واحد لو مفيش
-  // رؤساء مجموعات، زي رسالة "لا توجد مجموعات").
-  const visibleSupervisors = printSupervisors.filter((sv) => !sv.isSelfReport);
-  const totalAggRows = visibleSupervisors.reduce(
-    (sum, sv) => sum + 2 + Math.max(sv.groupLeaders.length, 1),
-    0
-  );
-  const aggTier = totalAggRows <= 16 ? 0 : totalAggRows <= 26 ? 1 : totalAggRows <= 40 ? 2 : 3;
-  const aggTierClass = aggTier === 0 ? '' : ` pr-agg-tier-${aggTier}`;
-  const aggBlockGap = [10, 6, 4, 2][aggTier];
-  // صفحة التجميعات صفحة واحدة دايمًا الآن، فصفحات التفاصيل بعدها بتبدأ
-  // ترقيمها بعد عدد صفحات التجميعات + مذكرات التوصية (لو فيه).
-  // مذكرة "صرف فرق التنسيب" التلقائية: صفحة إضافية مستقلة لكل مراقب مستوفٍ
-  // للشرطين (راجع RecommendationMemo.tsx) — بدون أي تأثير على أي حساب أو
-  // صف موجود فى صفحة التجميعات نفسها.
-  const memoSupervisors = printSupervisors.filter(qualifiesForRecommendationMemo);
-  const selectedFormationUsers = formationUsers || [];
-  // التشكيل وورقة فرق التنسيب تأتيان في نهاية ملف التقفيل، بعد صفحات التفاصيل.
-  const totalAggPages = 1;
-
-  return (
-    <div ref={containerRef} className="hidden print:block print-report" dir="rtl">
-      <style>{`
-        @media print {
-          @page { size: A4; margin: 16mm 12mm 14mm; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        }
-        .print-report {
-          font-family: 'Tahoma', 'Segoe UI', 'Arial', sans-serif;
-          color: #1f2937;
-          font-size: 11.5px;
-          line-height: 1.5;
-        }
-        .print-report .pr-page-break { page-break-before: always; break-before: page; }
-        /* تصغير خفيف لصفحات التفاصيل حتى يظل التذييل/سطر الترقيم داخل نفس الصفحة
-           بدل أن يدفعه المتصفح إلى صفحة جديدة عند امتلاء الجدول. */
-        .print-report .pr-detail-page { zoom: 0.96; page-break-inside: avoid; break-inside: avoid; }
-        .print-report .pr-detail-page .pr-footer { page-break-inside: avoid; break-inside: avoid; }
-
-        .print-report table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .print-report th, .print-report td { border: 1px solid #d8dce1; padding: 6px 8px; text-align: center; }
-        .print-report th {
-          background: #15803d;
-          color: #fff;
-          font-weight: 700;
-          letter-spacing: 0.2px;
-        }
-        .print-report tbody tr:nth-child(even) { background: #f7f9f7; }
-
-        /* ترويسة الشركة والعنوان */
-        .print-report .pr-company { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px; }
-        .print-report .pr-company img { width: 52px; height: 52px; object-fit: contain; }
-        .print-report .pr-company span { font-size: 20px; font-weight: 800; color: #15803d; letter-spacing: 0.3px; }
-        .print-report .pr-title { text-align: center; font-size: 19px; font-weight: 800; color: #14532d; margin-bottom: 2px; }
-        .print-report .pr-sub { text-align: center; font-size: 11.5px; color: #6b7280; margin-bottom: 12px; font-weight: 500; }
-        .print-report .pr-title-rule { height: 3px; width: 64px; background: #16a34a; border-radius: 2px; margin: 6px auto 14px; }
-
-        .print-report .pr-meta {
-          display: flex; justify-content: space-between; font-size: 11.5px;
-          margin-bottom: 12px; padding: 8px 12px; background: #f0fdf4;
-          border: 1px solid #bbf7d0; border-radius: 6px;
-          width: 100%; box-sizing: border-box;
-        }
-        .print-report .pr-meta b { color: #166534; }
-        /* نسخة بدون flex من شريط الشركة/الشعار، مخصّصة لترويسة صفحات
-           التفاصيل (عنوان التقرير فوق كل صفحة) */
-        .print-report .pr-company-flat {
-          text-align: center; margin-bottom: 4px;
-        }
-        .print-report .pr-company-flat img {
-          width: 40px; height: 40px; object-fit: contain;
-          vertical-align: middle; margin-left: 8px;
-        }
-        .print-report .pr-company-flat span {
-          font-size: 16px; font-weight: 800; color: #15803d;
-          letter-spacing: 0.3px; vertical-align: middle;
-        }
-        .print-report .pr-detail-title-row th,
-        .print-report .pr-detail-meta-row th { width: auto; }
-
-        .print-report .pr-sup-name {
-          font-weight: 800; font-size: 12.5px; color: #14532d;
-          padding: 4px 2px; border-bottom: 1.5px solid #16a34a; margin: 10px 0 5px;
-        }
-        .print-report .pr-group-row td:first-child { text-align: right; font-weight: 600; }
-        .print-report .pr-role-note { font-size: 10.5px; font-weight: 700; color: #1f2937; margin-top: 1px; }
-        .print-report .pr-totals-row td { font-weight: 800; background: #dcfce7 !important; color: #14532d; }
-        .print-report .pr-agent-subtotal-row td {
-          font-weight: 800; background: #d1fae5 !important; color: #065f46;
-          text-align: right; padding-right: 12px;
-          border-top: 1px solid #6ee7b7; border-bottom: 2.5px solid #059669 !important;
-        }
-        .print-report .pr-agent-subtotal-row td:last-child { text-align: center; }
-
-        .print-report .pr-grand-box {
-          border: 1.5px solid #16a34a; border-radius: 8px;
-          padding: 12px 16px; margin-top: 18px; background: #f9fafb;
-        }
-        .print-report .pr-grand-box .row { display:flex; justify-content: space-between; padding: 3px 0; font-size: 12.5px; color: #374151; }
-        .print-report .pr-grand-box .row.total {
-          font-weight: 800; font-size: 15px; color: #14532d;
-          border-top: 1px dashed #86efac; margin-top: 5px; padding-top: 8px;
-        }
-
-        /* تصغير تلقائي لصفحة التجميعات حسب حجم البيانات (محسوب فى
-           الكومبوننت من عدد الصفوف الفعلي عبر aggTier)، عشان الصفحة
-           تفضل صفحة واحدة بس مهما زاد عدد المراقبين/رؤساء المجموعات،
-           بدل ما تتقسم على أكتر من صفحة. */
-        .print-report .pr-agg-tier-1 { font-size: 10px; }
-        .print-report .pr-agg-tier-1 .pr-title { font-size: 16px; }
-        .print-report .pr-agg-tier-1 .pr-sub { font-size: 10px; margin-bottom: 8px; }
-        .print-report .pr-agg-tier-1 .pr-meta { font-size: 10px; padding: 5px 10px; margin-bottom: 8px; }
-        .print-report .pr-agg-tier-1 .pr-sup-name { font-size: 11px; }
-        .print-report .pr-agg-tier-1 .pr-role-note { font-size: 9px; }
-        .print-report .pr-agg-tier-1 th, .print-report .pr-agg-tier-1 td { padding: 4px 6px; }
-        .print-report .pr-agg-tier-1 .pr-grand-box { padding: 8px 12px; margin-top: 10px; }
-        .print-report .pr-agg-tier-1 .pr-grand-box .row { font-size: 11px; padding: 2px 0; }
-        .print-report .pr-agg-tier-1 .pr-grand-box .row.total { font-size: 13px; padding-top: 6px; }
-
-        .print-report .pr-agg-tier-2 { font-size: 8.5px; }
-        .print-report .pr-agg-tier-2 .pr-company img { width: 38px; height: 38px; }
-        .print-report .pr-agg-tier-2 .pr-company span { font-size: 15px; }
-        .print-report .pr-agg-tier-2 .pr-title { font-size: 13px; margin-bottom: 1px; }
-        .print-report .pr-agg-tier-2 .pr-sub { font-size: 8.5px; margin-bottom: 5px; }
-        .print-report .pr-agg-tier-2 .pr-title-rule { margin: 4px auto 8px; }
-        .print-report .pr-agg-tier-2 .pr-meta { font-size: 8.5px; padding: 4px 8px; margin-bottom: 5px; }
-        .print-report .pr-agg-tier-2 .pr-sup-name { font-size: 9.5px; }
-        .print-report .pr-agg-tier-2 .pr-role-note { font-size: 8px; }
-        .print-report .pr-agg-tier-2 th, .print-report .pr-agg-tier-2 td { padding: 2px 4px; }
-        .print-report .pr-agg-tier-2 .pr-grand-box { padding: 6px 10px; margin-top: 6px; }
-        .print-report .pr-agg-tier-2 .pr-grand-box .row { font-size: 9.5px; padding: 1px 0; }
-        .print-report .pr-agg-tier-2 .pr-grand-box .row.total { font-size: 11px; padding-top: 4px; margin-top: 3px; }
-
-        .print-report .pr-agg-tier-3 { font-size: 7.2px; }
-        .print-report .pr-agg-tier-3 .pr-company img { width: 30px; height: 30px; }
-        .print-report .pr-agg-tier-3 .pr-company span { font-size: 12px; }
-        .print-report .pr-agg-tier-3 .pr-title { font-size: 11px; margin-bottom: 1px; }
-        .print-report .pr-agg-tier-3 .pr-sub { font-size: 7.2px; margin-bottom: 3px; }
-        .print-report .pr-agg-tier-3 .pr-title-rule { height: 2px; width: 46px; margin: 3px auto 5px; }
-        .print-report .pr-agg-tier-3 .pr-meta { font-size: 7.2px; padding: 3px 6px; margin-bottom: 3px; }
-        .print-report .pr-agg-tier-3 .pr-sup-name { font-size: 8px; }
-        .print-report .pr-agg-tier-3 .pr-role-note { font-size: 7px; }
-        .print-report .pr-agg-tier-3 th, .print-report .pr-agg-tier-3 td { padding: 1px 3px; }
-        .print-report .pr-agg-tier-3 .pr-grand-box { padding: 4px 8px; margin-top: 4px; }
-        .print-report .pr-agg-tier-3 .pr-grand-box .row { font-size: 8px; padding: 0; }
-        .print-report .pr-agg-tier-3 .pr-grand-box .row.total { font-size: 9.5px; padding-top: 3px; margin-top: 2px; }
-
-        /* مذكرة "صرف فرق التنسيب" التلقائية — نفس هوية التقرير البصرية
-           (نفس الألوان/الخط)، بتخطيط خطاب رسمي بسيط. */
-        .print-report .pr-memo-page {
-          direction: rtl; padding-top: 10mm; min-height: 250mm;
-          box-sizing: border-box; position: relative;
-        }
-        .print-report .pr-memo-title {
-          text-align: center; font-size: 19px; font-weight: 800;
-          color: #14532d; margin: 8px 0 1px;
-        }
-        .print-report .pr-memo-sub {
-          text-align: center; font-size: 11.5px; color: #6b7280;
-          margin-bottom: 8px; font-weight: 500;
-        }
-        .print-report .pr-memo-title-rule {
-          height: 3px; width: 64px; background: #16a34a;
-          border-radius: 2px; margin: 6px auto 18px;
-        }
-        .print-report .pr-memo-salutation {
-          font-size: 13px; font-weight: 700; color: #14532d;
-          text-align: right; margin: 22px 0 26px;
-        }
-        .print-report .pr-memo-greeting { font-size: 12px; margin-bottom: 22px; }
-        .print-report .pr-memo-body {
-          font-size: 12.5px; line-height: 2.1; text-align: justify; margin-bottom: 34px;
-        }
-        .print-report .pr-memo-body b { color: #14532d; }
-        .print-report .pr-memo-closing { font-size: 12px; margin-bottom: 64px; }
-        .print-report .pr-memo-sign-block {
-          text-align: right; width: 210px; margin-right: auto;
-        }
-        .print-report .pr-memo-sign-label { font-size: 11.5px; font-weight: 700; margin-bottom: 2px; }
-        .print-report .pr-memo-sign-role { font-size: 11.5px; font-weight: 700; margin-bottom: 2px; }
-        .print-report .pr-memo-sign-name { font-size: 12.5px; font-weight: 800; color: #14532d; margin-bottom: 4px; }
-        .print-report .pr-memo-signature-slot {
-          width: 190px; height: 48px; display: flex; align-items: center;
-          justify-content: flex-start; margin: 0 0 4px;
-          overflow: hidden;
-        }
-        .print-report .pr-memo-sign-img {
-          display: block; width: 170px; height: 42px;
-          object-fit: contain; object-position: right center;
-        }
-        .print-report .pr-memo-sign-line {
-          width: 200px; border-bottom: 1.3px solid #9ca3af; height: 42px; margin-bottom: 6px;
-        }
-        .print-report .pr-memo-sign-date {
-          display: block; width: 190px; margin-top: 2px;
-          text-align: center; font-size: 10px; color: #6b7280;
-        }
-
-        /* جدول التفاصيل: عنوان التقرير ورأس الجدول يتكرران تلقائياً في كل صفحة مطبوعة */
-        .print-report .pr-detail-table thead { display: table-header-group; }
-        .print-report .pr-detail-table tfoot { display: table-footer-group; }
-        .print-report .pr-detail-table tr { page-break-inside: avoid; }
-        /* كل مجموعة وكيل (صفوفه + صف إجماليه) بتترسم فى tbody مستقل، وممنوع
-           يتقسّم على صفحتين — لو مش هيسّع فى الصفحة الحالية بيتلقّف كامل
-           لأول الصفحة اللي بعدها (شوف تعليق DETAIL_ROWS_PER_PAGE فوق). */
-        .print-report .pr-detail-table tbody.pr-agent-block {
-          page-break-inside: avoid; break-inside: avoid;
-        }
-        /* فاصل سميك واضح بين كل كتلة وكيل واللي بعدها — بيبان حتى لو
-           الطباعة أبيض وأسود بحت (مش بيعتمد على لون)، عشان العين توقف
-           فورًا عند بداية كل وكيل جديد بدل ما تحس إن الكل "سايح" ورا بعض. */
-        .print-report .pr-detail-table tbody.pr-agent-block:not(:first-of-type) > tr:first-child > td {
-          border-top: 3.5px solid #4b5563 !important;
-          padding-top: 9px !important;
-        }
-        /* خلفية خفيفة متبادلة على مستوى الكتلة (الوكيل) بالكامل، مش على
-           مستوى الصف الفردي — كل وكيل تاني بيبان عليه ظل رمادي خفيف
-           يميّزه بصريًا عن اللي قبله وبعده كـ"بطاقة" واحدة متكاملة. */
-        .print-report .pr-detail-table tbody.pr-agent-block:nth-of-type(even) td {
-          background: #eef1f4;
-        }
-        .print-report .pr-detail-title-row th { background: #fff; border: none; padding: 0 0 4px; }
-        .print-report .pr-detail-title-row .pr-title { margin-bottom: 0; }
-        .print-report .pr-detail-meta-row th {
-          background: #f0fdf4; color: #166534; font-weight: 700;
-          border: 1px solid #bbf7d0; font-size: 11.5px;
-        }
-
-        /* تسلسل هرمي واضح جوه صفحات التفاصيل: مراقب ← رئيس مجموعة ← وكيل.
-           كل مستوى معتمد على 3 حاجات مع بعض (مش اللون بس، عشان يفضل واضح
-           حتى فى طباعة أبيض وأسود): 1) درجة غمق الخلفية بتقل كل ما نزلنا
-           مستوى، 2) شريط عمودي (border) على يمين الصف بسمك وارتفاع مختلف
-           لكل مستوى، 3) حجم خط وإزاحة (padding-right) مختلفين. */
-        .print-report .pr-detail-sup-header td {
-          background: #15803d !important; color: #fff; font-weight: 800;
-          text-align: right; padding: 7px 10px; font-size: 12.5px;
-          border-right: 6px solid #14532d !important;
-        }
-        .print-report .pr-detail-gl-header td {
-          background: #94a3b8 !important; color: #1e293b; font-weight: 800;
-          text-align: right; padding: 6px 10px; padding-right: 24px; font-size: 11.5px;
-          border-right: 5px solid #475569 !important;
-        }
-        .print-report .pr-detail-agent-header td {
-          background: #e2e8f0 !important; color: #1f2937; font-weight: 800;
-          text-align: right; padding: 5px 10px; padding-right: 38px; font-size: 11px;
-          border-right: 4px solid #94a3b8 !important;
-        }
-        /* سطر التصنيف تحت الاسم فى صفحات التفاصيل: يوضّح التبعية الحقيقية
-           (مثلاً "وكيل يتبع المراقب مباشرة — بدون رئيس مجموعة") بخط أصغر
-           وأخف من الاسم عشان الاسم يفضل هو العنصر الأقوى بصريًا. */
-        .print-report .pr-level-note {
-          margin-top: 2px; font-size: 9.5px; font-weight: 700;
-          letter-spacing: 0.1px; opacity: 0.92;
-        }
-        /* شارة ملوّنة أعلى كل صفحة تفاصيل توضّح فورًا إن الصفحة دي كاملة
-           خاصة بقسم "الإنتاج الجديد" أو قسم "التحصيل" — بدل عمود "نوع
-           العملية" اللي كان بيتكرر فى كل صف؛ دلوقتي الصفحة نفسها مخصّصة
-           لنوع واحد بس فمفيش داعي لعمود إضافي. */
-        .print-report .pr-section-tag {
-          display: inline-block; margin-top: 4px; padding: 3px 16px;
-          border-radius: 12px; font-weight: 800; font-size: 11px; letter-spacing: 0.3px;
-        }
-        .print-report .pr-section-tag-new { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
-        .print-report .pr-section-tag-collection { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
-
-        /* شريط لوني رفيع أعلى جدول كل صفحة تفاصيل، بنفس لون القسم — لمسة
-           بصرية إضافية تفرّق صفحات "الإنتاج الجديد" عن صفحات "التحصيل"
-           حتى من غير قراءة العنوان (مفيدة وقت تصفح نسخة ورقية سريعًا). */
-        .print-report .pr-detail-table.pr-section-new { border-top: 3px solid #16a34a; }
-        .print-report .pr-detail-table.pr-section-collection { border-top: 3px solid #2563eb; }
-
-        /* تذييل ثابت أسفل كل صفحة مطبوعة على حدة. بدل الاعتماد على
-           عنصر position: fixed واحد بيتكرر تلقائيًا (اللي بيديله رقم صفحة
-           غلط لأن الـ counter بيتزوّد مرة واحدة بس مهما عدد الصفحات)،
-           بنطبع تذييل مستقل تحت محتوى كل صفحة برقمها الصحيح المحسوب فعليًا. */
-        .print-report .pr-formation-page { padding: 18px 20px; page-break-before: always; break-before: page; }
-        .print-report .pr-formation-table th { background: #166534; }
-        .print-report .pr-formation-table td { padding: 9px 10px; }
-        .print-report .pr-formation-note { text-align: center; color: #6b7280; margin: 6px 0 14px; }
-
-        .print-report .pr-footer {
-          margin-top: 10px;
-          text-align: center; font-size: 9.5px; color: #9ca3af;
-          border-top: 1px solid #e5e7eb; padding-top: 4px;
-        }
-
-        /* خلفية شفافة (Watermark) بحجم الصفحة تقريبًا — عنصر واحد بس
-           بـ position: fixed، مش مكرر يدويًا فوق كل صفحة. عند الطباعة
-           الفعلية، عناصر position: fixed بتتكرر تلقائيًا فوق كل صفحة
-           مطبوعة (نفس السلوك المستخدم أصلاً فوق فى تعليق التذييل)، فمفيش
-           داعي لإضافتها جوه كل صفحة على حدة. z-index سالب + شفافية عالية
-           (0.05) يضمنوا إنها تفضل خلفية بحتة تحت كل الجداول والنصوص ومتأثرش
-           على قابلية القراءة أو أي تخطيط/ترقيم صفحات موجود حاليًا. */
-        .print-report .pr-watermark {
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 150mm;
-          height: 150mm;
-          object-fit: contain;
-          opacity: 0.05;
-          z-index: -1;
-          pointer-events: none;
-        }
-
-        /* نسخة إضافية من الخلفية مخصّصة لصفحة التجميعات (أول صفحة) فقط.
-           السبب: عناصر position: fixed فى أغلب المتصفحات وقت الطباعة
-           بترسم ابتداءً من الصفحة اللي بعد نقطة تعريفها، مش الصفحة اللي
-           هي معرّفة فيها هي نفسها — فالخلفية اللي فوق (fixed) بتظهر صح فى
-           كل الصفحات اللي بعد صفحة التجميعات، لكن مش فى صفحة التجميعات
-           ذاتها. عشان كده بنضيف نسخة تانية بـ position: absolute (مش
-           fixed) فى أول عنصر بالظبط قبل محتوى صفحة التجميعات — دي بترتسم
-           فعليًا فى مكانها الطبيعي جوه تدفق الصفحة (يعني صفحة 1 بالظبط)
-           بغض النظر عن أي تعامل خاص بالمتصفح مع fixed.
-           ملحوظة: النسخة دي معمول لها z-index/opacity/pointer-events زي
-           التانية بالظبط، فمفيش أي تأثير على قراءة المحتوى أو أي وظيفة
-           طباعة تانية موجودة. */
-        .print-report .pr-watermark-page1 {
-          position: absolute;
-          top: 133mm;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 150mm;
-          height: 150mm;
-          object-fit: contain;
-          opacity: 0.05;
-          z-index: -1;
-          pointer-events: none;
-        }
       `}</style>
-
-      {branding.company_logo_url && (
-        <>
-          <img src={branding.company_logo_url} alt="" className="pr-watermark-page1" />
-          <img src={branding.company_logo_url} alt="" className="pr-watermark" />
-        </>
-      )}
 
       {/* ══ صفحة 1: التجميعات (هيكل إداري بحت — بدون تفاصيل عملاء) ══
           دايمًا صفحة واحدة بس — كل المراقبين ورؤساء مجموعاتهم بيترسموا
@@ -540,7 +7,6 @@ export function PrintReport({
           داخل صفحة واحدة. */}
       <div className={`pr-agg-section${aggTierClass}`}>
         <div className="pr-company">
-          {branding.company_logo_url && <img src={branding.company_logo_url} alt={branding.company_name} />}
           <span>{branding.company_name}</span>
         </div>
         <div className="pr-title">تقرير تقفيل الشهر</div>
@@ -604,7 +70,7 @@ export function PrintReport({
         </div>
 
         <div className="pr-footer">
-          {branding.company_name} · تقرير تقفيل الشهر — {monthLabel} · صفحة 1
+          تقرير تقفيل الشهر — {monthLabel} · صفحة 1
         </div>
       </div>
 
@@ -650,7 +116,6 @@ export function PrintReport({
                     <tr className="pr-detail-title-row">
                       <th scope="col" colSpan={4}>
                         <div className="pr-company-flat">
-                          {branding.company_logo_url && <img src={branding.company_logo_url} alt={branding.company_name} />}
                           <span>{branding.company_name}</span>
                         </div>
                         <div className="pr-title">تقرير تقفيل الشهر</div>
@@ -673,7 +138,7 @@ export function PrintReport({
                   </tbody>
                 </table>
                 <div className="pr-footer">
-                  {branding.company_name} · تقرير تقفيل الشهر — {monthLabel} · صفحة {startPageNumber}
+                  تقرير تقفيل الشهر — {monthLabel} · صفحة {startPageNumber}
                 </div>
               </div>
             )];
@@ -695,7 +160,6 @@ export function PrintReport({
                     <tr className="pr-detail-title-row">
                       <th scope="col" colSpan={4}>
                         <div className="pr-company-flat">
-                          {branding.company_logo_url && <img src={branding.company_logo_url} alt={branding.company_name} />}
                           <span>{branding.company_name}</span>
                         </div>
                         <div className="pr-title">تقرير تقفيل الشهر</div>
@@ -784,7 +248,7 @@ export function PrintReport({
                   )}
                 </table>
                 <div className="pr-footer">
-                  {branding.company_name} · تقرير تقفيل الشهر — {monthLabel} · صفحة {pageNumber}
+                  تقرير تقفيل الشهر — {monthLabel} · صفحة {pageNumber}
                 </div>
               </div>
             );
@@ -806,7 +270,6 @@ export function PrintReport({
           {selectedFormationUsers.length > 0 && (
             <div className="pr-formation-page">
               <div className="pr-company">
-                {branding.company_logo_url && <img src={branding.company_logo_url} alt={branding.company_name} />}
                 <span>{branding.company_name}</span>
               </div>
               <div className="pr-title">تشكيل الجهاز الإنتاجي</div>
@@ -825,7 +288,7 @@ export function PrintReport({
                   ))}
                 </tbody>
               </table>
-              <div className="pr-footer">{branding.company_name} · التشكيل · صفحة {formationPage}</div>
+              <div className="pr-footer">التشكيل · صفحة {formationPage}</div>
             </div>
           )}
           {memoSupervisors.map((sv, idx) => (
@@ -835,7 +298,6 @@ export function PrintReport({
               branchName={branchName}
               monthLabel={monthLabel}
               printDate={closingDate}
-              branding={branding}
               pageNumber={memoStartPage + idx}
             />
           ))}
