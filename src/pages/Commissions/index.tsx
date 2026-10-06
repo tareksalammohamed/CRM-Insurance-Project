@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useBranchContext } from '../../lib/branchContext';
 import { useReconnectRefetch } from '../../hooks/useReconnectRefetch';
-import { Wallet, CalendarClock, CalendarCheck2, Percent, AlertTriangle, FilePlus2, RefreshCw } from 'lucide-react';
+import { Wallet, CalendarClock, CalendarCheck2, Percent, AlertTriangle, Banknote, Coins, ReceiptText } from 'lucide-react';
 import clsx from 'clsx';
 
 import type { CommissionRow } from './types';
@@ -73,21 +73,24 @@ export function Commissions() {
   const renewalSummary = computeSummary(renewalRows);
 
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-3 md:space-y-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
-          <h2 className="text-xl md:text-2xl font-bold text-secondary-900">العمولات</h2>
-          <p className="text-sm text-secondary-500 mt-0.5">
-            تُصرف يوم 12 لمسددات 16–نهاية الشهر السابق، ويوم 27 لمسددات 1–15 من الشهر الحالي.
+          <h2 className="text-xl md:text-2xl font-bold text-secondary-900 flex items-center gap-2"><Wallet aria-hidden="true" className="w-6 h-6 text-primary-600" />العمولات</h2>
+          <p className="text-xs text-secondary-500 mt-1">
+            ملخص عمولاتك ومواعيد صرفها خلال الشهر المختار.
           </p>
         </div>
 
+        <label className="flex items-center gap-2 text-xs font-medium text-secondary-600">
+          شهر الصرف
         <input
           type="month"
           value={selectedMonth}
           onChange={(e) => setSelectedMonth(e.target.value)}
-          className="input-field w-auto"
+          className="input-field !w-auto !py-2 min-w-0"
         />
+        </label>
       </div>
 
       {/* تنبيه: وثائق مسدد عليها أقساط الشهر ده (سنة أولى أو تجديد) بس
@@ -102,96 +105,68 @@ export function Commissions() {
         </div>
       )}
 
-      {/* ملخص العمولات حسب السنة */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <Percent className="w-5 h-5 text-primary-600" />
-          <h3 className="text-base md:text-lg font-bold text-secondary-900">تفاصيل العمولات حسب السنة</h3>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-          <div className="kpi-card border-r-4 border-primary-500 bg-gradient-to-br from-primary-50/70 to-white">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-primary-700">إجمالي عمولات الشهر</p>
-                <p className="text-2xl font-bold text-secondary-900 mt-1">{formatCurrency(summary.totalMonth)}</p>
-                <p className="text-xs text-secondary-500 mt-2">{rows.length} عملية محسوبة</p>
-              </div>
-              <div className="w-11 h-11 rounded-xl bg-primary-100 flex items-center justify-center shrink-0">
-                <Wallet className="w-5 h-5 text-primary-600" />
-              </div>
-            </div>
-            <div className="mt-4 pt-3 border-t border-primary-100 flex justify-between text-xs text-secondary-500">
-              <span>يوم 27: {formatCurrency(summary.dueOn27)}</span>
-              <span>يوم 12: {formatCurrency(summary.dueOn12)}</span>
-            </div>
-          </div>
-
-          <div className="kpi-card border-r-4 border-sky-500 bg-gradient-to-br from-sky-50/80 to-white">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-sky-700">السنة الأولى</p>
-                <p className="text-2xl font-bold text-secondary-900 mt-1">{formatCurrency(year1Summary.totalMonth)}</p>
-                <p className="text-xs text-secondary-500 mt-2">{year1Rows.length} قسط</p>
-              </div>
-              <div className="w-11 h-11 rounded-xl bg-sky-100 flex items-center justify-center shrink-0">
-                <FilePlus2 className="w-5 h-5 text-sky-600" />
-              </div>
-            </div>
-            <div className="mt-4 pt-3 border-t border-sky-100 flex justify-between text-xs text-secondary-500">
-              <span>يوم 27: {formatCurrency(year1Summary.dueOn27)}</span>
-              <span>يوم 12: {formatCurrency(year1Summary.dueOn12)}</span>
-            </div>
-          </div>
-
-          <div className="kpi-card border-r-4 border-emerald-500 bg-gradient-to-br from-emerald-50/80 to-white">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-emerald-700">السنة الثانية والثالثة</p>
-                <p className="text-2xl font-bold text-secondary-900 mt-1">{formatCurrency(renewalSummary.totalMonth)}</p>
-                <p className="text-xs text-secondary-500 mt-2">{renewalRows.length} قسط</p>
-              </div>
-              <div className="w-11 h-11 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
-                <RefreshCw className="w-5 h-5 text-emerald-600" />
-              </div>
-            </div>
-            <div className="mt-4 pt-3 border-t border-emerald-100 flex justify-between text-xs text-secondary-500">
-              <span>يوم 27: {formatCurrency(renewalSummary.dueOn27)}</span>
-              <span>يوم 12: {formatCurrency(renewalSummary.dueOn12)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* بطاقات مواعيد الصرف */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        <div className="kpi-card">
-          <div className="flex items-center justify-between">
+      {/* ملخص مختصر: الإجمالي ثم مكوناته، بدون تكرار مبالغ الصرف */}
+      <section aria-label="ملخص العمولات" aria-busy={loading} className="space-y-2">
+        <div className="card !p-3 md:!p-4 flex items-center justify-between gap-3 border-r-4 border-primary-500">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="w-10 h-10 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center shrink-0">
+              <Wallet aria-hidden="true" className="w-5 h-5" />
+            </span>
             <div>
-              <p className="text-sm text-secondary-500">عمولات تُصرف يوم 27</p>
-              <p className="text-2xl font-bold text-secondary-900 mt-1">{formatCurrency(summary.dueOn27)}</p>
-              <p className="text-xs text-secondary-400 mt-1">مسددات 1–15 من الشهر</p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-warning-100 flex items-center justify-center">
-              <CalendarClock className="w-6 h-6 text-warning-600" />
+              <h3 className="text-sm font-bold text-secondary-900">إجمالي عمولات الشهر</h3>
+              <p className="text-xs text-secondary-500 mt-0.5">{loading ? 'جارٍ التحديث…' : `${rows.length} عملية محسوبة`}</p>
             </div>
           </div>
+          <p className="text-lg sm:text-2xl font-bold text-primary-700 tabular-nums text-left break-words">
+            {isInitialLoading ? '—' : formatCurrency(summary.totalMonth)}
+          </p>
         </div>
-        <div className="kpi-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-secondary-500">عمولات تُصرف يوم 12</p>
-              <p className="text-2xl font-bold text-secondary-900 mt-1">{formatCurrency(summary.dueOn12)}</p>
-              <p className="text-xs text-secondary-400 mt-1">مسددات 16–نهاية الشهر السابق</p>
+
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { title: 'السنة الأولى', value: year1Summary.totalMonth, count: year1Rows.length, icon: Banknote, color: 'text-sky-700 bg-sky-100' },
+            { title: 'السنة الثانية والثالثة', value: renewalSummary.totalMonth, count: renewalRows.length, icon: Coins, color: 'text-emerald-700 bg-emerald-100' },
+          ].map(({ title, value, count, icon: Icon, color }) => (
+            <div key={title} className="card !p-3 min-w-0">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className={clsx('w-8 h-8 rounded-lg flex items-center justify-center shrink-0', color)}>
+                  <Icon aria-hidden="true" className="w-4 h-4" />
+                </span>
+                <h3 className="text-xs sm:text-sm font-semibold text-secondary-700">{title}</h3>
+              </div>
+              <p className="text-base sm:text-xl font-bold text-secondary-900 tabular-nums break-words">{isInitialLoading ? '—' : formatCurrency(value)}</p>
+              <p className="text-xs text-secondary-500 mt-0.5">{loading ? 'جارٍ التحديث…' : `${count} قسط`}</p>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-success-100 flex items-center justify-center">
-              <CalendarCheck2 className="w-6 h-6 text-success-600" />
-            </div>
-          </div>
+          ))}
         </div>
-      </div>
+      </section>
+
+      <section aria-label="مواعيد صرف العمولات" className="card !p-3">
+        <h3 className="text-xs font-bold text-secondary-500 mb-2">مواعيد الصرف</h3>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { day: 12, amount: summary.dueOn12, note: 'مسددات 16–نهاية الشهر السابق', icon: CalendarCheck2 },
+            { day: 27, amount: summary.dueOn27, note: 'مسددات 1–15 من الشهر الحالي', icon: CalendarClock },
+          ].map(({ day, amount, note, icon: Icon }) => (
+            <div key={day} className="min-w-0">
+              <div className="flex items-center gap-1.5 text-secondary-700">
+                <Icon aria-hidden="true" className="w-4 h-4 text-primary-600 shrink-0" />
+                <span className="text-xs font-semibold">صرف يوم {day}</span>
+              </div>
+              <p className="text-sm sm:text-lg font-bold text-secondary-900 tabular-nums mt-1 break-words">{isInitialLoading ? '—' : formatCurrency(amount)}</p>
+              <p className="text-[11px] sm:text-xs text-secondary-500 mt-0.5">{note}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* الجدول */}
-      <div className="card">
+      <div className="card !p-3 md:!p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <ReceiptText aria-hidden="true" className="w-4 h-4 text-primary-600" />
+          <h3 className="text-sm font-bold text-secondary-900">تفاصيل العمولات</h3>
+          <span className="text-xs text-secondary-500">({rows.length})</span>
+        </div>
         {loading && !isInitialLoading && (
           <p className="text-xs text-secondary-400 flex items-center gap-1 mb-2">
             <span className="w-3 h-3 rounded-full border-2 border-secondary-300 border-t-primary-500 animate-spin" />
@@ -236,8 +211,8 @@ export function Commissions() {
                         {COMMISSION_TYPE_LABELS[row.type]}
                       </span>
                     </td>
-                    <td className="font-semibold">{formatCurrency(row.amount)}</td>
-                    <td>{row.dueDay}</td>
+                    <td className="font-semibold tabular-nums"><span className="inline-flex items-center gap-1.5"><Banknote aria-hidden="true" className="w-4 h-4 text-success-600 shrink-0" />{formatCurrency(row.amount)}</span></td>
+                    <td><span className="inline-flex items-center gap-1 text-xs whitespace-nowrap"><CalendarClock aria-hidden="true" className="w-3.5 h-3.5 text-secondary-400" />يوم {row.dueDay}</span></td>
                   </tr>
                 ))}
               </tbody>
