@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ChevronDown, ChevronLeft, Users } from 'lucide-react';
+import { useState, type CSSProperties } from 'react';
+import { ChevronDown, ChevronLeft, Users, Phone, CalendarCheck2, UserPlus } from 'lucide-react';
 import { getRoleBadgeClass } from '../../Users/business/roleHierarchy';
 import type { StatsTreeNode } from '../types';
 
@@ -17,35 +17,32 @@ function NodeRow({ node, depth, selectedId, onSelect }: NodeRowProps) {
 
   return (
     <div>
-      <button
-        onClick={() => onSelect(node)}
-        className={`w-full flex items-center gap-2 rounded-lg px-2 py-2 text-start transition-colors ${
-          isSelected ? 'bg-primary-50 ring-1 ring-primary-200' : 'hover:bg-secondary-50'
-        }`}
-        style={{ paddingInlineStart: `${depth * 20 + 8}px` }}
-      >
-        {hasChildren ? (
-          <span
-            role="button"
-            tabIndex={-1}
-            onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
-            className="p-0.5 rounded hover:bg-secondary-200 shrink-0"
-          >
-            {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-          </span>
-        ) : (
-          <span className="w-5 shrink-0" />
-        )}
-
-        <span className="font-medium text-secondary-900 truncate">{node.name}</span>
-        <span className={`badge border shrink-0 ${getRoleBadgeClass(node.role)}`}>{node.roleLabel}</span>
-
-        <span className="ms-auto flex items-center gap-3 text-xs text-secondary-500 shrink-0">
-          <span>مكالمات: <b className="text-secondary-800">{node.subtree.callsActual}</b></span>
-          <span>مواعيد: <b className="text-secondary-800">{node.subtree.appointmentsActual}</b></span>
-          <span>عملاء جدد: <b className="text-secondary-800">{node.subtree.newClients}</b></span>
-        </span>
-      </button>
+      <div className={`daily-team-node ${isSelected ? 'daily-team-node-selected' : ''}`} style={{ '--node-depth': Math.min(depth, 3) } as CSSProperties}>
+        <div className="flex items-center gap-1 min-w-0">
+          {hasChildren ? (
+            <button type="button" aria-label={`${expanded ? 'طي' : 'توسيع'} فريق ${node.name}`} aria-expanded={expanded}
+              onClick={() => setExpanded((v) => !v)} className="daily-node-toggle text-secondary-500 shrink-0">
+              {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            </button>
+          ) : <span className="w-3 shrink-0" />}
+          <button type="button" onClick={() => onSelect(node)} aria-pressed={isSelected} className="daily-node-select min-w-0 flex-1 text-start">
+            <span className="block text-sm font-bold text-secondary-900 break-words">{node.name}</span>
+            <span className={`badge border mt-1 ${getRoleBadgeClass(node.role)}`}>{node.roleLabel}</span>
+          </button>
+        </div>
+        <div className="daily-node-metrics">
+          {[
+            { label: 'مكالمات', value: node.subtree.callsActual, icon: Phone },
+            { label: 'مواعيد', value: node.subtree.appointmentsActual, icon: CalendarCheck2 },
+            { label: 'عملاء جدد', value: node.subtree.newClients, icon: UserPlus },
+          ].map(({ label, value, icon: Icon }) => (
+            <span key={label} className="daily-node-metric">
+              <span className="inline-flex items-center gap-1 text-secondary-500"><Icon aria-hidden="true" className="w-3 h-3" />{label}</span>
+              <b className="text-secondary-900 tabular-nums">{value}</b>
+            </span>
+          ))}
+        </div>
+      </div>
 
       {hasChildren && expanded && (
         <div>
@@ -77,7 +74,7 @@ export function StatsTreeView({ nodes, selectedId, onSelect }: StatsTreeViewProp
   }
 
   return (
-    <div className="card space-y-0.5">
+    <div className="card daily-team-tree space-y-2">
       {nodes.map((node) => (
         <NodeRow key={node.userId} node={node} depth={0} selectedId={selectedId} onSelect={onSelect} />
       ))}

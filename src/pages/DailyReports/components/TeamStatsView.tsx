@@ -72,7 +72,7 @@ export function TeamStatsView({ userId, viewerName, viewerRoleLabel, roleLevel, 
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="daily-team-toolbar flex flex-col sm:flex-row sm:items-end gap-2">
         <PeriodControls
           periodType={periodType}
           onPeriodTypeChange={handlePeriodTypeChange}
@@ -80,12 +80,12 @@ export function TeamStatsView({ userId, viewerName, viewerRoleLabel, roleLevel, 
           end={range.end}
           onRangeChange={(start, end) => setRange({ start, end })}
         />
-        <button onClick={handlePrint} disabled={loading || tree.length === 0} className="btn btn-outline print:hidden">
+        <button onClick={handlePrint} disabled={loading || tree.length === 0} className="btn btn-outline btn-sm print:hidden shrink-0">
           <Printer className="w-4 h-4" /> طباعة التقرير
         </button>
       </div>
 
-      <p className="text-sm text-secondary-500 print:hidden">{periodLabel}</p>
+      <p className="text-xs text-secondary-500 print:hidden">{periodLabel}</p>
 
       {loading ? (
         <div className="card text-center py-8 text-secondary-400 print:hidden">

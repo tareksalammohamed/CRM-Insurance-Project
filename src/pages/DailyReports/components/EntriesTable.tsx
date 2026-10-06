@@ -15,7 +15,7 @@ export function EntriesTable({ entries }: EntriesTableProps) {
   return (
     <>
       {/* ===== الموبايل: بطاقات بدل الجدول ===== */}
-      <div className="stack-list md:hidden">
+      <div className="daily-entries stack-list md:hidden">
         {entries
           .slice()
           .sort((a, b) => b.report_date.localeCompare(a.report_date))
@@ -29,7 +29,7 @@ export function EntriesTable({ entries }: EntriesTableProps) {
                     <span className="text-secondary-400 font-normal">({formatReportDay(d)})</span>
                   </span>
                   <span className={`badge shrink-0 ${e.punctuality_ok ? 'badge-success' : 'badge-error'}`}>
-                    {e.punctuality_ok ? 'نعم' : 'لا'}
+                    {e.punctuality_ok ? 'ملتزم' : 'غير ملتزم'}
                   </span>
                 </div>
                 <div className="stack-row-grid">
@@ -54,7 +54,7 @@ export function EntriesTable({ entries }: EntriesTableProps) {
                     <span>{e.appointments_quality ? APPOINTMENTS_QUALITY_LABELS[e.appointments_quality] : '—'}</span>
                   </div>
                   <div className="stack-row-cell">
-                    <span>outdoor</span>
+                    <span>عمل ميداني</span>
                     <span>{e.is_outdoor ? 'نعم' : '—'}</span>
                   </div>
                 </div>

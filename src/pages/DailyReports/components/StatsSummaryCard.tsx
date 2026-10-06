@@ -17,7 +17,7 @@ export function StatsSummaryCard({ aggregate, title }: StatsSummaryCardProps) {
 
   if (a.entriesCount === 0) {
     return (
-      <div className="card">
+      <div className="card daily-quality-card">
         {title && <h3 className="font-bold text-secondary-900 mb-2">{title}</h3>}
         <p className="text-sm text-secondary-400 text-center py-4">لا توجد إحصائيات مسجّلة لهذه الفترة</p>
       </div>
@@ -25,10 +25,10 @@ export function StatsSummaryCard({ aggregate, title }: StatsSummaryCardProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="daily-stats-summary space-y-2">
       {title && <h3 className="font-bold text-secondary-900">{title}</h3>}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <StatsCard
           label="أيام مسجّلة"
           value={a.entriesCount}
@@ -38,7 +38,7 @@ export function StatsSummaryCard({ aggregate, title }: StatsSummaryCardProps) {
           iconClassName="w-4 h-4"
         />
         <StatsCard
-          label="الالتزام بالمواعيد والزي الرسمي"
+          label="الالتزام بالمواعيد والزي"
           value={punctualityPct !== null ? `${punctualityPct}%` : '—'}
           icon={BadgeCheck}
           tone="success"
@@ -47,7 +47,7 @@ export function StatsSummaryCard({ aggregate, title }: StatsSummaryCardProps) {
           valueClassName="font-bold text-success-600 mt-1.5"
         />
         <StatsCard
-          label="عملاء جدد (طلبات تأمين)"
+          label="طلبات تأمين جديدة"
           value={a.newClients}
           icon={UserPlus}
           tone="info"
@@ -55,7 +55,7 @@ export function StatsSummaryCard({ aggregate, title }: StatsSummaryCardProps) {
           iconClassName="w-4 h-4"
         />
         <StatsCard
-          label="أيام عمل outdoor"
+          label="أيام عمل ميداني"
           value={a.outdoorDaysCount}
           icon={MapPin}
           tone="warning"
@@ -65,7 +65,7 @@ export function StatsSummaryCard({ aggregate, title }: StatsSummaryCardProps) {
         />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <StatsCard
           label="إجمالي المكالمات"
           value={a.callsActual}
@@ -93,7 +93,7 @@ export function StatsSummaryCard({ aggregate, title }: StatsSummaryCardProps) {
         />
       </div>
 
-      <div className="card">
+      <div className="card daily-quality-card">
         <p className="input-label mb-1.5">جودة المواعيد بعد المراجعة</p>
         <div className="flex flex-wrap gap-2">
           {(Object.keys(APPOINTMENTS_QUALITY_LABELS) as (keyof typeof APPOINTMENTS_QUALITY_LABELS)[]).map((q) => (
