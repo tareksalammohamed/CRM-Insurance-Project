@@ -13,11 +13,11 @@ interface PeriodControlsProps {
  * بالإضافة لنطاق تاريخ "من" و"إلى" حر تماماً */
 export function PeriodControls({ periodType, onPeriodTypeChange, start, end, onRangeChange }: PeriodControlsProps) {
   return (
-    <div className="card space-y-2">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1">
-          <label className="input-label">نوع الفترة</label>
-          <select
+    <div className="card daily-period-controls space-y-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 items-end gap-2 sm:gap-3">
+        <div className="space-y-1 min-w-0 col-span-2 sm:col-span-1">
+          <label htmlFor="daily-period-type" className="input-label">نوع الفترة</label>
+          <select id="daily-period-type"
             className="input-field"
             value={periodType}
             onChange={(e) => onPeriodTypeChange(e.target.value as StatsPeriodType)}
@@ -28,10 +28,10 @@ export function PeriodControls({ periodType, onPeriodTypeChange, start, end, onR
           </select>
         </div>
 
-        <div className="space-y-1">
-          <label className="input-label">من</label>
+        <div className="space-y-1 min-w-0">
+          <label htmlFor="daily-range-start" className="input-label">من</label>
           <input
-            type="date"
+            type="date" id="daily-range-start"
             className="input-field"
             value={formatDateInput(start)}
             max={formatDateInput(end)}
@@ -42,10 +42,10 @@ export function PeriodControls({ periodType, onPeriodTypeChange, start, end, onR
           />
         </div>
 
-        <div className="space-y-1">
-          <label className="input-label">إلى</label>
+        <div className="space-y-1 min-w-0">
+          <label htmlFor="daily-range-end" className="input-label">إلى</label>
           <input
-            type="date"
+            type="date" id="daily-range-end"
             className="input-field"
             value={formatDateInput(end)}
             min={formatDateInput(start)}

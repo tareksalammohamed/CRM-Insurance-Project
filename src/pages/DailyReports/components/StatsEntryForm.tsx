@@ -140,7 +140,7 @@ export function StatsEntryForm() {
   if (!user) return null;
 
   return (
-    <div className="space-y-4">
+    <div className="daily-entry-form space-y-3">
       <div className="card">
         <div className="space-y-1 max-w-xs">
           <label className="input-label">تاريخ التقرير</label>
@@ -170,7 +170,7 @@ export function StatsEntryForm() {
       )}
 
       {!loading && !loadError && rows.map((row) => (
-        <div key={row.agentId} className="card space-y-3">
+        <div key={row.agentId} className="card daily-entry-card space-y-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
               <AgentAvatar agentId={row.agentId} agentName={row.agentName} />
@@ -301,7 +301,7 @@ export function StatsEntryForm() {
             </p>
           )}
 
-          <div className="flex justify-end">
+          <div className="daily-entry-save flex justify-end">
             <button className="btn btn-primary btn-sm" disabled={row.saving} onClick={() => saveRow(row.agentId)}>
               {row.saving ? <Loader2 className="w-4 h-4 animate-spin" /> : (row.existing ? 'تحديث' : 'حفظ')}
             </button>
