@@ -25,8 +25,8 @@ export function PoliciesFilters({
   onReset,
 }: PoliciesFiltersProps) {
   return (
-    <div className="pt-3 border-t border-secondary-200 space-y-3 animate-fadeIn">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div className="compact-filter-panel pt-3 border-t border-secondary-200 space-y-3 animate-fadeIn">
+      <div className="compact-filter-grid grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div>
           <label className="input-label">حالة الوثيقة</label>
           <select
@@ -66,7 +66,7 @@ export function PoliciesFilters({
           </select>
         </div>
       </div>
-      <div className="flex items-center justify-end gap-2">
+      <div className="compact-filter-actions flex items-center justify-end gap-2">
         <button onClick={onReset} className="btn btn-ghost btn-sm">
           <RefreshCw className="w-3.5 h-3.5" />
           <span>إعادة تعيين</span>

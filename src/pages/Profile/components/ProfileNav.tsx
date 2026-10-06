@@ -9,9 +9,9 @@ interface ProfileNavProps {
 
 export function ProfileNav({ activeTab, setActiveTab, canSeeSubscription }: ProfileNavProps) {
   return (
-    <div className="card p-2">
+    <div className="card profile-section-nav p-2">
       <button
-        onClick={() => setActiveTab('personal')}
+        aria-pressed={activeTab === 'personal'} onClick={() => setActiveTab('personal')}
         className={clsx(
           'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-medium',
           activeTab === 'personal' ? 'bg-primary-600 text-white shadow-sm' : 'text-secondary-600 hover:bg-secondary-50'
@@ -21,7 +21,7 @@ export function ProfileNav({ activeTab, setActiveTab, canSeeSubscription }: Prof
         المعلومات الشخصية
       </button>
       <button
-        onClick={() => setActiveTab('security')}
+        aria-pressed={activeTab === 'security'} onClick={() => setActiveTab('security')}
         className={clsx(
           'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-medium mt-1',
           activeTab === 'security' ? 'bg-primary-600 text-white shadow-sm' : 'text-secondary-600 hover:bg-secondary-50'
@@ -32,7 +32,7 @@ export function ProfileNav({ activeTab, setActiveTab, canSeeSubscription }: Prof
       </button>
       {canSeeSubscription && (
         <button
-          onClick={() => setActiveTab('subscription')}
+          aria-pressed={activeTab === 'subscription'} onClick={() => setActiveTab('subscription')}
           className={clsx(
             'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-medium mt-1',
             activeTab === 'subscription' ? 'bg-primary-600 text-white shadow-sm' : 'text-secondary-600 hover:bg-secondary-50'

@@ -18,13 +18,15 @@ export function ReportButtonGroup({
   return (
     <div>
       <p className="text-xs font-semibold text-secondary-400 mb-2">{title}</p>
-      <div className="flex flex-wrap gap-2">
+      <div className="report-type-options grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
         {buttons.map((btn) => {
           const Icon = btn.icon;
           const active = reportType === btn.id;
           return (
             <button
               key={btn.id}
+              type="button"
+              aria-pressed={active}
               onClick={() => onSelect(btn.id)}
               className={clsx(
                 'btn min-h-11 gap-2 px-3.5 text-sm border transition-all duration-200',
@@ -33,8 +35,8 @@ export function ReportButtonGroup({
                   : 'bg-white border-secondary-200 text-secondary-600 hover:bg-primary-50 hover:border-primary-200 hover:text-primary-700'
               )}
             >
-              <Icon className="w-4 h-4" />
-              {btn.label}
+              <Icon aria-hidden="true" className="w-4 h-4 shrink-0" />
+              <span>{btn.label}</span>
             </button>
           );
         })}

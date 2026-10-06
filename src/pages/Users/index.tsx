@@ -357,6 +357,7 @@ export function Users() {
             {STATUS_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
+                aria-pressed={statusFilter === opt.value}
                 onClick={() => { setStatusFilter(opt.value); setPage(1); }}
                 className={clsx(
                   'flex-1 sm:flex-none px-3.5 py-2 rounded-md text-sm font-medium transition-all duration-200 whitespace-nowrap',
@@ -371,12 +372,13 @@ export function Users() {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
           {/* فلتر حسب الدرجة الوظيفية */}
           <select
+            aria-label="الدرجة الوظيفية"
             value={roleFilter}
             onChange={(e) => { setRoleFilter(e.target.value as UserRole | 'all'); setPage(1); }}
-            className="input-field flex-1"
+            className="input-field min-w-0"
           >
             <option value="all">كل الدرجات الوظيفية</option>
             {ROLES.map((r) => (
@@ -386,9 +388,10 @@ export function Users() {
 
           {/* فلتر حسب الفرع */}
           <select
+            aria-label="الفرع"
             value={branchFilter}
             onChange={(e) => { setBranchFilter(e.target.value); setPage(1); }}
-            className="input-field flex-1"
+            className="input-field min-w-0"
           >
             <option value="all">كل الفروع</option>
             {branches.map((b) => (

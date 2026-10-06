@@ -825,14 +825,14 @@ export function DataImport() {
   const visibleRows = showErrorsOnly ? parsedRows.filter((r) => r.payload === null) : parsedRows;
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="workspace-page workspace-page-import space-y-6 animate-fadeIn">
       <div>
         <h2 className="text-xl font-bold text-secondary-900 flex items-center gap-2">
           <FileSpreadsheet className="w-6 h-6 text-primary-600" />
           استيراد البيانات
         </h2>
         <p className="text-sm text-secondary-500 mt-1">
-          استيراد دفعة من العملاء والوثائق دفعة واحدة من ملف Excel أو CSV، أو من PDF/صورة بمساعدة الذكاء الاصطناعي. هذه الصفحة مستقلة ولا تؤثر على أي جزء آخر من النظام.
+          أضف العملاء والوثائق من Excel أو CSV، أو استخرج بيانات PDF والصور بالذكاء الاصطناعي.
         </p>
       </div>
 

@@ -350,7 +350,7 @@ export function MonthlyClosing() {
       {/* ── Month Navigator ── */}
       <div className="card print:hidden">
         <div className="flex items-center justify-between">
-          <button onClick={() => setSelectedMonth(m => subMonths(m, 1))} className="btn btn-ghost">
+          <button aria-label="الشهر السابق" onClick={() => setSelectedMonth(m => subMonths(m, 1))} className="btn btn-ghost">
             <ChevronRight className="w-5 h-5" />
           </button>
           <div className="text-center">
@@ -372,7 +372,7 @@ export function MonthlyClosing() {
               )}
             </div>
           </div>
-          <button onClick={() => setSelectedMonth(m => addMonths(m, 1))} disabled={isCurrentMonth} className="btn btn-ghost disabled:opacity-50">
+          <button aria-label="الشهر التالي" onClick={() => setSelectedMonth(m => addMonths(m, 1))} disabled={isCurrentMonth} className="btn btn-ghost disabled:opacity-50">
             <ChevronLeft className="w-5 h-5" />
           </button>
         </div>
@@ -385,7 +385,7 @@ export function MonthlyClosing() {
       ) : (
         <>
           {/* ── Totals ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 print:hidden">
+          <div className="closing-summary-grid grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 print:hidden">
             <div className="card bg-success-50 border border-success-200">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-success-100 flex items-center justify-center flex-shrink-0">

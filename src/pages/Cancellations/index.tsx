@@ -129,6 +129,7 @@ export function Cancellations() {
       <div className="flex items-center gap-3">
         <button
           type="button"
+          aria-label="رجوع"
           onClick={() => navigate(-1)}
           className="p-2 rounded-lg hover:bg-secondary-100"
         >
@@ -148,7 +149,7 @@ export function Cancellations() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="cancellation-summary-grid grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
             <div className="kpi-card border-r-4 border-r-error-500">
               <p className="text-sm text-secondary-500">نسبة الإلغاءات</p>
               <p className="text-2xl font-bold text-error-600 mt-1">
@@ -209,7 +210,37 @@ export function Cancellations() {
                 لا توجد وثائق مطابقة ضمن مؤشر نسبة الإلغاءات
               </p>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              <div className="lg:hidden print:hidden mb-3 flex flex-wrap items-center gap-2">
+                <label htmlFor="cancellation-sort" className="text-xs text-secondary-600">ترتيب حسب</label>
+                <select id="cancellation-sort" className="input-field !w-auto flex-1 min-w-0" value={sortKey}
+                  onChange={(e) => toggleSort(e.target.value as SortKey)}>
+                  {columns.filter((col) => col.key).map((col) => <option key={col.key} value={col.key!}>{col.label}</option>)}
+                </select>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => toggleSort(sortKey)} aria-label="عكس ترتيب النتائج"><ArrowUpDown className="w-4 h-4" /></button>
+              </div>
+              <div className="cancellation-mobile-list lg:hidden print:hidden space-y-3">
+                {filteredRows.map((row) => (
+                  <article key={row.policyId} className="mobile-record-card">
+                    <header className="flex items-start justify-between gap-2 mb-3">
+                      <h3 className="text-sm font-bold text-secondary-900 break-words">{row.customerName}</h3>
+                      <span className="badge badge-error shrink-0">ملغاة</span>
+                    </header>
+                    <dl className="mobile-record-fields">
+                      {[
+                        ['رقم الوثيقة', row.policyNumberLast6], ['نوع الوثيقة', POLICY_TYPE_LABELS[row.policyType] || row.policyType],
+                        ['الوكيل', row.agentName || '—'], ['رئيس المجموعة', row.groupLeaderName || '—'],
+                        ['المراقب', row.supervisorName || '—'], ['المراقب العام', row.generalSupervisorName || '—'],
+                        ['بداية الوثيقة', format(new Date(row.startDate), 'd MMM yyyy', { locale: ar })],
+                        ['تاريخ الإلغاء', format(new Date(row.cancelledDate), 'd MMM yyyy', { locale: ar })],
+                        ['المدة بالأشهر', row.monthsElapsed], ['القسط', formatCurrency(row.premiumAmount)],
+                      ].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+                    </dl>
+                    <div className="mobile-record-total"><span>إجمالي المسدد قبل الإلغاء</span><strong>{formatCurrency(row.totalPaidBeforeCancellation)}</strong></div>
+                  </article>
+                ))}
+              </div>
+              <div className="overflow-x-auto hidden lg:block print:block">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-secondary-200">
@@ -267,6 +298,7 @@ export function Cancellations() {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </div>
         </>
