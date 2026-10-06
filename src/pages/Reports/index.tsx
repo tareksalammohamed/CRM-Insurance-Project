@@ -439,9 +439,9 @@ export function Reports() {
           فترة الحساب ثابتة دائماً: من أول يناير حتى نهاية الشهر الحالي من سنة {new Date().getFullYear()}
         </p>
       ) : (
-        <div className="card print:hidden border-secondary-100 bg-secondary-50/20">
+        <div className="report-period-filter card print:hidden border-secondary-100 bg-secondary-50/20">
           <div className="flex items-center gap-2 mb-3">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white shadow-sm text-secondary-600 border border-secondary-100"><Layers className="h-3.5 w-3.5" /></span>
+            <span className="report-period-icon flex h-7 w-7 items-center justify-center rounded-lg bg-white shadow-sm text-secondary-600 border border-secondary-100"><Layers className="h-3.5 w-3.5" /></span>
             <label className="text-sm font-bold text-secondary-900">نطاق التقرير والفترة</label>
           </div>
           <div className="flex flex-wrap gap-2">

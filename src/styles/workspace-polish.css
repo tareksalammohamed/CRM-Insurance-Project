@@ -50,3 +50,28 @@
 @media screen and (max-width: 639px) {
   .compact-filter-grid > :last-child, :is(.closing-summary-grid,.cancellation-summary-grid,.health-summary-grid) > :last-child { grid-column: 1 / -1; }
 }
+
+/* Override the reports card's light gradient, not just background-color. */
+@media screen {
+  html.dark .workspace-page-reports .report-period-filter.card {
+    background: var(--surface) !important;
+    border-color: var(--line) !important;
+    box-shadow: 0 8px 24px -18px rgb(0 0 0 / 0.45) !important;
+    color-scheme: dark;
+  }
+  html.dark .workspace-page-reports .report-period-filter .report-period-icon {
+    background: var(--surface-sunken) !important;
+    border-color: var(--line) !important;
+    color: var(--ink-soft) !important;
+  }
+  html.dark .workspace-page-reports .report-period-filter .input-field {
+    background: var(--surface-sunken) !important;
+    color: var(--ink) !important;
+    border-color: var(--line-strong) !important;
+    color-scheme: dark;
+  }
+  html.dark .workspace-page-reports .report-period-filter select option {
+    background: var(--surface);
+    color: var(--ink);
+  }
+}
