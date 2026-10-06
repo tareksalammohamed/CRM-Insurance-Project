@@ -57,7 +57,8 @@ export function JobCenter() {
   const [filter, setFilter] = useState<'all' | 'active' | 'attention' | 'done'>('all');
 
   const load = useCallback(async (manual = false) => {
-    manual ? setRefreshing(true) : setLoading(true);
+    if (manual) setRefreshing(true);
+    else setLoading(true);
     setError(null);
     try {
       setJobs(await listAppJobs());
@@ -107,10 +108,10 @@ export function JobCenter() {
   }
 
   return (
-    <div className="workspace-page space-y-6 animate-fadeIn">
+    <div className="workspace-page workspace-page-jobs space-y-6 animate-fadeIn">
       <div className="card flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <p className="workspace-section-kicker">Operations</p>
+          <p className="workspace-section-kicker">متابعة العمليات</p>
           <h2 className="text-2xl font-extrabold text-secondary-900 flex items-center gap-2">
             <Clock3 className="w-6 h-6 text-primary-600" />
             مركز المهام
@@ -132,22 +133,22 @@ export function JobCenter() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <button onClick={() => setFilter('active')} className="kpi-card text-right">
+      <div className="compact-job-stats grid grid-cols-3 gap-2 sm:gap-3">
+        <button aria-pressed={filter === 'active'} onClick={() => setFilter('active')} className="kpi-card text-right">
           <p className="text-xs text-secondary-500">جارية الآن</p>
           <p className="text-2xl font-extrabold text-primary-700 mt-1">{counts.active}</p>
         </button>
-        <button onClick={() => setFilter('attention')} className="kpi-card text-right">
+        <button aria-pressed={filter === 'attention'} onClick={() => setFilter('attention')} className="kpi-card text-right">
           <p className="text-xs text-secondary-500">تحتاج انتباه</p>
           <p className="text-2xl font-extrabold text-warning-700 mt-1">{counts.attention}</p>
         </button>
-        <button onClick={() => setFilter('done')} className="kpi-card text-right">
+        <button aria-pressed={filter === 'done'} onClick={() => setFilter('done')} className="kpi-card text-right">
           <p className="text-xs text-secondary-500">مكتملة</p>
           <p className="text-2xl font-extrabold text-success-700 mt-1">{counts.done}</p>
         </button>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto">
+      <div className="flex flex-wrap gap-2">
         {([
           ['all', 'الكل'],
           ['active', 'الجارية'],
@@ -156,6 +157,7 @@ export function JobCenter() {
         ] as const).map(([value, label]) => (
           <button
             key={value}
+            aria-pressed={filter === value}
             onClick={() => setFilter(value)}
             className={clsx('btn btn-sm', filter === value ? 'btn-primary' : 'btn-secondary')}
           >

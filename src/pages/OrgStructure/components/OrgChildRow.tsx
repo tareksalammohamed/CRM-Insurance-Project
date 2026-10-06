@@ -33,7 +33,7 @@ export function OrgChildRow({
       type="button"
       onClick={() => hasChildren && onOpen()}
       className={clsx(
-        'relative w-full text-right rounded-xl border bg-white p-2.5 sm:p-3 transition-all duration-150',
+        'org-roster-row relative w-full text-right rounded-xl border bg-white p-2.5 sm:p-3 transition-all duration-150',
         hasChildren ? 'cursor-pointer active:scale-[0.99] hover:border-secondary-200 hover:shadow-sm' : 'cursor-default',
         'border-secondary-100'
       )}
@@ -43,7 +43,7 @@ export function OrgChildRow({
         <OrgAvatar name={node.name} avatarUrl={node.avatar_url} style={style} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
-            <p className="font-semibold text-secondary-900 text-sm truncate">{node.name}</p>
+            <p className="org-person-name font-semibold text-secondary-900 text-sm truncate">{node.name}</p>
             {!node.is_active && <span className="badge badge-error text-[9px] flex-shrink-0 px-1 py-0">معطّل</span>}
           </div>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">

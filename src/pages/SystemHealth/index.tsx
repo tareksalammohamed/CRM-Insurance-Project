@@ -138,7 +138,8 @@ export function SystemHealth() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (manual = false) => {
-    manual ? setRefreshing(true) : setLoading(true);
+    if (manual) setRefreshing(true);
+    else setLoading(true);
     setError(null);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -189,7 +190,7 @@ export function SystemHealth() {
   }
 
   return (
-    <div className="workspace-page space-y-6 animate-fadeIn">
+    <div className="workspace-page workspace-page-health space-y-6 animate-fadeIn">
       <div className="card flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <p className="workspace-section-kicker">مراقبة التشغيل</p>
@@ -216,7 +217,7 @@ export function SystemHealth() {
 
       {health && (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+          <div className="health-summary-grid grid grid-cols-2 xl:grid-cols-5 gap-2 sm:gap-4">
             <div className="kpi-card">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-bold text-secondary-600">قاعدة البيانات</span>

@@ -25,7 +25,7 @@ export function PageHeader({ title, subtitle, titleSuffix, action, stickyAction 
   const titleBlock = (
     <div className="page-header-copy flex flex-wrap items-baseline gap-x-2 gap-y-0.5 min-w-0">
       {/* h1 واحد لكل صفحة + مستوى السلم الطباعى المعتمد (type-h1) */}
-      <h1 className="page-header-title type-h1 truncate">{title}</h1>
+      <h1 className="page-header-title type-h1 break-words">{title}</h1>
       {titleSuffix && (
         <span className="text-sm md:text-base font-medium text-secondary-500">{titleSuffix}</span>
       )}
@@ -56,7 +56,7 @@ export function PageHeader({ title, subtitle, titleSuffix, action, stickyAction 
         {titleBlock}
         {subtitle && <p className="page-header-subtitle type-body">{subtitle}</p>}
       </div>
-      {action}
+      <div className="page-header-actions">{action}</div>
       {stickyBar}
     </div>
   );

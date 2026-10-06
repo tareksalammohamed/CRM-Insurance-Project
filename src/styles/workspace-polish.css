@@ -1,0 +1,52 @@
+/* Shared screen-only polish. Print layouts retain their existing rules. */
+@media screen {
+  .page-header-copy .page-header-title { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+  .page-header-actions { min-width: 0; flex-shrink: 0; }
+  .page-header-actions > div { flex-wrap: wrap; }
+  .compact-filter-grid > * { min-width: 0; }
+  .compact-filter-grid .input-field { min-width: 0; width: 100%; }
+  .report-type-options > button { white-space: normal; text-align: start; justify-content: flex-start; line-height: 1.5; }
+  .compact-job-stats > button[aria-pressed="true"] { outline: 2px solid var(--brand); outline-offset: -2px; }
+  .mobile-record-card { padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+  .mobile-record-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+  .mobile-record-fields dt { font-size: 11px; color: var(--muted-ink); margin-bottom: 3px; }
+  .mobile-record-fields dd { font-size: 13px; color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+  .mobile-record-total { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--ink); }
+  .mobile-record-total strong { color: var(--brand); font-variant-numeric: tabular-nums; }
+}
+@media screen and (max-width: 767px) {
+  .page-header, .page-header-single { gap: 8px !important; }
+  .page-header { flex-direction: column; align-items: stretch; }
+  .page-header-single { padding-block: 10px !important; }
+  .page-header .page-header-single { padding: 0 !important; }
+  .page-header-copy .page-header-title { font-size: 20px !important; line-height: 1.5 !important; }
+  .page-header-subtitle { font-size: 12px !important; line-height: 1.7 !important; margin-top: 4px !important; }
+  .page-header-eyebrow { display: none; }
+  .page-header-actions { width: 100%; }
+  .page-header-actions > div { width: 100%; display: flex; gap: 8px; }
+  .page-header-actions .btn { flex: 1; min-height: 44px; white-space: normal; }
+  .compact-filter-panel .input-label { font-size: 12px; }
+  .compact-filter-actions > button { flex: 1; min-height: 44px; }
+  .report-type-options > button { padding: 10px !important; font-size: 12px !important; min-width: 0; }
+  .profile-section-nav { display: flex; gap: 4px; padding: 5px !important; }
+  .profile-section-nav > button { flex: 1; min-width: 0; margin: 0 !important; padding: 10px 6px !important; flex-direction: column; gap: 5px !important; font-size: 11px !important; min-height: 64px; }
+  .profile-section-nav > button svg { width: 18px; height: 18px; flex-shrink: 0; }
+  :is(.workspace-page-jobs,.workspace-page-health,.workspace-page-import,.workspace-page-monthly-closing,.workspace-page-cancellations) { row-gap: 12px; }
+  :is(.workspace-page-jobs,.workspace-page-health,.workspace-page-import,.workspace-page-monthly-closing,.workspace-page-cancellations).space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 12px; }
+  :is(.workspace-page-jobs,.workspace-page-health,.workspace-page-import,.workspace-page-monthly-closing,.workspace-page-cancellations) .card { padding: 14px !important; min-width: 0; }
+  :is(.compact-job-stats,.health-summary-grid,.cancellation-summary-grid) .kpi-card { padding: 12px !important; min-width: 0; }
+  .compact-job-stats .kpi-card > p:first-child { font-size: 11px !important; line-height: 1.5; }
+  .compact-job-stats .kpi-card > p:not(:first-child) { font-size: 22px !important; }
+  .closing-summary-grid > .card > .flex { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .closing-summary-grid p { overflow-wrap: anywhere; }
+  .health-summary-grid .kpi-card > .flex { flex-wrap: wrap; gap: 6px; }
+  .health-summary-grid .kpi-card .mt-4 { margin-top: 8px; }
+  .workspace-page-settings form > .card > .flex:first-child { margin-bottom: 12px; padding-bottom: 12px; }
+  .workspace-page-settings form > .flex.justify-end > button { width: 100%; min-height: 44px; }
+  .org-roster-row .org-person-name { white-space: normal; overflow-wrap: anywhere; }
+  .pagination-bar > button { min-width: 44px; min-height: 44px; }
+}
+
+@media screen and (max-width: 639px) {
+  .compact-filter-grid > :last-child, :is(.closing-summary-grid,.cancellation-summary-grid,.health-summary-grid) > :last-child { grid-column: 1 / -1; }
+}
