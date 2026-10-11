@@ -1,3 +1,4 @@
+import { FormReview } from '../../../../components/feedback/FormReview';
 import { useEffect, useRef } from 'react';
 import clsx from 'clsx';
 import { X, ChevronDown, Phone, AlertCircle, FileText, Wallet, StickyNote, Layers, Plus, Trash2 } from 'lucide-react';
@@ -108,11 +109,12 @@ export function PolicyFormDialog({
   };
 
   // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
-  useDialogBehavior(onClose);
+  const closeWhenIdle = () => { if (!saving) onClose(); };
+  useDialogBehavior(closeWhenIdle);
 
   return (
     <DialogPortal>
-      <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-overlay" onClick={closeWhenIdle}>
         <div
           className="modal-content modal-form-shell max-w-2xl animate-fadeIn"
           onClick={(e) => e.stopPropagation()}
@@ -128,12 +130,13 @@ export function PolicyFormDialog({
                 الحقول المعلَّمة بـ * مطلوبة
               </p>
             </div>
-            <button onClick={onClose} className="icon-button shrink-0" aria-label="إغلاق">
+            <button onClick={closeWhenIdle} className="icon-button shrink-0" aria-label="إغلاق">
               <X className="w-5 h-5" />
             </button>
           </div>
 
           <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="modal-form-scroll p-4 md:p-5 space-y-4">
+            <FormReview errors={errors} formRef={formRef} />
             {!editingPolicy && <ExtractPolicyDataButton formRef={formRef} setValue={setValue} />}
 
             {/* ===== مجموعة: هوية الوثيقة ===== */}
@@ -470,10 +473,10 @@ export function PolicyFormDialog({
             </div>
 
             <div className="modal-actions flex justify-end gap-2.5 pt-3.5 border-t border-secondary-200">
-              <button type="button" onClick={onClose} className="btn btn-secondary">
+              <button type="button" onClick={closeWhenIdle} className="btn btn-secondary">
                 إلغاء
               </button>
-              <button type="submit" disabled={saving} className="btn btn-primary">
+              <button type="submit" disabled={saving} aria-busy={saving} className="btn btn-primary">
                 {saving ? 'جاري الحفظ…' : editingPolicy ? 'حفظ التعديلات' : 'إصدار الوثيقة'}
               </button>
             </div>

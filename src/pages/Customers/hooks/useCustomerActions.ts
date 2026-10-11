@@ -1,8 +1,8 @@
 import { friendlyError, getErrorCode } from '../../../lib/errorMessages';
 import { useNotify } from '../../../lib/notify';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import type { User, Installment } from '../../../lib/supabase';
@@ -44,6 +44,7 @@ export function useCustomerActions({
   const [deleteConfirm, setDeleteConfirm] = useState<CustomerWithRelations | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   const [moreMenuCustomer, setMoreMenuCustomer] = useState<CustomerWithRelations | null>(null);
   const [detailsCustomer, setDetailsCustomer] = useState<CustomerWithRelations | null>(null);
@@ -72,12 +73,14 @@ export function useCustomerActions({
   const {
     register,
     handleSubmit,
+    setError,
     reset,
     setValue,
     watch,
     formState: { errors }
   } = useForm<CustomerFormData>({
-    resolver: zodResolver(customerSchema)
+    mode: 'onBlur',
+    resolver: zodResolver(customerSchema) as Resolver<CustomerFormData>
   });
 
   const ownerIdValue = watch('owner_id');
@@ -168,7 +171,8 @@ export function useCustomerActions({
   };
 
   const onSubmit = async (data: CustomerFormData) => {
-    if (!user) return;
+    if (!user || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
 
     // owner_id: للوكيل = نفسه دائماً، للمدير = الوكيل المختار من فريقه (مُتحقق منه بالـ schema)
@@ -188,11 +192,12 @@ export function useCustomerActions({
     } catch (error: unknown) {
       console.error('Error saving customer:', error);
       if (getErrorCode(error) === '23505') {
-        notify.error('الرقم القومي مسجل مسبقاً');
+        setError('national_id', { type: 'server', message: 'الرقم القومي مسجل لعميل آخر؛ ابحث عنه في العملاء وراجع البطاقة قبل إعادة الحفظ.' }, { shouldFocus: true });
       } else {
-        notify.error('حدث خطأ أثناء الحفظ');
+        notify.error(friendlyError(error, 'تعذّر حفظ العميل؛ البيانات ما زالت في النموذج. راجع الاتصال وحاول مرة أخرى.'));
       }
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };

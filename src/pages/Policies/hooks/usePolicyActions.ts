@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,6 +36,7 @@ export function usePolicyActions({
   const [showModal, setShowModal] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [deleteConfirm, setDeleteConfirm] = useState<Policy | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -53,6 +54,7 @@ export function usePolicyActions({
 
   const {
     register,
+    setError,
     handleSubmit,
     reset,
     setValue,
@@ -63,6 +65,7 @@ export function usePolicyActions({
     // التي يديرها النموذج فعلياً (خصوصاً الحقول الرقمية الفارغة). نثبت هنا
     // عقد النموذج: الإدخال/الإخراج الممرران للواجهة هما PolicyFormData، مع
     // بقاء التحقق والتحويل الفعليين داخل zodResolver.
+    mode: 'onBlur',
     resolver: zodResolver(policySchema) as unknown as Resolver<PolicyFormData, unknown, PolicyFormData>
   });
 
@@ -219,7 +222,8 @@ export function usePolicyActions({
     selectedCustomer.insurance_amount != null && !!selectedCustomer.payment_method;
 
   const onSubmit = async (data: PolicyFormData) => {
-    if (!user) return;
+    if (!user || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
 
     try {
@@ -275,11 +279,12 @@ export function usePolicyActions({
         // 23505 تاني ممكن يوصل من هنا غير تكرار رقم الوثيقة (القيد الفريد
         // الوحيد على جدول policies غير المفتاح الأساسي هو policy_number)،
         // فمفيش داعي لفحص نص الرسالة قبل عرض الرسالة الواضحة للمستخدم.
-        notify.error('رقم الوثيقة مسجل مسبقاً، برجاء استخدام رقم مختلف');
+        setError(policyRequiresSplit(data.policy_type, data.sum_assured) && !editingPolicy ? 'split_chunks' : 'policy_number', { type: 'server', message: 'رقم الوثيقة مسجل مسبقًا؛ ابحث عن الوثيقة الموجودة وطابق الرقم مع المستند قبل إعادة الحفظ.' }, { shouldFocus: true });
       } else {
         notify.error(msg || 'حدث خطأ أثناء الحفظ');
       }
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };

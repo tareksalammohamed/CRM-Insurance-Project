@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import type { Customer, PolicyStatus, PolicyType } from '../../lib/supabase';
 
+const optionalNumber = z.preprocess(v => v === '' || (typeof v === 'number' && Number.isNaN(v)) ? undefined : v, z.number().optional());
+const optionalChoice = (v: unknown) => v === '' ? undefined : v;
+
 export const customerSchema = z.object({
   name: z.string().min(2, 'الاسم يجب أن يكون حرفين على الأقل'),
   national_id: z.string().optional(),
@@ -8,16 +11,16 @@ export const customerSchema = z.object({
   address: z.string().optional(),
   birth_date: z.string().optional(),
   occupation: z.string().optional(),
-  marital_status: z.enum(['single', 'married', 'divorced', 'widowed']).optional(),
+  marital_status: z.preprocess(optionalChoice, z.enum(['single', 'married', 'divorced', 'widowed']).optional()),
   owner_id: z.string().optional(),
   // بيانات "طلب التأمين": إلزامية فقط عند إضافة عميل جديد (isEditingCustomer
   // = false). العملاء الموجودين حالياً قد لا يملكون هذه البيانات، فتفضل
   // اختيارية عند التعديل حتى لا يُمنع حفظ تعديل بسيط على عميل قديم —
   // isEditingCustomer بيتحكم في الإلزامية عبر superRefine تحت (نفس أسلوب
   // isManagerRole فوق، ونفس أسلوب isEditingPolicy فى Policies/types.ts).
-  insurance_amount: z.number().optional(),
-  payment_method: z.enum(['monthly', 'quarterly', 'semi_annual', 'annual']).optional(),
-  deposit_amount: z.number().optional(),
+  insurance_amount: optionalNumber,
+  payment_method: z.preprocess(optionalChoice, z.enum(['monthly', 'quarterly', 'semi_annual', 'annual']).optional()),
+  deposit_amount: optionalNumber,
   isManagerRole: z.boolean().optional(),
   isEditingCustomer: z.boolean().optional()
 }).superRefine((data, ctx) => {

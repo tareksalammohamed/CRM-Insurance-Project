@@ -1,3 +1,4 @@
+import { paymentDateIssue } from '../../lib/inputGuidance';
 import { X, CheckCircle, AlertTriangle } from 'lucide-react';
 import { format, startOfMonth } from 'date-fns';
 import { ar } from 'date-fns/locale';
@@ -40,14 +41,17 @@ export function PayInstallmentModal({
   groupCount,
   groupTotalAmount,
 }: PayInstallmentModalProps) {
+  const dateIssue = paymentDateIssue(paymentDateStr);
+  const paymentMonthLabel = dateIssue ? '—' : format(startOfMonth(new Date(`${paymentDateStr}T12:00:00`)), 'MMMM yyyy', { locale: ar });
+  const closeWhenIdle = () => { if (!processing) onClose(); };
   const isGroup = !!groupCount && groupCount > 1;
 
   // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
-  useDialogBehavior(onClose);
+  useDialogBehavior(closeWhenIdle);
 
   return (
     <DialogPortal>
-      <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-overlay" onClick={closeWhenIdle}>
         <div className="modal-content max-w-md animate-fadeIn"
           role="dialog"
           aria-modal="true" onClick={(e) => e.stopPropagation()}>
@@ -55,7 +59,7 @@ export function PayInstallmentModal({
             <h3 className="text-lg font-semibold text-secondary-900">
               {isGroup ? `تأكيد سداد ${groupCount} وثائق مجمّعة` : 'تأكيد السداد'}
             </h3>
-            <button onClick={onClose} className="p-2 rounded-lg hover:bg-secondary-100">
+            <button aria-label="إغلاق" disabled={processing} onClick={closeWhenIdle} className="p-2 rounded-lg hover:bg-secondary-100">
               <X className="w-5 h-5 text-secondary-600" />
             </button>
           </div>
@@ -68,24 +72,29 @@ export function PayInstallmentModal({
                   <p className="text-sm font-medium text-blue-700">سداد مبكر</p>
                   <p className="text-xs text-blue-600 mt-0.5">
                     تاريخ استحقاق هذا القسط {format(new Date(installment.due_date), 'dd/MM/yyyy')} — سيُسجَّل
-                    السداد في شهر {format(startOfMonth(new Date(paymentDateStr)), 'MMMM yyyy', { locale: ar })}.
+                    السداد في شهر {paymentMonthLabel}.
                   </p>
                 </div>
               </div>
             )}
 
             <div className="form-group">
-              <label className="input-label">تاريخ السداد</label>
+              <label className="input-label" htmlFor="payment-date">تاريخ السداد</label>
               <input
+                id="payment-date"
+                aria-invalid={!!dateIssue}
+                aria-describedby="payment-date-help"
+                disabled={processing}
                 type="date"
                 value={paymentDateStr}
                 max={format(new Date(), 'yyyy-MM-dd')}
                 onChange={(e) => onPaymentDateChange(e.target.value)}
                 className="input-field"
               />
-              <p className="text-xs text-secondary-400 mt-1">
+              <p id="payment-date-help" className="text-xs text-secondary-500 mt-1" role={dateIssue ? 'alert' : undefined}>
+                {dateIssue || <>
                 سيُحسب السداد ضمن تارجت شهر{' '}
-                {format(startOfMonth(new Date(paymentDateStr)), 'MMMM yyyy', { locale: ar })}
+                {paymentMonthLabel}</>}
               </p>
             </div>
 
@@ -127,10 +136,10 @@ export function PayInstallmentModal({
           </div>
 
           <div className="flex justify-end gap-3 px-6 pb-6">
-            <button onClick={onClose} className="btn btn-secondary" disabled={processing}>
+            <button onClick={closeWhenIdle} className="btn btn-secondary" disabled={processing}>
               إلغاء
             </button>
-            <button onClick={onConfirm} disabled={processing} className="btn btn-primary">
+            <button onClick={() => { if (!dateIssue && !processing) onConfirm(); }} disabled={processing || !!dateIssue} className="btn btn-primary">
               {processing ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
