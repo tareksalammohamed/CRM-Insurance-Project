@@ -1,39 +1,12 @@
 import { friendlyError } from '../lib/errorMessages';
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
+import { GoogleSignInButton } from '../components/auth/GoogleSignInButton';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { supabase, isPasskeySupported } from '../lib/supabase';
+import { isPasskeySupported } from '../lib/supabase';
 import { useSettings } from '../hooks/useSettings';
 import { Shield, Mail, Phone, Lock, Eye, EyeOff, Loader2, Fingerprint } from 'lucide-react';
 import clsx from 'clsx';
-
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        id: {
-          initialize: (config: {
-            client_id: string;
-            callback: (response: { credential: string }) => void;
-            auto_select?: boolean;
-            cancel_on_tap_outside?: boolean;
-            nonce?: string;
-          }) => void;
-          renderButton: (parent: HTMLElement, options: Record<string, unknown>) => void;
-          prompt: (
-            callback?: (notification: {
-              isNotDisplayed: () => boolean;
-              isSkippedMoment: () => boolean;
-              isDismissedMoment: () => boolean;
-              getNotDisplayedReason?: () => string;
-              getSkippedReason?: () => string;
-            }) => void
-          ) => void;
-        };
-      };
-    };
-  }
-}
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string;
 
@@ -44,90 +17,11 @@ export function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [googleReady, setGoogleReady] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const { signIn, signInWithPasskey } = useAuth();
   const { branding } = useSettings();
   const navigate = useNavigate();
-  const googleBtnRef = useRef<HTMLDivElement>(null);
-  const googleNonceRef = useRef<string>('');
   const passkeySupported = isPasskeySupported();
-
-  // بيولّد nonce عشوائي، وبيرجع النسخة الأصلية (لتأكيد الهوية مع Supabase)
-  // والنسخة المشفّرة SHA-256 (لإرسالها لجوجل) - ده مطلوب من Supabase عشان
-  // يتأكد إن الـ id_token جه فعلاً من نفس محاولة تسجيل الدخول دي
-  const generateNonce = async (): Promise<{ raw: string; hashed: string }> => {
-    const raw = crypto.randomUUID();
-    const encoder = new TextEncoder();
-    const data = encoder.encode(raw);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashed = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-    return { raw, hashed };
-  };
-
-  useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
-
-    const handleCredentialResponse = async (response: { credential: string }) => {
-      setError('');
-      setGoogleLoading(true);
-
-      const { error } = await supabase.auth.signInWithIdToken({
-        provider: 'google',
-        token: response.credential,
-        nonce: googleNonceRef.current
-      });
-
-      if (error) {
-        setGoogleLoading(false);
-        setError(`حدث خطأ أثناء تسجيل الدخول بجوجل: ${friendlyError(error)}`);
-      }
-      // عند النجاح الـ session بتتسجل تلقائياً والتطبيق هيحوّل المستخدم لوحده
-    };
-
-    const initGoogle = async () => {
-      if (!window.google || !googleBtnRef.current) return;
-
-      try {
-        const { raw, hashed } = await generateNonce();
-        googleNonceRef.current = raw;
-
-        window.google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          callback: handleCredentialResponse,
-          cancel_on_tap_outside: true,
-          nonce: hashed
-        });
-
-        // بنعمل رندر لزرار جوجل الأصلي (المسؤول عن ظهور نافذة اختيار الحساب
-        // كـ popup حقيقي جوه نفس الصفحة) بس مخفي، وهنستخدم زرارنا المصمم
-        // إحنا عشان نضغط عليه بالنيابة عن المستخدم
-        window.google.accounts.id.renderButton(googleBtnRef.current, {
-          type: 'standard',
-          theme: 'outline',
-          size: 'large',
-          width: 320
-        });
-
-        setGoogleReady(true);
-      } catch (err) {
-        console.error('Google Identity Services init failed:', err);
-      }
-    };
-
-    if (window.google) {
-      initGoogle();
-    } else {
-      const interval = setInterval(() => {
-        if (window.google) {
-          clearInterval(interval);
-          initGoogle();
-        }
-      }, 200);
-      return () => clearInterval(interval);
-    }
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,43 +42,6 @@ export function Login() {
     } else {
       navigate('/');
     }
-  };
-
-  const handleGoogleSignIn = () => {
-    setError('');
-
-    if (!GOOGLE_CLIENT_ID) {
-      setError('لم يتم إعداد تسجيل الدخول بجوجل بعد (VITE_GOOGLE_CLIENT_ID غير موجود)');
-      return;
-    }
-
-    if (!window.google) {
-      setError('لم تُحمَّل مكتبة جوجل بعد، تأكد من اتصالك بالإنترنت وحاول تاني');
-      return;
-    }
-
-    if (!googleReady || !googleBtnRef.current) {
-      setError('جاري تجهيز تسجيل الدخول بجوجل، حاول بعد لحظة');
-      return;
-    }
-
-    // بنستخدم "One Tap" من جوجل كخيار أساسي، لأنه أسرع بكتير وبيظهر كبطاقة
-    // صغيرة سريعة فيها الحساب الجاهز على الجهاز، من غير ما يفتح صفحة كاملة
-    window.google.accounts.id.prompt((notification) => {
-      const notShown = notification.isNotDisplayed?.() || notification.isSkippedMoment?.();
-      if (notShown) {
-        console.warn(
-          'Google One Tap لم يظهر، السبب:',
-          notification.getNotDisplayedReason?.() || notification.getSkippedReason?.()
-        );
-        // فولباك: لو One Tap مش هيظهر لأي سبب (مثلاً المستخدم رفضه قبل كده)،
-        // نستخدم زرار جوجل التقليدي (نافذة اختيار حساب كاملة) بدل ما نسيب المستخدم من غير حل
-        const realButton = googleBtnRef.current?.querySelector(
-          'div[role="button"]'
-        ) as HTMLElement | null;
-        realButton?.click();
-      }
-    });
   };
 
   const handlePasskeySignIn = async () => {
@@ -245,7 +102,7 @@ export function Login() {
               <button
                 type="button"
                 onClick={handlePasskeySignIn}
-                disabled={passkeyLoading || loading}
+                disabled={passkeyLoading || loading || googleLoading}
                 className="glassy-action flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-xs font-medium text-primary-700 transition-colors duration-200 hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {passkeyLoading ? (
@@ -259,41 +116,7 @@ export function Login() {
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              disabled={googleLoading || loading}
-              className={clsx(
-                'glassy-action flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-secondary-200 bg-white px-3 py-2 text-xs font-medium text-secondary-700 transition-colors duration-200 hover:bg-secondary-50 disabled:cursor-not-allowed disabled:opacity-60',
-                !passkeySupported && 'col-span-2'
-              )}
-            >
-              {googleLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <svg className="w-4 h-4" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.47c-.28 1.5-1.13 2.77-2.4 3.62v3h3.88c2.27-2.09 3.57-5.17 3.57-8.81z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 24c3.24 0 5.96-1.07 7.95-2.92l-3.88-3c-1.08.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.96H1.27v3.11C3.25 21.3 7.31 24 12 24z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.27 14.27a7.2 7.2 0 0 1 0-4.54v-3.11H1.27a12 12 0 0 0 0 10.76l4-3.11z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 4.77c1.76 0 3.34.6 4.58 1.79l3.44-3.44C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.7 1.27 6.62l4 3.11C6.22 6.88 8.87 4.77 12 4.77z"
-                    />
-                  </svg>
-                  <span>جوجل</span>
-                </>
-              )}
-            </button>
+            <GoogleSignInButton clientId={GOOGLE_CLIENT_ID} disabled={googleLoading || loading || passkeyLoading} onBusyChange={setGoogleLoading} onError={setError} />
           </div>
 
           {error && (
@@ -301,11 +124,6 @@ export function Login() {
               {error}
             </div>
           )}
-
-          {/* زرار جوجل الأصلي بيترندر هنا مخفي، وهو المسؤول عن فتح نافذة
-              اختيار الحساب الحقيقية. زرارنا المصمم فوق بيضغط عليه بالنيابة
-              عن المستخدم عشان نحافظ على شكل التصميم */}
-          <div ref={googleBtnRef} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', top: -9999, left: -9999 }} />
 
           <div className="flex items-center gap-3 my-6">
             <div className="flex-1 h-px bg-secondary-200"></div>
@@ -364,7 +182,7 @@ export function Login() {
 
             <button
               type="submit"
-              disabled={!isValid() || loading}
+              disabled={!isValid() || loading || googleLoading || passkeyLoading}
               className="btn btn-primary glassy-action glassy-action-primary w-full py-3"
             >
               {loading ? (
