@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { RefreshCw, Sparkles, X } from 'lucide-react';
 
 const UPDATE_EVENT = 'crm:pwa-update-available';
@@ -11,6 +11,9 @@ export function UpdateAvailablePrompt() {
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [visible, setVisible] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const updateCleanup = useRef<(() => void) | null>(null);
+  useEffect(() => () => updateCleanup.current?.(), []);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
@@ -34,7 +37,7 @@ export function UpdateAvailablePrompt() {
     };
 
     window.addEventListener(UPDATE_EVENT, showUpdate);
-    void checkWaitingWorker();
+    void checkWaitingWorker().catch(() => { /* Unsupported/restricted browser. */ });
 
     return () => {
       mounted = false;
@@ -43,20 +46,32 @@ export function UpdateAvailablePrompt() {
   }, []);
 
   const applyUpdate = async () => {
+    if (updating) return;
     setUpdating(true);
-
-    const currentRegistration = registration ?? await navigator.serviceWorker.getRegistration('/');
-    const waitingWorker = currentRegistration?.waiting;
-
-    if (!waitingWorker) {
+    setError(null);
+    try {
+      const currentRegistration = registration ?? await navigator.serviceWorker.getRegistration('/');
+      const waitingWorker = currentRegistration?.waiting;
+      if (!waitingWorker) { setUpdating(false); setVisible(false); return; }
+      updateCleanup.current?.();
+      const reload = () => { updateCleanup.current?.(); window.location.reload(); };
+      const timer = setTimeout(() => {
+        updateCleanup.current?.();
+        setUpdating(false);
+        setError('تعذر تطبيق التحديث الآن. يمكنك إعادة المحاولة.');
+      }, 10000);
+      updateCleanup.current = () => {
+        clearTimeout(timer);
+        navigator.serviceWorker.removeEventListener('controllerchange', reload);
+        updateCleanup.current = null;
+      };
+      navigator.serviceWorker.addEventListener('controllerchange', reload, { once: true });
+      waitingWorker.postMessage('SKIP_WAITING');
+    } catch {
+      updateCleanup.current?.();
       setUpdating(false);
-      setVisible(false);
-      return;
+      setError('تعذر تطبيق التحديث الآن. يمكنك إعادة المحاولة.');
     }
-
-    const reload = () => window.location.reload();
-    navigator.serviceWorker.addEventListener('controllerchange', reload, { once: true });
-    waitingWorker.postMessage('SKIP_WAITING');
   };
 
   if (!visible) return null;
@@ -78,12 +93,13 @@ export function UpdateAvailablePrompt() {
             <div>
               <p className="font-bold text-secondary-900">تحديث جديد متاح</p>
               <p className="mt-1 text-sm leading-6 text-secondary-600">
-                توجد نسخة أحدث من التطبيق. اضغط «تحديث الآن» لتشغيل آخر تحديث.
+                توجد نسخة أحدث من التطبيق. احفظ تغييراتك قبل الضغط على «تحديث الآن» لإعادة تحميل التطبيق.
               </p>
             </div>
             <button
               type="button"
               onClick={() => setVisible(false)}
+              disabled={updating}
               className="rounded-lg p-1 text-secondary-400 hover:bg-secondary-100 hover:text-secondary-700"
               aria-label="إخفاء إشعار التحديث"
             >
@@ -91,6 +107,7 @@ export function UpdateAvailablePrompt() {
             </button>
           </div>
 
+          {error && <p className="mt-2 text-sm text-error-600" role="alert">{error}</p>}
           <button
             type="button"
             onClick={applyUpdate}

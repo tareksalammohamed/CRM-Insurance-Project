@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Search, X } from 'lucide-react';
 
 interface SearchInputProps {
@@ -11,10 +12,12 @@ interface SearchInputProps {
  * استُخرج من الأنماط المتطابقة فى صفحات العملاء، الوثائق والتحصيل.
  */
 export function SearchInput({ value, onChange, placeholder }: SearchInputProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div className="relative flex-1">
       <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary-400 pointer-events-none" aria-hidden="true" />
       <input
+        ref={inputRef}
         type="search"
         inputMode="search"
         enterKeyHint="search"
@@ -29,7 +32,7 @@ export function SearchInput({ value, onChange, placeholder }: SearchInputProps) 
       {value && (
         <button
           type="button"
-          onClick={() => onChange('')}
+          onClick={() => { onChange(''); inputRef.current?.focus(); }}
           aria-label="مسح البحث"
           title="مسح البحث"
           className="absolute left-0.5 top-1/2 -translate-y-1/2 grid h-11 w-11 place-items-center rounded-lg text-secondary-400 transition-colors hover:bg-secondary-100 hover:text-secondary-700"

@@ -27,7 +27,7 @@ if ('serviceWorker' in navigator) {
       .then((registration) => {
         // اطلب فحصًا صريحًا عند فتح التطبيق؛ هذا مهم للأجهزة التي تحتفظ
         // بتبويب PWA مفتوح لفترة طويلة ولا تفحص التحديث سريعًا.
-        void registration.update();
+        void registration.update().catch(() => { /* Offline update checks are optional. */ });
 
         // إذا كانت النسخة الجديدة وصلت أثناء غياب الصفحة، أعلن عنها عند الفتح.
         if (registration.waiting && navigator.serviceWorker.controller) {

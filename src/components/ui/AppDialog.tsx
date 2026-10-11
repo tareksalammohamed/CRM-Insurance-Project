@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import type { CSSProperties, ReactNode, MouseEvent, Ref } from 'react';
 import clsx from 'clsx';
 import { useDialogBehavior } from '../../hooks/useDialogBehavior';
@@ -15,6 +16,7 @@ interface AppDialogProps {
   /** تنسيقات ديناميكية تستخدمها النوافذ المرتبطة بموضع عنصر مرجعي */
   style?: CSSProperties;
   children: ReactNode;
+  ariaLabel?: string;
 }
 
 /**
@@ -37,16 +39,23 @@ interface AppDialogProps {
  *     (position: fixed) داخل أى عنصر أب بيحمل transform مثل أنيميشن دخول
  *     الصفحة، وهو السبب الفعلى المقيس لظهور النوافذ خارج مجال الرؤية.
  */
-export function AppDialog({ onClose, className, overlayClassName, contentRef, style, children }: AppDialogProps) {
+export function AppDialog({ onClose, className, overlayClassName, contentRef, style, children, ariaLabel = 'نافذة إجراء' }: AppDialogProps) {
   // السلوك المشترك (Escape + قفل التمرير + إرجاع التركيز) فى hook واحد
   // تستخدمه أيضًا النوافذ التى تبنى الـoverlay بنفسها
-  useDialogBehavior(onClose);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  useDialogBehavior(onClose, true, dialogRef);
 
   return (
     <DialogPortal>
       <div className={clsx('modal-overlay', overlayClassName)} onClick={onClose}>
         <div
-          ref={contentRef}
+          ref={(element) => {
+            dialogRef.current = element;
+            if (typeof contentRef === 'function') contentRef(element);
+            else if (contentRef) (contentRef as { current: HTMLDivElement | null }).current = element;
+          }}
+          tabIndex={-1}
+          aria-label={ariaLabel}
           className={clsx('modal-content', className)}
           style={style}
           role="dialog"

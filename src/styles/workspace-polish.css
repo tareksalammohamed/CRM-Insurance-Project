@@ -75,3 +75,39 @@
     color: var(--ink);
   }
 }
+
+
+@media screen {
+  .app-content { min-width: 0; }
+  .workspace-section { min-width: 0; }
+  .workspace-section-head { flex-wrap: wrap; gap: 8px 16px; }
+  .workspace-section-head h2 { line-height: 1.6; overflow-wrap: anywhere; }
+  .workspace-section-meta { font-variant-numeric: tabular-nums; }
+  .page-header-single { border-inline-start: 3px solid var(--brand); padding-inline-start: 14px; }
+  .page-header .page-header-single { border-inline-start: 0; }
+  .surface-toolbar { border-color: var(--line); box-shadow: 0 4px 18px -14px rgb(0 0 0 / 0.25); }
+  .kpi-card { min-width: 0; }
+  .kpi-card .text-figure { letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .input-field:disabled { opacity: .65; cursor: not-allowed; }
+  select.input-field, input[type="date"].input-field { color-scheme: light; }
+  html.dark select.input-field, html.dark input[type="date"].input-field { color-scheme: dark; }
+  .load-notice { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface-soft); color: var(--ink-soft); }
+  .load-notice > svg { color: var(--brand); }
+  .load-notice button { flex-shrink: 0; min-height: 44px; }
+  .modal-content { overscroll-behavior: contain; }
+  .modal-content:focus { outline: none; }
+  .pagination-counter { font-variant-numeric: tabular-nums; }
+  html.dark .app-shell .app-header { border-color: var(--line); }
+}
+@media screen and (max-width: 767px) {
+  .workspace-section-head { margin-bottom: 10px; }
+  .workspace-section-kicker { display: none; }
+  .workspace-section-head h2 { font-size: 14px; }
+  .workspace-page .kpi-card { padding: 12px; border-radius: 14px; }
+  .workspace-page .kpi-icon-tile { width: 34px; height: 34px; border-radius: 11px; }
+  .workspace-page .kpi-icon-tile svg { max-width: 18px; max-height: 18px; }
+  .load-notice { flex-wrap: wrap; gap: 8px; padding: 12px; }
+  .load-notice p { flex-basis: calc(100% - 32px); }
+  .load-notice button { margin-inline-start: auto; }
+  .pagination-bar { position: relative; border-top: 1px solid var(--line); padding-top: 10px; }
+}

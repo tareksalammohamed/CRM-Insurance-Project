@@ -33,7 +33,8 @@ export function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (manual = false) => {
-    manual ? setRefreshing(true) : setLoading(true);
+    if (manual) setRefreshing(true);
+    else setLoading(true);
     setError(null);
     try { setData(await fetchAdminDashboard()); }
     catch (err) { setError(friendlyError(err, 'تعذر تحميل لوحة إدارة النظام')); }

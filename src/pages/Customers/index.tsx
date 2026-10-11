@@ -1,3 +1,4 @@
+import { LoadNotice } from '../../components/feedback/LoadNotice';
 import { useCallback } from 'react';
 import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
@@ -41,7 +42,7 @@ export function Customers() {
 
   const {
     customers, agents, loading, isInitialLoading, totalCount,
-    stats, statsLoading, totalPages, deletableIds,
+    stats, statsLoading, totalPages, deletableIds, loadMessage,
     loadCustomers, loadStats,
   } = useCustomers(user, page, searchQuery, statusFilter, agentFilter, monthFilter, noPolicyOnly, currentBranchId);
 
@@ -144,6 +145,8 @@ export function Customers() {
         />
         </div>
       </section>
+
+      <LoadNotice message={loadMessage} loading={loading} onRetry={() => void loadCustomers()} />
 
       {/* ===== قائمة العملاء ===== */}
       <CustomerList

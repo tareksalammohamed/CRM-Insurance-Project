@@ -67,6 +67,7 @@ export function Pagination({ page, totalPages, onPageChange, className = 'pt-2' 
       aria-label={`تنقل بين الصفحات، صفحة ${page} من ${totalPages}`}
     >
       <button
+        type="button"
         onClick={() => onPageChange((p) => Math.max(1, p - 1))}
         disabled={page === 1}
         className="btn btn-ghost btn-sm disabled:opacity-40 shrink-0"
@@ -102,6 +103,7 @@ export function Pagination({ page, totalPages, onPageChange, className = 'pt-2' 
       </span>
 
       <button
+        type="button"
         onClick={() => onPageChange((p) => Math.min(totalPages, p + 1))}
         disabled={page === totalPages}
         className="btn btn-ghost btn-sm disabled:opacity-40 shrink-0"

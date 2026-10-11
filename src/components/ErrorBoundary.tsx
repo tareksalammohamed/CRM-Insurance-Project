@@ -10,6 +10,7 @@ interface Props {
 
 interface State {
   hasError: boolean;
+  chunkError: boolean;
 }
 
 // ===================================
@@ -28,11 +29,12 @@ interface State {
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, chunkError: false };
   }
 
-  static getDerivedStateFromError(): State {
-    return { hasError: true };
+  static getDerivedStateFromError(error: unknown): State {
+    const message = error instanceof Error ? error.message : String(error);
+    return { hasError: true, chunkError: /dynamically imported module|loading chunk|chunkloaderror|importing a module script/i.test(message) };
   }
 
   componentDidCatch(error: unknown, info: { componentStack: string }) {
@@ -42,7 +44,8 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   handleRetry = () => {
-    this.setState({ hasError: false });
+    if (this.state.chunkError) { window.location.reload(); return; }
+    this.setState({ hasError: false, chunkError: false });
   };
 
   render() {
@@ -59,14 +62,15 @@ export class ErrorBoundary extends Component<Props, State> {
               )}
             </div>
             <p className="font-semibold text-secondary-900 mb-1">
-              {offline ? 'لا يوجد اتصال بالإنترنت' : 'حدث خطأ غير متوقع'}
+              {offline ? 'لا يوجد اتصال بالإنترنت' : this.state.chunkError ? 'تعذر تحميل الصفحة' : 'حدث خطأ غير متوقع'}
             </p>
             <p className="text-sm text-secondary-500 mb-5">
               {offline
                 ? 'تحقق من اتصالك بالإنترنت ثم أعد المحاولة.'
-                : 'حاول إعادة تحميل هذا الجزء من الصفحة. إذا استمرت المشكلة، تواصل مع الدعم الفني.'}
+                : this.state.chunkError ? 'قد توجد نسخة أحدث من التطبيق. اضغط إعادة المحاولة لتحميل الصفحة مجددًا.' : 'حاول إعادة تحميل هذا الجزء من الصفحة. إذا استمرت المشكلة، تواصل مع الدعم الفني.'}
             </p>
             <button
+              type="button"
               onClick={this.handleRetry}
               className="btn-primary inline-flex items-center gap-2 mx-auto"
             >

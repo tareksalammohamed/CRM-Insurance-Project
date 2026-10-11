@@ -50,3 +50,11 @@ export async function clearAllDataCache(): Promise<void> {
     // تجاهل
   }
 }
+
+let cacheIdentity: { userId: string | null; generation: number } = { userId: null, generation: 0 };
+export function setDataCacheIdentity(userId: string | null): void {
+  if (cacheIdentity.userId !== userId) {
+    cacheIdentity = { userId, generation: cacheIdentity.generation + 1 };
+  }
+}
+export function getDataCacheIdentity() { return cacheIdentity; }

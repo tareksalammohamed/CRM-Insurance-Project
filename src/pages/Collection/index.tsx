@@ -1,3 +1,4 @@
+import { LoadNotice } from '../../components/feedback/LoadNotice';
 import { useState } from 'react';
 import { Route, Gauge, SlidersHorizontal, ReceiptText } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -65,6 +66,7 @@ export function Collection() {
     installments,
     loading,
     isInitialLoading,
+    loadMessage,
     page,
     setPage,
     totalPages,
@@ -232,6 +234,7 @@ export function Collection() {
               <ReceiptText aria-hidden="true" />
               <span>الأقساط</span>
             </h2>
+            <LoadNotice message={loadMessage} loading={loading} onRetry={() => void loadInstallments()} />
             <CollectionList
               isInitialLoading={isInitialLoading}
               installments={installments}

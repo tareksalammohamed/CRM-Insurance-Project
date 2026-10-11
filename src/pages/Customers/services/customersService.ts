@@ -2,7 +2,7 @@ import { supabase, type Customer, type User, type PolicyStatus } from '../../../
 import { format } from 'date-fns';
 import type { CustomerFormData, CustomerWithRelations } from '../types';
 import { withOfflineQueue } from '../../../lib/offlineQueue';
-import { dalRead } from '../../../lib/dataAccessLayer';
+import { dalRead, readStatusMessage } from '../../../lib/dataAccessLayer';
 import { fetchUserSubtreeIdsBranchAware } from '../../../lib/branchHierarchy';
 
 const PAGE_SIZE = 12;
@@ -192,6 +192,7 @@ export interface FetchCustomersParams {
 }
 
 interface CustomersPageResult {
+  loadMessage?: string | null;
   customers: CustomerWithRelations[];
   totalPages: number;
   totalCount: number;
@@ -300,7 +301,7 @@ export async function fetchCustomersPage({
     },
     { emptyValue: EMPTY_CUSTOMERS_PAGE },
   );
-  return result.data;
+  return { ...result.data, loadMessage: readStatusMessage(result) };
 }
 
 // أحدث وثيقة للعميل (حسب تاريخ بداية التأمين) — تُستخدم لعرض ملخص الوثيقة

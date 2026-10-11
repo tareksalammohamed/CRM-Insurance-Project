@@ -1,3 +1,4 @@
+import { friendlyError } from '../../../lib/errorMessages';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { User } from '../../../lib/supabase';
 import type { QuickFilter, SubType, OwnerFilter, InstallmentWithRelations } from '../types';
@@ -22,6 +23,7 @@ export function useCollectionInstallments({ user, ensureMaintenance, yearMode, q
   // أول تحميل فقط (لسه مفيش أي بيانات) هو اللي يستحق Skeleton كامل —
   // أي تحديث لاحق (تغيير فلتر/صفحة/بحث) يحافظ على البيانات الحالية ظاهرة
   const isInitialLoading = loading && installments.length === 0;
+  const [loadMessage, setLoadMessage] = useState<string | null>(null);
   const [page, setPage]             = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -41,15 +43,17 @@ export function useCollectionInstallments({ user, ensureMaintenance, yearMode, q
       await ensureMaintenance();
       if (currentRequest !== requestId.current) return;
 
-      const { installments: results, totalCount: count, totalPages: pages } =
+      const { installments: results, totalCount: count, totalPages: pages, loadMessage: message } =
         await fetchInstallments({ quickFilter, subType, ownerFilter, page, searchQuery, branchId, monthStart });
 
       if (currentRequest !== requestId.current) return;
       setInstallments(results);
+      setLoadMessage(message ?? null);
       setTotalCount(count);
       setTotalPages(pages);
     } catch (error) {
       console.error('Error loading installments:', error);
+      if (currentRequest === requestId.current) setLoadMessage(friendlyError(error, 'تعذر تحميل التحصيلات، أعد المحاولة'));
     } finally {
       if (currentRequest === requestId.current) setLoading(false);
     }
@@ -84,6 +88,7 @@ export function useCollectionInstallments({ user, ensureMaintenance, yearMode, q
     installments,
     loading,
     isInitialLoading,
+    loadMessage,
     page,
     setPage,
     totalPages,
