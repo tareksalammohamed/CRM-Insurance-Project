@@ -33,17 +33,18 @@ export function CancelInstallmentModal({
 }: CancelInstallmentModalProps) {
 
   // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
-  useDialogBehavior(onClose);
+  const closeWhenIdle = () => { if (!processing) onClose(); };
+  useDialogBehavior(closeWhenIdle);
 
   return (
     <DialogPortal>
-      <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-overlay" onClick={closeWhenIdle}>
         <div className="modal-content max-w-md animate-fadeIn"
           role="dialog"
           aria-modal="true" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-between p-6 border-b border-secondary-200">
             <h3 className="text-lg font-semibold text-secondary-900">إلغاء السداد</h3>
-            <button onClick={onClose} className="p-2 rounded-lg hover:bg-secondary-100">
+            <button aria-label="إغلاق" disabled={processing} onClick={closeWhenIdle} className="p-2 rounded-lg hover:bg-secondary-100">
               <X className="w-5 h-5 text-secondary-600" />
             </button>
           </div>
@@ -80,6 +81,7 @@ export function CancelInstallmentModal({
             <div className="form-group mb-4">
               <label className="input-label">سبب الإلغاء</label>
               <input
+                disabled={processing}
                 value={cancelReason}
                 onChange={(e) => onCancelReasonChange(e.target.value)}
                 className="input-field"
@@ -88,7 +90,7 @@ export function CancelInstallmentModal({
             </div>
 
             <div className="flex justify-end gap-3">
-              <button onClick={onClose} className="btn btn-secondary">
+              <button onClick={closeWhenIdle} className="btn btn-secondary">
                 تراجع
               </button>
               <button onClick={onConfirm} disabled={processing} className="btn btn-error">

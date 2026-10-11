@@ -1,4 +1,6 @@
-import { useRef } from 'react';
+import { customerInputHints } from '../../../../lib/inputGuidance';
+import { FormReview } from '../../../../components/feedback/FormReview';
+import { useRef, useState } from 'react';
 import clsx from 'clsx';
 import { X, User as UserIcon, Phone, MapPin, AlertCircle, ShieldCheck, UserCog } from 'lucide-react';
 import type { UseFormRegister, UseFormHandleSubmit, UseFormSetValue, FieldErrors } from 'react-hook-form';
@@ -42,15 +44,17 @@ export function CustomerFormDialog({
   saving,
   onClose,
 }: CustomerFormDialogProps) {
+  const [hints, setHints] = useState<string[]>([]);
   const formRef = useRef<HTMLFormElement>(null);
 
 
   // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
-  useDialogBehavior(onClose);
+  const closeWhenIdle = () => { if (!saving) onClose(); };
+  useDialogBehavior(closeWhenIdle);
 
   return (
     <DialogPortal>
-      <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-overlay" onClick={closeWhenIdle}>
         <div
           className="modal-content modal-form-shell animate-fadeIn"
           onClick={(e) => e.stopPropagation()}
@@ -66,12 +70,14 @@ export function CustomerFormDialog({
                 الحقول المعلَّمة بـ * مطلوبة
               </p>
             </div>
-            <button onClick={onClose} className="icon-button shrink-0" aria-label="إغلاق">
+            <button onClick={closeWhenIdle} className="icon-button shrink-0" aria-label="إغلاق">
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="modal-form-scroll p-4 md:p-5 space-y-4">
+          <form onBlur={() => { if (formRef.current) setHints(customerInputHints(Object.fromEntries(new FormData(formRef.current)))); }} ref={formRef} onSubmit={handleSubmit(onSubmit)} className="modal-form-scroll p-4 md:p-5 space-y-4">
+            <FormReview errors={errors} formRef={formRef} />
+            {hints.length > 0 && <aside className="form-advisory" aria-live="polite"><p className="font-bold">ملاحظات للمراجعة — لا تمنع الحفظ</p><ul className="list-disc pr-5 space-y-1">{hints.map(hint => <li key={hint}>{hint}</li>)}</ul></aside>}
             {!editingCustomer && <ExtractDataButton formRef={formRef} setValue={setValue} />}
 
             {/* ===== مجموعة: بيانات العميل الأساسية ===== */}
@@ -110,6 +116,7 @@ export function CustomerFormDialog({
                   <input
                     id="cf-nid"
                     {...register('national_id')}
+                    aria-invalid={!!errors.national_id}
                     className="input-field"
                     placeholder="أدخل الرقم القومي"
                     dir="ltr"
@@ -289,10 +296,10 @@ export function CustomerFormDialog({
             )}
 
             <div className="modal-actions flex justify-end gap-2.5 pt-3.5 border-t border-secondary-200">
-              <button type="button" onClick={onClose} className="btn btn-secondary">
+              <button type="button" onClick={closeWhenIdle} className="btn btn-secondary">
                 إلغاء
               </button>
-              <button type="submit" disabled={saving} className="btn btn-primary">
+              <button type="submit" disabled={saving} aria-busy={saving} className="btn btn-primary">
                 {saving ? 'جاري الحفظ…' : 'حفظ'}
               </button>
             </div>

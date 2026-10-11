@@ -111,3 +111,12 @@
   .load-notice button { margin-inline-start: auto; }
   .pagination-bar { position: relative; border-top: 1px solid var(--line); padding-top: 10px; }
 }
+
+@media screen {
+  .form-review, .form-advisory { padding: 1rem; border-radius: .85rem; border: 1px solid; line-height: 1.7; overflow-wrap: anywhere; }
+  .form-review { background: #fff1f2; color: #9f1239; border-color: #fda4af; }
+  .form-advisory { background: #fffbeb; color: #92400e; border-color: #fcd34d; font-size: .875rem; }
+  .dark .form-review { background: #3b1521; color: #fecdd3; border-color: #9f1239; }
+  .dark .form-advisory { background: #342710; color: #fde68a; border-color: #92400e; }
+  .form-review button:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; border-radius: .25rem; }
+}
