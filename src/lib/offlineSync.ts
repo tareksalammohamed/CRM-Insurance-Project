@@ -52,11 +52,12 @@ let currentUserId: string | null = null;
 // إرسالها (مثلاً لأن التطبيق اتقفل قبل ما يمسحها من الطابور المحلي بعد
 // نجاحها) بيتم تجاهلها هنا فوراً بدون أي تنفيذ تاني
 async function wasAlreadyProcessed(operationId: string): Promise<boolean> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('offline_operations')
     .select('operation_id')
     .eq('operation_id', operationId)
     .maybeSingle();
+  if (error) throw error;
   return !!data;
 }
 
@@ -94,24 +95,27 @@ type QueueItemOutcome = 'success' | 'resolved' | 'retry';
 //                حفاظاً على نفس ترتيب الإضافة (العملية التالية ممكن تعتمد
 //                على نجاح دي، زي وثيقة على عميل لسه معلّق إضافته).
 async function executeQueuedItem(item: OfflineQueueItem): Promise<QueueItemOutcome> {
-  if (await wasAlreadyProcessed(item.operationId)) {
-    await removeQueueItem(item.operationId);
-    return 'resolved';
-  }
-
   try {
+    const processed = await wasAlreadyProcessed(item.operationId);
+    if (item.userId !== currentUserId) return 'retry';
+    if (processed) {
+      await removeQueueItem(item.operationId);
+      return 'resolved';
+    }
     switch (item.type) {
       case 'pay_installment': {
         const { installment, userId, paymentDate } = item.payload as PayInstallmentPayload;
 
         // كشف تعارض: هل القسط ما زال قابلاً للسداد؟ (ممكن يكون اتسدد من
         // مستخدم تاني وهو الجهاز كان أوفلاين)
-        const { data: fresh } = await supabase
+        const { data: fresh, error: freshError } = await supabase
           .from('installments')
           .select('status')
           .eq('id', installment.id)
           .maybeSingle();
 
+        if (freshError) throw freshError;
+        if (item.userId !== currentUserId) return 'retry';
         if (!fresh || fresh.status === 'paid') {
           await removeQueueItem(item.operationId);
           notifyConflict('تعذر تنفيذ عملية السداد: تم سداد هذا القسط بواسطة مستخدم آخر بالفعل.');
@@ -192,30 +196,26 @@ async function executeQueuedItem(item: OfflineQueueItem): Promise<QueueItemOutco
 // ===================================
 export async function processOfflineQueue(): Promise<void> {
   if (syncing || !isOnline() || !currentUserId) return;
-
-  const allItems = await getQueueItems();
-  // الطابور مشترك على مستوى الجهاز — نصفّي هنا فقط عمليات المستخدم المسجل
-  // دخوله حالياً. عمليات أي مستخدم آخر تفضل فى الطابور كما هي (لا تُنفذ ولا
-  // تُحذف) لحد ما هو نفسه يسجل دخوله تانى على نفس الجهاز.
-  const items = allItems.filter((i) => i.userId === currentUserId);
-  if (items.length === 0) return;
-
   syncing = true;
-  notifySyncStarted();
+  const syncUserId = currentUserId;
   let succeededCount = 0;
   try {
+    const allItems = await getQueueItems();
+    if (syncUserId !== currentUserId) return;
+    const items = allItems.filter((item) => item.userId === syncUserId);
+    if (items.length === 0) return;
+    notifySyncStarted();
     for (const item of items.sort((a, b) => a.createdAt - b.createdAt)) {
-      if (!isOnline()) break;
+      if (!isOnline() || syncUserId !== currentUserId) break;
       const outcome = await executeQueuedItem(item);
       if (outcome === 'success') succeededCount += 1;
-      // فشل حقيقي (لسه محتاج إعادة محاولة) — نوقف الجولة دي هنا ومنكملش
-      // للعمليات اللي بعدها، حفاظاً على نفس ترتيب الإضافة. هتتحاول تاني
-      // (هي والباقي بعدها) فى أول محاولة مزامنة قادمة.
       if (outcome === 'retry') break;
     }
+  } catch (error) {
+    console.error('[offlineSync] Unable to read pending operations:', error);
   } finally {
     syncing = false;
-    if (succeededCount > 0) notifySynced();
+    if (succeededCount > 0 && syncUserId === currentUserId) notifySynced();
   }
 }
 

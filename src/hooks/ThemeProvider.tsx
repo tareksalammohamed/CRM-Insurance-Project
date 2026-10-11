@@ -3,8 +3,10 @@ import { STORAGE_KEY, ThemeContext, type Theme } from './themeContext';
 
 function getInitialTheme(): Theme {
   if (typeof window === 'undefined') return 'light';
-  const saved = window.localStorage.getItem(STORAGE_KEY);
-  if (saved === 'dark' || saved === 'light') return saved;
+  try {
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    if (saved === 'dark' || saved === 'light') return saved;
+  } catch { /* Restricted storage must not prevent the app from rendering. */ }
   return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
@@ -18,7 +20,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     applyTheme(theme);
-    window.localStorage.setItem(STORAGE_KEY, theme);
+    try { window.localStorage.setItem(STORAGE_KEY, theme); } catch { /* Theme still works in memory. */ }
   }, [theme]);
 
   const value = useMemo(() => ({

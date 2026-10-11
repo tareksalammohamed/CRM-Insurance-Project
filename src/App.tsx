@@ -23,6 +23,7 @@ import { HelpProvider } from './features/help/HelpContext';
 import { HelpPanel } from './features/help/HelpPanel';
 import { Tour } from './features/help/Tour';
 import { useFirstRunTour } from './features/help/useFirstRunTour';
+import { NotFound } from './components/NotFound';
 import { UpdateAvailablePrompt } from './components/UpdateAvailablePrompt';
 import { PushNotificationPrompt } from './components/PushNotificationPrompt';
 
@@ -86,7 +87,7 @@ function LoadingSpinner() {
 }
 
 function AppLayout() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, signOut, authError, refreshUser } = useAuth();
   const { sidebarCollapsed }   = useAppStore();
   const location = useLocation();
   const [lockState, setLockState] = useState<SubscriptionLockState | null>(null);
@@ -100,14 +101,18 @@ function AppLayout() {
   const userId = user?.id ?? null;
 
   useEffect(() => {
+    let active = true;
+    setLockState(null);
     if (!userId) {
       setCheckingLock(false);
       return;
     }
     setCheckingLock(true);
     fetchLockState()
-      .then(setLockState)
-      .finally(() => setCheckingLock(false));
+      .then((state) => { if (active) setLockState(state); })
+      .catch((error: unknown) => { console.error('Error checking subscription:', error); })
+      .finally(() => { if (active) setCheckingLock(false); });
+    return () => { active = false; };
   }, [userId]);
 
   useEffect(() => {
@@ -116,6 +121,7 @@ function AppLayout() {
     } else {
       stopOfflineSync();
     }
+    return stopOfflineSync;
   }, [userId]);
 
   if (loading || (user && checkingLock)) {
@@ -127,6 +133,18 @@ function AppLayout() {
     );
   }
 
+  if (!user && authError) return (
+    <div className="min-h-[100dvh] flex items-center justify-center bg-secondary-50 p-4">
+      <section className="card max-w-md space-y-4 text-center" role="alert">
+        <h1 className="type-h1">تعذر تحميل حسابك</h1>
+        <p className="text-sm text-secondary-500">{authError}</p>
+        <div className="flex flex-wrap justify-center gap-2">
+          <button type="button" className="btn-primary" onClick={() => void refreshUser()}>إعادة المحاولة</button>
+          <button type="button" className="btn-secondary" onClick={() => void signOut()}>تسجيل الخروج</button>
+        </div>
+      </section>
+    </div>
+  );
   if (!user) return <Login />;
 
   if (lockState?.is_locked) {
@@ -187,6 +205,7 @@ function AppLayout() {
                 <Route path="/price-calculator" element={<RequireRole check={canAccessOperationalPages}><PriceCalculator /></RequireRole>} />
                 <Route path="/daily-reports"    element={<RequireRole check={canAccessDailyReports}><DailyReports /></RequireRole>} />
                 <Route path="/help"             element={<HelpCenterPage />} />
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
           </ErrorBoundary>

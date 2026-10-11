@@ -1,102 +1,64 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Policy, User } from '../../../lib/supabase';
-import {
-  fetchPoliciesPage, computeDeletablePolicyIds, fetchPolicyStats, type PolicyStats,
-} from '../services/policiesService';
+import { fetchPoliciesPage, computeDeletablePolicyIds, fetchPolicyStats, type PolicyStats } from '../services/policiesService';
 import { useReconnectRefetch } from '../../../hooks/useReconnectRefetch';
+import { useRequestGuard } from '../../../hooks/useRequestGuard';
+import { friendlyError } from '../../../lib/errorMessages';
 
-// تحميل بيانات صفحة الوثائق: القائمة (بحث/فلاتر/صفحات)، الإحصائيات، والوثائق
-// القابلة للحذف — نفس المنطق المنقول بالضبط من index.tsx الأصلي.
-export function usePolicies(
-  user: User | null | undefined,
-  page: number,
-  searchQuery: string,
-  statusFilter: string,
-  typeFilter: string,
-  monthFilter: string,
-  branchId: string | null = null,
-) {
+export function usePolicies(user: User | null | undefined, page: number, searchQuery: string,
+  statusFilter: string, typeFilter: string, monthFilter: string, branchId: string | null = null) {
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [loading, setLoading] = useState(true);
-  // أول تحميل فقط (لسه مفيش أي بيانات) يستحق Skeleton كامل — أي تحديث
-  // لاحق (فلتر/صفحة/بحث) يحافظ على البيانات الحالية ظاهرة بدل الرعشة
-  const isInitialLoading = loading && policies.length === 0;
+  const [loadMessage, setLoadMessage] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
-
   const [stats, setStats] = useState<PolicyStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
-
   const [totalPages, setTotalPages] = useState(1);
   const [deletableIds, setDeletableIds] = useState<Set<string>>(new Set());
+  const listGuard = useRequestGuard();
+  const statsGuard = useRequestGuard();
+  const userId = user?.id;
 
-  useEffect(() => {
-    if (user) {
-      loadPolicies();
+  const loadPolicies = useCallback(async () => {
+    if (!userId) return;
+    const request = listGuard.start();
+    setLoading(true);
+    setDeletableIds(new Set());
+    try {
+      const result = await fetchPoliciesPage({ page, searchQuery, statusFilter, typeFilter, monthFilter, branchId });
+      if (!listGuard.isCurrent(request)) return;
+      setPolicies(result.policies);
+      setTotalPages(result.totalPages);
+      setTotalCount(result.totalCount);
+      setLoadMessage(result.loadMessage ?? null);
+      try {
+        const ids = await computeDeletablePolicyIds(result.policies);
+        if (listGuard.isCurrent(request)) setDeletableIds(ids);
+      } catch (error) {
+        console.error('Error checking deletable policies:', error);
+      }
+    } catch (error) {
+      if (listGuard.isCurrent(request)) setLoadMessage(friendlyError(error, 'تعذر تحميل الوثائق، أعد المحاولة'));
+    } finally {
+      if (listGuard.isCurrent(request)) setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, page, searchQuery, statusFilter, typeFilter, monthFilter, branchId]);
+  }, [userId, page, searchQuery, statusFilter, typeFilter, monthFilter, branchId, listGuard]);
 
-  useEffect(() => {
-    if (user) {
-      loadStats();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, branchId]);
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
+    if (!userId) return;
+    const request = statsGuard.start();
     setStatsLoading(true);
     try {
-      setStats(await fetchPolicyStats(branchId));
-    } catch (error) {
-      console.error('Error loading policy stats:', error);
-    } finally {
-      setStatsLoading(false);
-    }
-  };
+      const result = await fetchPolicyStats(branchId);
+      if (statsGuard.isCurrent(request)) setStats(result);
+    } catch (error) { console.error('Error loading policy stats:', error); }
+    finally { if (statsGuard.isCurrent(request)) setStatsLoading(false); }
+  }, [userId, branchId, statsGuard]);
 
-  const checkDeletablePolicies = async (policyList: Policy[]) => {
-    try {
-      setDeletableIds(await computeDeletablePolicyIds(policyList));
-    } catch (error) {
-      console.error('Error checking deletable policies:', error);
-      setDeletableIds(new Set());
-    }
-  };
-
-  const loadPolicies = async () => {
-    setLoading(true);
-    try {
-      const { policies: pagePolicies, totalPages: pages, totalCount: count } = await fetchPoliciesPage({
-        page, searchQuery, statusFilter, typeFilter, monthFilter, branchId
-      });
-
-      setPolicies(pagePolicies);
-      setTotalPages(pages);
-      setTotalCount(count);
-
-      await checkDeletablePolicies(pagePolicies || []);
-    } catch (error) {
-      console.error('Error loading policies:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useReconnectRefetch(
-    () => { if (user) loadPolicies(); },
-    () => { if (user) loadStats(); },
-  );
-
-  return {
-    policies,
-    loading,
-    isInitialLoading,
-    totalCount,
-    stats,
-    statsLoading,
-    totalPages,
-    deletableIds,
-    loadPolicies,
-    loadStats,
-  };
+  useEffect(() => { setPolicies([]); setTotalCount(0); setTotalPages(1); setStats(null); }, [userId, branchId]);
+  useEffect(() => { void loadPolicies(); return listGuard.invalidate; }, [loadPolicies, listGuard]);
+  useEffect(() => { void loadStats(); return statsGuard.invalidate; }, [loadStats, statsGuard]);
+  useReconnectRefetch(loadPolicies, loadStats);
+  return { policies, loading, isInitialLoading: loading && policies.length === 0, loadMessage,
+    totalCount, stats, statsLoading, totalPages, deletableIds, loadPolicies, loadStats };
 }

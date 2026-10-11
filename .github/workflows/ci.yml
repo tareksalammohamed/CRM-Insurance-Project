@@ -33,6 +33,12 @@ jobs:
       - name: Help coverage
         run: npm run check:help
 
+      - name: Lint
+        run: npm run lint
+
+      - name: Regression tests
+        run: npm test
+
       - name: TypeScript
         run: npm run typecheck
 

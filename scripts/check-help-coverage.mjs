@@ -24,7 +24,7 @@ const appTsx = readFileSync(join(root, 'src/App.tsx'), 'utf-8');
 
 // استخراج كل مسارات <Route path="...">
 const routeMatches = [...appTsx.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]);
-const ignoredRoutes = new Set(['/*', '/team-room', '/help']); // إعادة توجيه أو الصفحة نفسها، وليست بحاجة لمحتوى مساعدة عن نفسها
+const ignoredRoutes = new Set(['/*', '*', '/team-room', '/help']); // إعادة توجيه أو الصفحة نفسها، وليست بحاجة لمحتوى مساعدة عن نفسها
 
 // استخراج كل path: '...' الموجودة داخل ملفات content/*.ts المستوردة فى الـ registry
 const contentFiles = [
@@ -43,5 +43,5 @@ if (missing.length > 0) {
   console.error('   تسجيله فى src/features/help/content/index.ts (HELP_REGISTRY) قبل المتابعة.\n');
   process.exit(1);
 } else {
-  console.log(`✅ كل مسارات التطبيق (${routeMatches.length - ignoredRoutes.size}) موثّقة فى دليل المستخدم.`);
+  console.log(`✅ كل مسارات التطبيق (${routeMatches.filter((route) => !ignoredRoutes.has(route)).length}) موثّقة فى دليل المستخدم.`);
 }

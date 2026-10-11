@@ -1,121 +1,82 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { User } from '../../../lib/supabase';
-import {
-  fetchAgentsForCurrentUser, fetchCustomersPage, computeDeletableCustomerIds,
-  fetchCustomerStats, type CustomerStats,
-} from '../services/customersService';
+import { fetchAgentsForCurrentUser, fetchCustomersPage, computeDeletableCustomerIds,
+  fetchCustomerStats, type CustomerStats } from '../services/customersService';
 import type { CustomerWithRelations } from '../types';
 import { useReconnectRefetch } from '../../../hooks/useReconnectRefetch';
+import { useRequestGuard } from '../../../hooks/useRequestGuard';
+import { friendlyError } from '../../../lib/errorMessages';
 
-// تحميل بيانات صفحة العملاء: القائمة (بحث/فلاتر/صفحات)، الوكلاء، الإحصائيات،
-// والعملاء القابلين للحذف — نفس المنطق المنقول بالضبط من index.tsx الأصلي.
-export function useCustomers(
-  user: User | null | undefined,
-  page: number,
-  searchQuery: string,
-  statusFilter: string,
-  agentFilter: string,
-  monthFilter: string,
-  noPolicyOnly: boolean = false,
-  branchId: string | null = null,
-) {
+type AgentOption = { id: string; name: string; role: string };
+export function useCustomers(user: User | null | undefined, page: number, searchQuery: string,
+  statusFilter: string, agentFilter: string, monthFilter: string,
+  noPolicyOnly = false, branchId: string | null = null) {
   const [customers, setCustomers] = useState<CustomerWithRelations[]>([]);
-  const [agents, setAgents] = useState<any[]>([]);
+  const [agents, setAgents] = useState<AgentOption[]>([]);
   const [loading, setLoading] = useState(true);
-  // أول تحميل فقط (لسه مفيش أي بيانات) يستحق Skeleton كامل — أي تحديث
-  // لاحق (فلتر/صفحة/بحث) يحافظ على البيانات الحالية ظاهرة بدل الرعشة
-  const isInitialLoading = loading && customers.length === 0;
+  const [loadMessage, setLoadMessage] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
-
   const [stats, setStats] = useState<CustomerStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
-
   const [totalPages, setTotalPages] = useState(1);
-
   const [deletableIds, setDeletableIds] = useState<Set<string>>(new Set());
+  const listGuard = useRequestGuard();
+  const statsGuard = useRequestGuard();
+  const agentsGuard = useRequestGuard();
+  const userRef = useRef(user);
+  userRef.current = user;
+  const userId = user?.id;
+  const role = user?.role;
 
-  useEffect(() => {
-    if (user) {
-      loadCustomers();
-      loadAgents();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, page, searchQuery, statusFilter, agentFilter, monthFilter, noPolicyOnly, branchId]);
-
-  useEffect(() => {
-    if (user) {
-      loadStats();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, branchId]);
-
-  const loadAgents = async () => {
-    if (!user) return;
+  const loadCustomers = useCallback(async () => {
+    if (!userId) return;
+    const request = listGuard.start();
+    setLoading(true);
+    setDeletableIds(new Set());
     try {
-      setAgents(await fetchAgentsForCurrentUser(user, branchId));
+      const result = await fetchCustomersPage({ page, searchQuery, statusFilter, agentFilter, monthFilter,
+        noPolicyOnly, userId, branchId });
+      if (!listGuard.isCurrent(request)) return;
+      setCustomers(result.customers);
+      setTotalPages(result.totalPages);
+      setTotalCount(result.totalCount);
+      setLoadMessage(result.loadMessage ?? null);
+      try {
+        const ids = await computeDeletableCustomerIds(result.customers);
+        if (listGuard.isCurrent(request)) setDeletableIds(ids);
+      } catch (error) { console.error('Error checking deletable customers:', error); }
     } catch (error) {
-      console.error('Error loading agents:', error);
-    }
-  };
+      if (listGuard.isCurrent(request)) setLoadMessage(friendlyError(error, 'تعذر تحميل العملاء، أعد المحاولة'));
+    } finally { if (listGuard.isCurrent(request)) setLoading(false); }
+  }, [userId, page, searchQuery, statusFilter, agentFilter, monthFilter, noPolicyOnly, branchId, listGuard]);
 
-  const loadStats = async () => {
-    if (!user) return;
+  const loadAgents = useCallback(async () => {
+    const currentUser = userRef.current;
+    if (!currentUser || currentUser.id !== userId || currentUser.role !== role) return;
+    const request = agentsGuard.start();
+    try {
+      const result = await fetchAgentsForCurrentUser(currentUser, branchId);
+      if (agentsGuard.isCurrent(request)) setAgents(result);
+    } catch (error) { console.error('Error loading agents:', error); }
+  }, [userId, role, branchId, agentsGuard]);
+
+  const loadStats = useCallback(async () => {
+    if (!userId) return;
+    const request = statsGuard.start();
     setStatsLoading(true);
     try {
-      setStats(await fetchCustomerStats(user.id, branchId));
-    } catch (error) {
-      console.error('Error loading customer stats:', error);
-    } finally {
-      setStatsLoading(false);
-    }
-  };
+      const result = await fetchCustomerStats(userId, branchId);
+      if (statsGuard.isCurrent(request)) setStats(result);
+    } catch (error) { console.error('Error loading customer stats:', error); }
+    finally { if (statsGuard.isCurrent(request)) setStatsLoading(false); }
+  }, [userId, branchId, statsGuard]);
 
-  const checkDeletableCustomers = async (customerList: CustomerWithRelations[]) => {
-    try {
-      setDeletableIds(await computeDeletableCustomerIds(customerList));
-    } catch (error) {
-      console.error('Error checking deletable customers:', error);
-      setDeletableIds(new Set());
-    }
-  };
-
-  const loadCustomers = async () => {
-    setLoading(true);
-    try {
-      const { customers: pageCustomers, totalPages: pages, totalCount: count } = await fetchCustomersPage({
-        page, searchQuery, statusFilter, agentFilter, monthFilter, noPolicyOnly,
-        userId: user?.id, branchId,
-      });
-
-      setCustomers(pageCustomers);
-      setTotalPages(pages);
-      setTotalCount(count);
-
-      await checkDeletableCustomers(pageCustomers || []);
-    } catch (error) {
-      console.error('Error loading customers:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useReconnectRefetch(
-    () => { if (user) loadCustomers(); },
-    () => { if (user) loadAgents(); },
-    () => { if (user) loadStats(); },
-  );
-
-  return {
-    customers,
-    agents,
-    loading,
-    isInitialLoading,
-    totalCount,
-    stats,
-    statsLoading,
-    totalPages,
-    deletableIds,
-    loadCustomers,
-    loadStats,
-  };
+  useEffect(() => { setCustomers([]); setTotalCount(0); setTotalPages(1); setStats(null); }, [userId, branchId]);
+  useEffect(() => { void loadCustomers(); return listGuard.invalidate; }, [loadCustomers, listGuard]);
+  // Agent options depend on identity/branch, never page/search/filter changes.
+  useEffect(() => { setAgents([]); void loadAgents(); return agentsGuard.invalidate; }, [loadAgents, agentsGuard]);
+  useEffect(() => { void loadStats(); return statsGuard.invalidate; }, [loadStats, statsGuard]);
+  useReconnectRefetch(loadCustomers, loadAgents, loadStats);
+  return { customers, agents, loading, isInitialLoading: loading && customers.length === 0, loadMessage,
+    totalCount, stats, statsLoading, totalPages, deletableIds, loadCustomers, loadStats };
 }

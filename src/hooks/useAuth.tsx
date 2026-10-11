@@ -2,16 +2,19 @@ import { createContext, useContext, useEffect, useState, useRef, ReactNode } fro
 import { Session, User as AuthUser } from '@supabase/supabase-js';
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 import { supabase, User, WEBAUTHN_FUNCTIONS_URL } from '../lib/supabase';
-import { clearAllDataCache } from '../lib/dataCache';
+import { clearAllDataCache, setDataCacheIdentity } from '../lib/dataCache';
 import { clearAllQueueItems } from '../lib/offlineQueue';
 import { dalRead } from '../lib/dataAccessLayer';
 import { getErrorName } from '../lib/errorMessages';
+import { queryClient } from '../lib/queryClient';
+import { stopOfflineSync } from '../lib/offlineSync';
 
 interface AuthContextType {
   session: Session | null;
   user: User | null;
   authUser: AuthUser | null;
   loading: boolean;
+  authError: string | null;
   signIn: (emailOrPhone: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -26,11 +29,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // مرجع حي لهوية المستخدم الحالي — بيتحدّث فوراً (بعكس الـ state) عشان
   // onAuthStateChange (اللي بيتسجل مرة واحدة بس عند mount) يقدر يعرف هل
   // الحدث ده لنفس المستخدم أو لمستخدم مختلف فعلاً
   const currentUserIdRef = useRef<string | null>(null);
+  const authRevision = useRef(0);
 
   // ملحوظة: هذه القراءة تمر من DAL عمداً (بعكس ما كانت عليه قبل الإصلاح) —
   // بدونها، أي إعادة فتح للتطبيق أثناء انقطاع الإنترنت كانت ترجّع "null"
@@ -56,90 +61,97 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshUser = async () => {
-    if (session?.user) {
-      const profile = await fetchUserProfile(session.user.id);
+    const userId = currentUserIdRef.current;
+    const revision = authRevision.current;
+    if (!userId) return;
+    if (!user) setLoading(true);
+    try {
+      const profile = await fetchUserProfile(userId);
+      if (revision !== authRevision.current || currentUserIdRef.current !== userId) return;
       setUser(profile);
-    }
+      setAuthError(profile ? null : 'تعذر تحميل بيانات حسابك. تحقق من الاتصال ثم أعد المحاولة.');
+    } catch {
+      if (revision === authRevision.current) setAuthError('تعذر تحميل بيانات حسابك. أعد المحاولة.');
+    } finally { if (revision === authRevision.current) setLoading(false); }
   };
 
   useEffect(() => {
-    // ملحوظة: تغليف كل المنطق هنا بـ try/catch/finally مهم جداً — لو فشلت
-    // أي خطوة هنا (مثلاً بسبب انقطاع الإنترنت أثناء فتح التطبيق) لازم
-    // "loading" ترجع false فى كل الأحوال، وإلا التطبيق يفضل عالق على
-    // شاشة التحميل الأولى للأبد (نفس أثر الشاشة البيضاء عملياً)
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
-        setAuthUser(session?.user ?? null);
+    let active = true;
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+    let lastLoginUpdatedFor: string | null = null;
 
-        if (session?.user) {
-          const profile = await fetchUserProfile(session.user.id);
-          setUser(profile);
-          currentUserIdRef.current = session.user.id;
-
-          if (profile) {
-            // تحديث "آخر دخول" عملية ثانوية — فشلها (مثلاً بسبب الشبكة)
-            // ما ينفعش يمنع تسجيل الدخول نفسه
-            void (async () => {
-              try {
-                const { error } = await supabase
-                  .from('users')
-                  .update({ last_login: new Date().toISOString() })
-                  .eq('id', session.user.id);
-                if (error) throw error;
-              } catch (err) {
-                console.error('Error updating last_login:', err);
-              }
-            })();
-          }
-        }
-      } catch (err) {
-        console.error('Error bootstrapping auth session:', err);
-      } finally {
-        setLoading(false);
+    const adoptSession = (next: Session | null) => {
+      const nextId = next?.user.id ?? null;
+      if (nextId !== currentUserIdRef.current) {
+        stopOfflineSync();
+        queryClient.clear();
+        setUser(null);
+        setLoading(!!nextId);
       }
-    })();
+      setAuthError(null);
+      currentUserIdRef.current = nextId;
+      setDataCacheIdentity(nextId);
+      setSession(next);
+      setAuthUser(next?.user ?? null);
+    };
+    const loadProfile = async (next: Session | null, revision: number) => {
+      try {
+        if (!next?.user) return;
+        const profile = await fetchUserProfile(next.user.id);
+        if (!active || revision !== authRevision.current) return;
+        setUser(profile);
+        setAuthError(profile ? null : 'تعذر تحميل بيانات حسابك. تحقق من الاتصال ثم أعد المحاولة.');
+        if (profile && lastLoginUpdatedFor !== next.user.id) {
+          lastLoginUpdatedFor = next.user.id;
+          // Secondary write never blocks entering the application.
+          void supabase.from('users').update({ last_login: new Date().toISOString() })
+            .eq('id', next.user.id).then(({ error }) => {
+              if (error) console.error('Error updating last_login:', error);
+            });
+        }
+      } catch (error) {
+        console.error('Error loading auth profile:', error);
+        if (active && revision === authRevision.current) setAuthError('تعذر تحميل بيانات حسابك. أعد المحاولة.');
+      }
+      finally { if (active && revision === authRevision.current) setLoading(false); }
+    };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Supabase holds an internal auth lock while notifying listeners. Do not
-      // call supabase.from()/other auth APIs synchronously from this callback:
-      // doing so can deadlock SIGNED_IN and leave the login form spinning
-      // forever, especially on a first login for a newly-created user.
-      setTimeout(() => {
-        void (async () => {
-          try {
-            setSession(session);
-            setAuthUser(session?.user ?? null);
-
-            if (session?.user) {
-              // Supabase بتطلق TOKEN_REFRESHED تلقائياً بشكل دوري (كل ما التوكن
-              // يوشك ينتهي) لنفس المستخدم المسجل دخوله فعلاً بدون أي تغيير حقيقي
-              // فى بياناته. إعادة جلب البروفايل وعمل setUser بكائن جديد فى كل مرة
-              // كانت بتغيّر reference "user" فتشغّل من جديد كل useEffect فى كل
-              // الصفحات المعتمدة عليه فى الـ deps (تحميل/رعشة متكررة بدون سبب).
-              // هنا نحدّث الجلسة (مهم لطلبات الشبكة القادمة) ونتجاهل فقط إعادة
-              // تعيين "user" لو نفس المستخدم ونفس الحدث الدوري ده تحديداً.
-              if (event === 'TOKEN_REFRESHED' && session.user.id === currentUserIdRef.current) {
-                return;
-              }
-              const profile = await fetchUserProfile(session.user.id);
-              setUser(profile);
-              currentUserIdRef.current = session.user.id;
-            } else {
-              setUser(null);
-              currentUserIdRef.current = null;
-            }
-          } catch (err) {
-            console.error('Error handling auth state change:', err);
-          } finally {
-            setLoading(false);
-          }
-        })();
-      }, 0);
+    // INITIAL_SESSION normally wins. The getSession fallback is discarded if
+    // any newer auth event arrived, so sign-out cannot resurrect an old profile.
+    const bootstrapRevision = authRevision.current;
+    void supabase.auth.getSession().then(({ data: { session: initial } }) => {
+      if (!active || bootstrapRevision !== authRevision.current) return;
+      const revision = ++authRevision.current;
+      adoptSession(initial);
+      void loadProfile(initial, revision);
+    }).catch((error: unknown) => {
+      if (active && bootstrapRevision === authRevision.current) setLoading(false);
+      console.error('Error bootstrapping auth session:', error);
     });
 
-    return () => subscription.unsubscribe();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, next) => {
+      if (!active) return;
+      const sameIdentity = (next?.user.id ?? null) === currentUserIdRef.current;
+      if (event === 'TOKEN_REFRESHED' && sameIdentity) {
+        setSession(next);
+        setAuthUser(next?.user ?? null);
+        return;
+      }
+      const revision = ++authRevision.current;
+      adoptSession(next);
+      // Keep database calls outside Supabase's internal auth lock.
+      const timer = setTimeout(() => {
+        timers.delete(timer);
+        if (active && revision === authRevision.current) void loadProfile(next, revision);
+      }, 0);
+      timers.add(timer);
+    });
+    return () => {
+      active = false;
+      authRevision.current += 1;
+      timers.forEach(clearTimeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (emailOrPhone: string, password: string) => {
@@ -290,15 +302,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    // Invalidate pending profile reads before awaiting network sign-out.
+    authRevision.current += 1;
+    stopOfflineSync();
+    setDataCacheIdentity(null);
+    queryClient.clear();
+    currentUserIdRef.current = null;
     setSession(null);
     setAuthUser(null);
     setUser(null);
-    currentUserIdRef.current = null;
-    // نفرّغ كاش القراءات المحلي حتى لا يرى مستخدم تالي على نفس الجهاز
-    // بيانات محفوظة من حساب سابق أثناء عرض حالة Offline
-    void clearAllDataCache();
-    void clearAllQueueItems();
+    setLoading(false);
+    setAuthError(null);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) console.error('Error signing out:', error);
+    } finally {
+      await Promise.all([clearAllDataCache(), clearAllQueueItems()]);
+    }
   };
 
   return (
@@ -308,6 +328,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         authUser,
         loading,
+        authError,
         signIn,
         signOut,
         refreshUser,

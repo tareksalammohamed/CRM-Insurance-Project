@@ -1,6 +1,7 @@
 import { isOnline } from './networkManager';
-import { getCachedData, setCachedData } from './dataCache';
+import { getCachedData, setCachedData, getDataCacheIdentity } from './dataCache';
 import { emitOfflineEvent } from './offlineEvents';
+import { friendlyError } from './errorMessages';
 
 // ===================================
 // Data Access Layer (DAL) — نقطة مرور واحدة إجبارية لأي عملية "قراءة"
@@ -111,13 +112,17 @@ function isNetworkLikeError(err: unknown): boolean {
 // هيغيّر النتيجة وبس هيأخر ظهور الخطأ الحقيقي للمستخدم بلا داعٍ.
 async function fetchWithAutoRetry<T>(fetcher: () => Promise<T>, timeoutMs: number): Promise<T> {
   let lastErr: unknown;
+  const deadline = Date.now() + timeoutMs;
   for (let attempt = 0; attempt <= MAX_AUTO_RETRIES; attempt++) {
     try {
-      return await withTimeout(fetcher(), timeoutMs);
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) throw new Error('DAL_TIMEOUT');
+      return await withTimeout(fetcher(), remaining);
     } catch (err) {
       lastErr = err;
-      if (!isNetworkLikeError(err) || attempt === MAX_AUTO_RETRIES) break;
-      await sleep(RETRY_BASE_DELAY_MS * (attempt + 1));
+      // A timed-out request is still in flight; do not launch more copies.
+      if ((err as Error)?.message === 'DAL_TIMEOUT' || !isOnline() || !isNetworkLikeError(err) || attempt === MAX_AUTO_RETRIES) break;
+      await sleep(Math.min(RETRY_BASE_DELAY_MS * (attempt + 1), Math.max(0, deadline - Date.now())));
     }
   }
   throw lastErr;
@@ -146,10 +151,15 @@ export async function dalRead<T>(
   options: DalOptions<T>,
 ): Promise<DalResult<T>> {
   const { emptyValue, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
+  const identity = getDataCacheIdentity();
+  const cacheKey = `account:${identity.userId ?? 'anonymous'}:${key}`;
+  const obsolete = () => identity !== getDataCacheIdentity();
+  const discarded: DalResult<T> = { data: emptyValue, status: 'error', isStale: false, cachedAt: null };
 
   // (1) مفيش إنترنت من الأساس — منروحش نستنى أي Timeout، نرجع الكاش فوراً
   if (!isOnline()) {
-    const cached = await getCachedData<T>(key);
+    const cached = await getCachedData<T>(cacheKey);
+    if (obsolete()) return discarded;
     if (cached) {
       notifyOffline(`لا يوجد اتصال بالإنترنت — تُعرض بيانات محفوظة من ${minutesAgoLabel(cached.updatedAt)}.`);
       return { data: cached.value, status: 'offline-cache', isStale: true, cachedAt: cached.updatedAt };
@@ -162,12 +172,14 @@ export async function dalRead<T>(
   try {
     const data = await fetchWithAutoRetry(fetcher, timeoutMs);
     // نحفظ الكاش بدون انتظار الكتابة (لا تعطّل استجابة الصفحة)
-    void setCachedData(key, data);
+    if (obsolete()) return discarded;
+    void setCachedData(cacheKey, data);
     return { data, status: 'online', isStale: false, cachedAt: Date.now() };
   } catch (err) {
     console.error(`[DAL:${key}]`, err);
 
-    const cached = await getCachedData<T>(key);
+    const cached = await getCachedData<T>(cacheKey);
+    if (obsolete()) return discarded;
 
     if (isNetworkLikeError(err)) {
       if (cached) {
@@ -179,7 +191,9 @@ export async function dalRead<T>(
     }
 
     // خطأ حقيقي (صلاحيات/منطق سيرفر) — نحاول الكاش كحل أخير بدل شاشة بيضاء
-    const errorMessage = (err as Error)?.message || 'حدث خطأ غير متوقع أثناء تحميل البيانات';
+    const errorMessage = friendlyError(err, 'تعذر تحميل البيانات، يرجى المحاولة مرة أخرى');
+    notifyOffline(cached ? 'تعذر تحديث البيانات؛ تُعرض نسخة محفوظة.' : errorMessage);
+    if (obsolete()) return discarded;
     if (cached) {
       return { data: cached.value, status: 'error-cache', isStale: true, cachedAt: cached.updatedAt, errorMessage };
     }
@@ -190,4 +204,16 @@ export async function dalRead<T>(
 /** true لو الحالة تعتبر "معطّلة" (محتاجة تنبيه/بانر فى الواجهة) */
 export function isDegradedStatus(status: DalStatus): boolean {
   return status !== 'online';
+}
+
+/** A persistent message prevents failed reads from looking like empty results. */
+export function readStatusMessage(result: Pick<DalResult<unknown>, 'status' | 'cachedAt'>): string | null {
+  if (result.status === 'online') return null;
+  if (result.status === 'offline-cache' || result.status === 'error-cache') {
+    return 'تعذر تحديث البيانات. المعروض نسخة محفوظة' +
+      (result.cachedAt ? ` من ${minutesAgoLabel(result.cachedAt)}` : '') + '؛ أعد المحاولة للحصول على أحدث بيانات.';
+  }
+  return result.status === 'offline-empty'
+    ? 'تعذر الاتصال ولا توجد بيانات محفوظة. أعد المحاولة عند عودة الإنترنت.'
+    : 'تعذر تحميل البيانات. أعد المحاولة؛ هذه ليست نتيجة بحث فارغة.';
 }

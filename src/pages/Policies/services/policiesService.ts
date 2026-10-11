@@ -2,7 +2,7 @@ import { supabase, type Policy, type Customer } from '../../../lib/supabase';
 import { format } from 'date-fns';
 import type { PolicyFormData } from '../types';
 import { withOfflineQueue } from '../../../lib/offlineQueue';
-import { dalRead } from '../../../lib/dataAccessLayer';
+import { dalRead, readStatusMessage } from '../../../lib/dataAccessLayer';
 import { groupPoliciesForDisplay } from '../business/policyGrouping';
 
 const PAGE_SIZE = 10;
@@ -23,6 +23,7 @@ export interface FetchPoliciesParams {
 }
 
 interface PoliciesPageResult {
+  loadMessage?: string | null;
   policies: Policy[];
   totalPages: number;
   totalCount: number;
@@ -108,7 +109,7 @@ export async function fetchPoliciesPage({
     },
     { emptyValue: EMPTY_POLICIES_PAGE },
   );
-  return result.data;
+  return { ...result.data, loadMessage: readStatusMessage(result) };
 }
 
 export interface PolicyStats {

@@ -1,3 +1,4 @@
+import { LoadNotice } from '../../components/feedback/LoadNotice';
 import { useCallback, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useBranchContext } from '../../lib/branchContext';
@@ -33,7 +34,7 @@ export function Policies() {
 
   const {
     policies, loading, isInitialLoading, totalCount,
-    stats, statsLoading, totalPages, deletableIds,
+    stats, statsLoading, totalPages, deletableIds, loadMessage,
     loadPolicies, loadStats,
   } = usePolicies(user, page, searchQuery, statusFilter, typeFilter, monthFilter, currentBranchId);
 
@@ -127,6 +128,8 @@ export function Policies() {
         />
         </div>
       </section>
+
+      <LoadNotice message={loadMessage} loading={loading} onRetry={() => void loadPolicies()} />
 
       {/* ===== قائمة الوثائق ===== */}
       <PoliciesList

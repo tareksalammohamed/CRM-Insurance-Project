@@ -4,7 +4,7 @@ import type { QuickFilter, SubType, InstallmentWithRelations, OwnerFilter } from
 import {
   fetchInstallmentsByPolicyId, payInstallment, cancelInstallmentPayment,
 } from '../../../features/installments/installmentsService';
-import { dalRead } from '../../../lib/dataAccessLayer';
+import { dalRead, readStatusMessage } from '../../../lib/dataAccessLayer';
 import { fetchUserSubtreeIdsBranchAware } from '../../../lib/branchHierarchy';
 import { classifyYear2Status } from '../year2/year2CollectionService';
 
@@ -65,6 +65,7 @@ export async function fetchTeamForCurrentUser(user: User, branchId: string | nul
 }
 
 export interface FetchInstallmentsResult {
+  loadMessage?: string | null;
   installments: InstallmentWithRelations[];
   totalCount: number;
   totalPages: number;
@@ -93,7 +94,7 @@ export async function fetchInstallments({ quickFilter, subType, ownerFilter, pag
     },
     { emptyValue: EMPTY_INSTALLMENTS_RESULT },
   );
-  return result.data;
+  return { ...result.data, loadMessage: readStatusMessage(result) };
 }
 
 async function fetchInstallmentsOnline({ quickFilter, subType, ownerFilter, page, searchQuery, branchId = null, monthStart: monthStartParam = null }: FetchInstallmentsParams): Promise<FetchInstallmentsResult> {
