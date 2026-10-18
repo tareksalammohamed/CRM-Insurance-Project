@@ -5,14 +5,14 @@ import samarElhawarySignature from '../assets/samar-elhawary-signature.png';
 
 // ── الشرط: مذكرة "صرف فرق التنسيب" التلقائية ──────────────────────────
 // المراقب يستحق مذكرة تلقائية لو (وبس لو) كان عنده 3 رؤساء مجموعات بالظبط
-// وحقق 151% أو أكتر من هدفه الشهري. الشرطين ثابتان بقرار صريح من الإدارة.
+// وإجمالي تحقيقه أكبر من 180,000 جنيه، مع الإبقاء على شرط وجود هدف شهري موجب.
 export const MEMO_MIN_GROUP_LEADERS = 3;
-export const MEMO_MIN_ACHIEVEMENT_RATE = 151;
+export const MEMO_MIN_ACHIEVEMENT_AMOUNT = 180_000;
 
 export function qualifiesForRecommendationMemo(sv: SupervisorAgg): boolean {
   return sv.directGroupLeaderCount === MEMO_MIN_GROUP_LEADERS
     && sv.target > 0
-    && sv.achievementRate >= MEMO_MIN_ACHIEVEMENT_RATE;
+    && sv.total > MEMO_MIN_ACHIEVEMENT_AMOUNT;
 }
 
 // نفس ROLE_LABELS المستخدمة فى باقي التقرير، لكن بصيغة نكرة (بدون "ال")
