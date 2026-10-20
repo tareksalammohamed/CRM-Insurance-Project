@@ -1,6 +1,6 @@
 import { supabase } from '../../../lib/supabase';
 import { format, startOfMonth, subMonths } from 'date-fns';
-import { dalRead } from '../../../lib/dataAccessLayer';
+import { dalRead, readStatusMessage } from '../../../lib/dataAccessLayer';
 
 export interface RawYear1Payment {
   id: string;
@@ -48,58 +48,53 @@ export async function fetchCommissionSourceData(
   ownerId: string,
   selectedMonthDate: Date,
   branchId: string | null = null,
-): Promise<{ year1Payments: RawYear1Payment[]; year2Payments: RawYear2Payment[] }> {
+): Promise<{ year1Payments: RawYear1Payment[]; year2Payments: RawYear2Payment[]; loadMessage?: string | null }> {
   const rangeStartMonth = format(startOfMonth(subMonths(selectedMonthDate, 1)), 'yyyy-MM-dd');
   const rangeEndMonth = format(startOfMonth(selectedMonthDate), 'yyyy-MM-dd');
 
   const result = await dalRead(
     `commissions:source:${ownerId}:${rangeStartMonth}:${rangeEndMonth}:${branchId ?? 'none'}`,
     async () => {
-      const [year1Res, year2Res] = await Promise.all([
-        supabase
-          .from('payments')
-          .select(`
-            id, amount, paid_at,
-            installment:installment_id(
-              policy:policy_id(
-                id, policy_number, payment_method, sum_assured, owner_id, branch_id,
-                customer:customer_id(name)
-              )
-            )
-          `)
-          .eq('is_cancelled', false)
-          .gte('payment_month', rangeStartMonth)
-          .lte('payment_month', rangeEndMonth),
-        supabase
-          .from('year2_payments')
-          .select(`
-            id, amount, payment_date,
-            policy:policy_id(
+      // Filter ownership on the server and page through all matched payments.
+      // This avoids downloading the whole branch and silently hitting the API row cap.
+      const readYear1 = async () => {
+        const rows: RawYear1Payment[] = [];
+        for (let offset = 0; ; offset += 500) {
+          let query = supabase.from('payments').select(`id, amount, paid_at,
+            installment:installment_id!inner(policy:policy_id!inner(
               id, policy_number, payment_method, sum_assured, owner_id, branch_id,
-              customer:customer_id(name)
-            )
-          `)
-          .eq('is_cancelled', false)
-          .gte('payment_month', rangeStartMonth)
-          .lte('payment_month', rangeEndMonth),
-      ]);
-
-      if (year1Res.error) throw year1Res.error;
-      if (year2Res.error) throw year2Res.error;
-
-      const year1Payments = ((year1Res.data || []) as unknown as RawYear1Payment[]).filter(
-        (p) => p.installment?.policy?.owner_id === ownerId
-          && (!branchId || p.installment?.policy?.branch_id === branchId)
-      );
-
-      const year2Payments = ((year2Res.data || []) as unknown as RawYear2Payment[]).filter(
-        (p) => p.policy?.owner_id === ownerId
-          && (!branchId || p.policy?.branch_id === branchId)
-      );
+              customer:customer_id(name)))`)
+            .eq('is_cancelled', false).eq('installment.policy.owner_id', ownerId)
+            .gte('payment_month', rangeStartMonth).lte('payment_month', rangeEndMonth)
+            .order('id').range(offset, offset + 499);
+          if (branchId) query = query.eq('installment.policy.branch_id', branchId);
+          const { data, error } = await query;
+          if (error) throw error;
+          rows.push(...((data || []) as unknown as RawYear1Payment[]));
+          if (!data || data.length < 500) return rows;
+        }
+      };
+      const readYear2 = async () => {
+        const rows: RawYear2Payment[] = [];
+        for (let offset = 0; ; offset += 500) {
+          let query = supabase.from('year2_payments').select(`id, amount, payment_date,
+            policy:policy_id!inner(id, policy_number, payment_method, sum_assured, owner_id, branch_id,
+              customer:customer_id(name))`)
+            .eq('is_cancelled', false).eq('policy.owner_id', ownerId)
+            .gte('payment_month', rangeStartMonth).lte('payment_month', rangeEndMonth)
+            .order('id').range(offset, offset + 499);
+          if (branchId) query = query.eq('policy.branch_id', branchId);
+          const { data, error } = await query;
+          if (error) throw error;
+          rows.push(...((data || []) as unknown as RawYear2Payment[]));
+          if (!data || data.length < 500) return rows;
+        }
+      };
+      const [year1Payments, year2Payments] = await Promise.all([readYear1(), readYear2()]);
 
       return { year1Payments, year2Payments };
     },
     { emptyValue: EMPTY_COMMISSION_SOURCE },
   );
-  return result.data;
+  return { ...result.data, loadMessage: readStatusMessage(result) };
 }

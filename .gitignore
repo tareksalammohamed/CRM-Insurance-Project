@@ -6,3 +6,4 @@ dist/
 .vite/
 .DS_Store
 *.tsbuildinfo
+supabase/.temp/

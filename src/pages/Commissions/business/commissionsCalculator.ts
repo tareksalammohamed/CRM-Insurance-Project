@@ -1,3 +1,4 @@
+import { cairoDate, percentToRate, rateForDate, type CommissionRate } from '../../../features/commissionSettings/rates';
 import { format } from 'date-fns';
 import type { RawYear1Payment, RawYear2Payment } from '../services/commissionsService';
 import type { CommissionRow, CommissionsSummary } from '../types';
@@ -10,14 +11,6 @@ const INSTALLMENTS_PER_METHOD: Record<string, number> = {
   semi_annual: 2,
   annual: 1,
 };
-
-// عمولة السنة الأولى = 2.2% من مبلغ التأمين، موزعة على عدد الأقساط
-const YEAR1_RATE = 0.022;
-// عمولة السنتين الثانية والثالثة = 0.0005 من مبلغ التأمين، موزعة
-// على عدد الأقساط بنفس طريقة السداد —
-// لو السداد سنوي فالعمولة كاملة مرة واحدة، ولو غير سنوي (شهري/ربع سنوي/
-// نصف سنوي) توزّع بالتساوي على عدد الأقساط زي عمولة السنة الأولى بالظبط
-const RENEWAL_RATE = 0.0005;
 
 // قاعدة صرف العمولة:
 // - سداد من يوم 1 إلى يوم 15 -> يُصرف يوم 27 من نفس الشهر.
@@ -51,7 +44,8 @@ export interface CommissionComputeResult {
 export function computeCommissionRows(
   year1Payments: RawYear1Payment[],
   year2Payments: RawYear2Payment[],
-  targetMonth: string // 'yyyy-MM'
+  targetMonth: string, // 'yyyy-MM'
+  rates: readonly CommissionRate[] = []
 ): CommissionComputeResult {
   const rows: CommissionRow[] = [];
   let missingSumAssuredCount = 0;
@@ -74,7 +68,7 @@ export function computeCommissionRows(
       continue;
     }
 
-    const commissionAmount = (Number(policy.sum_assured) * YEAR1_RATE) / installmentsCount;
+    const commissionAmount = (Number(policy.sum_assured) * percentToRate(rateForDate(cairoDate(new Date(payment.paid_at)), rates).year1_percent)) / installmentsCount;
 
     rows.push({
       id: `y1-${payment.id}`,
@@ -104,7 +98,7 @@ export function computeCommissionRows(
       continue;
     }
 
-    const commissionAmount = (Number(policy.sum_assured) * RENEWAL_RATE) / installmentsCount;
+    const commissionAmount = (Number(policy.sum_assured) * percentToRate(rateForDate(payment.payment_date, rates).renewal_percent)) / installmentsCount;
 
     rows.push({
       id: `y2-${payment.id}`,

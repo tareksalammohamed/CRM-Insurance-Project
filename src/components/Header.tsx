@@ -1,3 +1,4 @@
+import { useRequestGuard } from '../hooks/useRequestGuard';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { BellRing, Search, X, CircleUserRound, Settings2, LogOut, Menu, WalletCards, HelpCircle, Loader2, Moon, Sun } from 'lucide-react';
@@ -18,6 +19,7 @@ import { subscribeToPush } from '../lib/pushNotifications';
 import { useTheme } from '../hooks/useTheme';
 
 export function Header() {
+  const notificationsGuard = useRequestGuard();
   const { user, signOut }  = useAuth();
   const notify = useNotify();
   const navigate           = useNavigate();
@@ -81,6 +83,7 @@ export function Header() {
   // فمرجعها ثابت طول ما المستخدم ثابت — الاشتراك فى القناة ما بيتعادش بناؤه.
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
+    const request = notificationsGuard.start();
     const result = await dalRead(
       `header:notifications:${user.id}`,
       async () => {
@@ -95,11 +98,17 @@ export function Header() {
     );
     // نتجاهل استبدال الحالة الحالية بقائمة فاضية أوفلاين لو فيه بيانات ظاهرة
     // بالفعل على الشاشة (لا داعي لإخفاء إشعارات كانت ظاهرة قبل انقطاع الاتصال)
+    if (!notificationsGuard.isCurrent(request)) return;
     if (result.data.length > 0 || result.status === 'online') {
       setNotifications(result.data);
       setUnreadCount(result.data.filter((n) => !n.is_read).length);
     }
-  }, [user]);
+  }, [user, notificationsGuard]);
+
+  useEffect(() => {
+    setNotifications([]); setUnreadCount(0);
+    return () => notificationsGuard.invalidate();
+  }, [user?.id, notificationsGuard]);
 
   // اتنقل تحت تعريف fetchNotifications عشان يقدر يعلنها كـdependency صحيحة
   // (مرجعها مستقر بفضل useCallback فوق، فالقناة ما بتتبنى من جديد بلا داعٍ).

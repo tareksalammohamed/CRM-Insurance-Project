@@ -1,9 +1,12 @@
+import { CommissionSettings } from '../features/commissionSettings/CommissionSettings';
+import { DisplayPreferences } from '../components/DisplayPreferences';
+import { queryClient } from '../lib/queryClient';
+import { LoadNotice } from '../components/feedback/LoadNotice';
 import { friendlyError } from '../lib/errorMessages';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase, Settings as SettingsType } from '../lib/supabase';
 import { canViewSettings } from '../lib/supabase';
-import { runDatabaseBackup } from './Settings/backupExport';
 import {
   Shield,
   Building2,
@@ -22,7 +25,7 @@ import { z } from 'zod';
 const settingsSchema = z.object({
   company_name: z.string().min(1, 'اسم الشركة مطلوب'),
   company_logo_url: z.string().url('الرابط غير صحيح').optional().or(z.literal('')),
-  notification_days_before: z.number().min(1).max(30)
+  notification_days_before: z.number().int('أدخل عدد أيام صحيحًا').min(1, 'الحد الأدنى يوم واحد').max(30, 'الحد الأقصى 30 يومًا')
 });
 
 type SettingsFormData = z.infer<typeof settingsSchema>;
@@ -31,6 +34,7 @@ export function Settings() {
   const { user } = useAuth();
   const [settings, setSettings] = useState<SettingsType | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [backingUp, setBackingUp] = useState(false);
@@ -52,12 +56,15 @@ export function Settings() {
   // فالـeffect تحته بيفضل بيتنفذ مرة واحدة عند توفر الصلاحية — نفس السلوك.
   const loadSettings = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('settings')
         .select('*')
         .maybeSingle();
 
+      if (error) throw error;
+      if (!data) throw new Error('Settings missing');
       if (data) {
         setSettings(data as SettingsType);
         reset({
@@ -68,6 +75,7 @@ export function Settings() {
       }
     } catch (error) {
       console.error('Error loading settings:', error);
+      setLoadError('تعذّر تحميل الإعدادات. أعد المحاولة قبل إجراء أي تعديل.');
     } finally {
       setLoading(false);
     }
@@ -93,7 +101,7 @@ export function Settings() {
           notification_days_before: data.notification_days_before,
           updated_at: new Date().toISOString()
         })
-        .eq('id', settings.id);
+        .eq('id', settings.id).select('id').single();
 
       if (error) throw error;
 
@@ -102,6 +110,7 @@ export function Settings() {
         p_entity_type: 'settings'
       });
 
+      await queryClient.invalidateQueries({ queryKey: ['settings'] });
       setMessage({ type: 'success', text: 'تم حفظ الإعدادات بنجاح' });
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -114,9 +123,10 @@ export function Settings() {
   const handleBackup = async () => {
     setBackingUp(true);
     setBackupResult(null);
-    setBackupProgress({ table: '', done: 0, total: 7 });
+    setBackupProgress({ table: '', done: 0, total: 9 });
 
     try {
+      const { runDatabaseBackup } = await import('./Settings/backupExport');
       const { fileName, totalRows } = await runDatabaseBackup((p) => setBackupProgress(p));
 
       await supabase.rpc('log_activity', {
@@ -149,10 +159,13 @@ export function Settings() {
         <span className="workspace-section-kicker">إدارة النظام</span>
         <h2 className="text-xl md:text-2xl font-bold text-secondary-900">إعدادات النظام</h2>
         <p className="text-sm text-secondary-500 mt-0.5">
-          هوية الشركة، الإشعارات، والنسخ الاحتياطية من مكان واحد
+          العمولات، العرض، هوية الشركة، الإشعارات والنسخ الاحتياطية
         </p>
       </div>
 
+      <CommissionSettings />
+      <DisplayPreferences />
+      <LoadNotice message={loadError} loading={loading} onRetry={loadSettings} />
       {loading ? (
         <div className="flex items-center justify-center h-48">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -218,6 +231,7 @@ export function Settings() {
                 <p className="text-xs text-secondary-400 mt-1">
                   عدد الأيام قبل تاريخ الاستحقاق لإرسال الإشعار
                 </p>
+                {errors.notification_days_before && <p role="alert" className="input-error">{errors.notification_days_before.message}</p>}
               </div>
             </div>
           </div>
@@ -229,7 +243,7 @@ export function Settings() {
               </div>
               <div>
                 <h3 className="font-semibold text-secondary-900">نسخة احتياطية</h3>
-                <p className="text-sm text-secondary-500">تصدير كل بيانات النظام كملف Excel يمكن حفظه أو استخدامه لاسترجاع البيانات</p>
+                <p className="text-sm text-secondary-500">تصدير بيانات الجداول المتاحة إلى Excel للمراجعة والاحتفاظ بنسخة؛ لا يشمل ملفات المرفقات أو إعدادات تسجيل الدخول.</p>
               </div>
             </div>
 
@@ -273,7 +287,7 @@ export function Settings() {
             )}
 
             <p className="text-xs text-secondary-400 mt-4">
-              يشمل الملف: العملاء، الوثائق، الأقساط، المدفوعات، تحصيلات السنة الثانية، تقفيلات الشهور، والمستخدمون — كلٌ في شيت منفصل
+              يشمل الملف: العملاء، الوثائق، الأقساط، المدفوعات، تحصيلات السنة الثانية، تقفيلات الشهور، والمستخدمون والإعدادات ونسب العمولات — كلٌ في شيت منفصل
             </p>
           </div>
 
@@ -293,7 +307,7 @@ export function Settings() {
           <div className="flex justify-end">
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || !!loadError || !settings}
               className="btn btn-primary"
             >
               {saving ? (

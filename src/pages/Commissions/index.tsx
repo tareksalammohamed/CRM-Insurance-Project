@@ -1,3 +1,6 @@
+import { useCommissionRates } from '../../features/commissionSettings/useCommissionRates';
+import { useRequestGuard } from '../../hooks/useRequestGuard';
+import { LoadNotice } from '../../components/feedback/LoadNotice';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useBranchContext } from '../../lib/branchContext';
@@ -20,6 +23,9 @@ import {
 // للتجديد). كل مستخدم يرى فقط عمولات الوثائق التي هو owner_id لها.
 export function Commissions() {
   const { user } = useAuth();
+  const ratesQuery = useCommissionRates();
+  const guard = useRequestGuard();
+  const [loadMessage, setLoadMessage] = useState<string | null>(null);
   const { currentBranchId } = useBranchContext();
 
   const now = new Date();
@@ -34,17 +40,21 @@ export function Commissions() {
   const isInitialLoading = loading && rows.length === 0;
 
   const loadCommissions = useCallback(async () => {
-    if (!user) return;
+    if (!user || !ratesQuery.data || !/^\d{4}-\d{2}$/.test(selectedMonth)) return;
+    const request = guard.start();
     setLoading(true);
     try {
       const [year, month] = selectedMonth.split('-').map(Number);
       const selectedMonthDate = new Date(year, month - 1, 1);
 
-      const { year1Payments, year2Payments } = await fetchCommissionSourceData(user.id, selectedMonthDate, currentBranchId);
+      const { year1Payments, year2Payments, loadMessage: sourceMessage } = await fetchCommissionSourceData(user.id, selectedMonthDate, currentBranchId);
+      if (!guard.isCurrent(request)) return;
+      setLoadMessage(sourceMessage ?? null);
       const { rows: computedRows, missingSumAssuredCount: missingCount } = computeCommissionRows(
         year1Payments,
         year2Payments,
-        selectedMonth
+        selectedMonth,
+        ratesQuery.data
       );
 
       // الأحدث أولاً حسب يوم الاستحقاق ثم النوع
@@ -52,17 +62,22 @@ export function Commissions() {
       setRows(computedRows);
       setMissingSumAssuredCount(missingCount);
     } catch (error) {
+      if (!guard.isCurrent(request)) return;
       console.error('Error loading commissions:', error);
+      setLoadMessage('تعذّر تحميل العمولات؛ أعد المحاولة.');
       setRows([]);
       setMissingSumAssuredCount(0);
     } finally {
-      setLoading(false);
+      if (guard.isCurrent(request)) setLoading(false);
     }
-  }, [user, selectedMonth, currentBranchId]);
+  }, [user, selectedMonth, currentBranchId, ratesQuery.data, guard]);
 
   useEffect(() => {
-    loadCommissions();
-  }, [loadCommissions]);
+    setRows([]);
+    setMissingSumAssuredCount(0);
+    void loadCommissions();
+    return () => guard.invalidate();
+  }, [loadCommissions, guard]);
 
   useReconnectRefetch(loadCommissions);
 
@@ -87,12 +102,14 @@ export function Commissions() {
         <input
           type="month"
           value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
+          onChange={(e) => { if (e.target.value) setSelectedMonth(e.target.value); }}
           className="input-field !w-auto !py-2 min-w-0"
         />
         </label>
       </div>
 
+      <LoadNotice message={ratesQuery.isError ? 'تعذّر تحميل نسب العمولات. لا يمكن تأكيد الحساب قبل إعادة تحميلها.' : loadMessage} loading={ratesQuery.isFetching} onRetry={() => { void ratesQuery.refetch(); void loadCommissions(); }} />
+      {ratesQuery.isError ? <p className="card text-secondary-600">الحساب متوقف لحين تحميل النسب المعتمدة.</p> : <>
       {/* تنبيه: وثائق مسدد عليها أقساط الشهر ده (سنة أولى أو تجديد) بس
           "مبلغ التأمين" فيها لسه مش متسجل، فمش ممكن تُحسب عمولتها لحد ما يتضاف */}
       {!loading && missingSumAssuredCount > 0 && (
@@ -220,6 +237,7 @@ export function Commissions() {
           </div>
         )}
       </div>
+      </>}
     </div>
   );
 }

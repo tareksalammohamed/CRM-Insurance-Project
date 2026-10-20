@@ -18,7 +18,9 @@ const BACKUP_TABLES: { table: string; sheetName: string }[] = [
   { table: 'payments', sheetName: 'المدفوعات' },
   { table: 'year2_payments', sheetName: 'تحصيلات السنة الثانية' },
   { table: 'monthly_closings', sheetName: 'تقفيلات الشهور' },
-  { table: 'users', sheetName: 'المستخدمون' }
+  { table: 'users', sheetName: 'المستخدمون' },
+  { table: 'settings', sheetName: 'الإعدادات' },
+  { table: 'commission_rate_schedule', sheetName: 'نسب العمولات' }
 ];
 
 export type BackupProgress = { table: string; done: number; total: number };
@@ -43,10 +45,17 @@ export async function runDatabaseBackup(
       throw new Error(`انقطع الاتصال بالإنترنت أثناء تصدير جدول "${sheetName}". حاول مرة أخرى بعد التأكد من الاتصال.`);
     }
 
-    const { data, error } = await supabase.from(table).select('*');
-    if (error) throw new Error(`تعذر تصدير جدول "${sheetName}": ${friendlyError(error)}`);
-
-    const rows = data || [];
+    const rows: Record<string, unknown>[] = [];
+    const pageSize = 500;
+    const orderColumn = table === 'commission_rate_schedule' ? 'effective_from' : 'id';
+    for (let offset = 0; ; offset += pageSize) {
+      if (!isOnline()) throw new Error('انقطع الاتصال أثناء التصدير؛ أعد المحاولة للحصول على ملف كامل.');
+      const { data, error } = await supabase.from(table).select('*').order(orderColumn).range(offset, offset + pageSize - 1);
+      if (error) throw new Error(`تعذر تصدير جدول "${sheetName}": ${friendlyError(error)}`);
+      rows.push(...(data || []));
+      onProgress?.({ table: `${sheetName} — ${rows.length} سجل`, done: i, total: BACKUP_TABLES.length });
+      if (!data || data.length < pageSize) break;
+    }
     totalRows += rows.length;
 
     const sheet = rows.length
