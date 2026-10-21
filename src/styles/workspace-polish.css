@@ -142,3 +142,27 @@
 @media screen and (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* Shared action sheets and team picker: screen-only, no print changes. */
+@media screen {
+  .action-sheet-header { background: var(--surface) !important; border-color: var(--line); }
+  .action-sheet-header h3 { color: var(--ink); line-height: 1.65; }
+  .agent-picker-count { margin: 0; padding: .5rem 1rem; color: var(--ink-soft); font-size: .75rem; border-block: 1px solid var(--line); background: var(--surface-sunken); }
+  .agent-picker-list { overscroll-behavior: contain; scrollbar-gutter: stable; }
+  .agent-picker-option { min-height: 52px; border-bottom: 1px solid var(--line); align-items: flex-start; }
+  .agent-picker-name { white-space: normal; overflow-wrap: anywhere; line-height: 1.7; }
+  .agent-picker-option > span:first-child { flex-wrap: wrap; }
+  .agent-picker-option > span:last-child { align-self: center; }
+  .agent-picker-option[aria-pressed="true"] { box-shadow: inset -3px 0 0 var(--brand); }
+  .agent-level-chip { min-height: 44px; }
+  .dark .agent-level-chip[aria-pressed="false"] { background: var(--surface-sunken); border-color: var(--line); color: var(--ink-soft); }
+  .dark .agent-picker-option:hover { background: var(--surface-sunken); }
+  .dark .agent-picker-option[aria-pressed="true"] { background: var(--surface-sunken); color: var(--ink); }
+  .pagination-bar button:disabled { opacity: .4; cursor: not-allowed; }
+}
+@media screen and (max-width: 639px) {
+  .pagination-bar { gap: 4px; }
+  .pagination-counter { flex: 1; text-align: center; white-space: nowrap; }
+  .agent-picker-option { gap: .5rem; }
+  .agent-picker-option > span:last-child { flex-direction: column; align-items: flex-end; gap: .25rem; max-width: 6rem; text-align: end; }
+}

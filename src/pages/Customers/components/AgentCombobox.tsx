@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, ChevronDown, Check, User as UserIcon, X, UserX } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ChevronDown, Check, User as UserIcon, UserX } from 'lucide-react';
 import clsx from 'clsx';
 import { ROLE_LABELS, type UserRole } from '../../../lib/supabase';
+import { SearchInput } from '../../../components/forms/SearchInput';
 import { AppBottomSheet } from '../../../components/ui/AppBottomSheet';
 
 export interface AgentOption {
@@ -54,15 +55,6 @@ export function AgentCombobox({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [jobLevel, setJobLevel] = useState<'all' | UserRole>('all');
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (open) {
-      setSearch('');
-      setJobLevel('all');
-    }
-  }, [open]);
-
   const filteredAgents = useMemo(() => {
     const q = search.trim().toLowerCase();
     return agents.filter((a) => {
@@ -83,7 +75,10 @@ export function AgentCombobox({
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => { setSearch(''); setJobLevel('all'); setOpen(true); }}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-invalid={hasError || undefined}
         className={clsx(
           'input-field flex items-center justify-between gap-2 text-right w-full',
           hasError && 'border-error-500'
@@ -98,33 +93,16 @@ export function AgentCombobox({
       {open && (
         <AppBottomSheet title={sheetTitle} onClose={() => setOpen(false)}>
           <div className="px-4 pb-2 space-y-2 sm:px-5">
-            <div className="relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary-400" />
-              <input
-                ref={searchInputRef}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="ابحث بالاسم..."
-                className="input-field pr-9"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch('')}
-                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-secondary-400 hover:text-secondary-600"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
+            <SearchInput value={search} onChange={setSearch} placeholder="ابحث باسم الوكيل..." />
             <div className="flex gap-1.5 overflow-x-auto scrollbar-thin pb-0.5 -mx-0.5 px-0.5">
               {JOB_LEVEL_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
                   onClick={() => setJobLevel(opt.value)}
+                  aria-pressed={jobLevel === opt.value}
                   className={clsx(
-                    'shrink-0 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
+                    'agent-level-chip shrink-0 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
                     jobLevel === opt.value
                       ? 'bg-primary-600 border-primary-600 text-white'
                       : 'bg-white border-secondary-200 text-secondary-600 hover:border-primary-300'
@@ -136,13 +114,15 @@ export function AgentCombobox({
             </div>
           </div>
 
-          <div className="max-h-[50vh] overflow-y-auto scrollbar-thin">
+          <p className="agent-picker-count" role="status">{filteredAgents.length} من {agents.length} عضو</p>
+          <div className="agent-picker-list max-h-[50dvh] overflow-y-auto scrollbar-thin">
             {includeAllOption && (
               <button
                 type="button"
+                aria-pressed={value === 'all'}
                 onClick={() => { onChange('all'); setOpen(false); }}
                 className={clsx(
-                  'w-full flex items-center justify-between gap-2 px-4 py-2.5 text-sm text-right hover:bg-secondary-50 sm:px-5',
+                  'agent-picker-option w-full flex items-center justify-between gap-2 px-4 py-2.5 text-sm text-right hover:bg-secondary-50 sm:px-5',
                   value === 'all' && 'bg-primary-50 text-primary-700 font-medium'
                 )}
               >
@@ -152,23 +132,25 @@ export function AgentCombobox({
             )}
             {filteredAgents.length === 0 ? (
               <div className="px-4 py-6 text-center text-sm text-secondary-400">
-                لا يوجد وكلاء مطابقين
+                <p>لا يوجد وكلاء مطابقين</p>
+                <button type="button" className="btn btn-ghost mt-2" onClick={() => { setSearch(''); setJobLevel('all'); }}>مسح البحث والتصفية</button>
               </div>
             ) : (
               filteredAgents.map((agent) => (
                 <button
                   key={agent.id}
                   type="button"
+                  aria-pressed={value === agent.id}
                   onClick={() => { onChange(agent.id); setOpen(false); }}
                   className={clsx(
-                    'w-full flex items-center justify-between gap-2 px-4 py-2.5 text-sm text-right hover:bg-secondary-50 sm:px-5',
+                    'agent-picker-option w-full flex items-center justify-between gap-2 px-4 py-2.5 text-sm text-right hover:bg-secondary-50 sm:px-5',
                     value === agent.id && 'bg-primary-50 text-primary-700 font-medium',
                     agent.is_active === false && 'opacity-70'
                   )}
                 >
                   <span className="flex items-center gap-2 min-w-0">
                     <UserIcon className="w-3.5 h-3.5 text-secondary-400 shrink-0" />
-                    <span className="truncate">
+                    <span className="agent-picker-name">
                       {agent.name}{agent.id === currentUserId ? ' (أنا)' : ''}
                     </span>
                     {agent.is_active === false && (
