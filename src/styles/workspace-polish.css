@@ -179,3 +179,51 @@
     .commission-mobile-row > div:first-child { flex-wrap: wrap; }
   }
 }
+
+/* Connected workspace: semantic surfaces, compact mobile flows, screen only. */
+@media screen {
+  .workspace-search-shell { display: flex; flex-direction: column; max-height: min(88dvh, 760px); overflow: hidden; }
+  .workspace-search-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem .75rem; }
+  .workspace-search-header h2 { font-size: 1.15rem; font-weight: 800; color: var(--ink); }
+  .workspace-search-kicker { font-size: .7rem; font-weight: 700; color: var(--brand); margin-bottom: .25rem; }
+  .workspace-search-results { overflow-y: auto; overscroll-behavior: contain; min-height: 0; border-top: 1px solid var(--line); }
+  .workspace-search-section { padding: 1rem 1.25rem; }
+  .workspace-search-section + .workspace-search-section { border-top: 1px solid var(--line); }
+  .workspace-search-section h3 { color: var(--ink-soft); font-size: .75rem; font-weight: 700; margin-bottom: .75rem; overflow-wrap: anywhere; }
+  .workspace-search-pages, .workspace-search-scopes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+  .workspace-search-results button { display: flex; align-items: center; gap: .65rem; min-width: 0; min-height: 64px; padding: .75rem; text-align: start; border: 1px solid var(--line); background: var(--surface); border-radius: .75rem; color: var(--ink); }
+  .workspace-search-results button:hover { background: var(--surface-sunken); border-color: var(--brand); }
+  .workspace-search-results button > svg { width: 19px; height: 19px; color: var(--brand); flex-shrink: 0; }
+  .workspace-search-results button > svg:last-child { width: 14px; margin-inline-start: auto; }
+  .workspace-search-results button span { font-size: .85rem; font-weight: 700; min-width: 0; }
+  .workspace-search-results small { display: block; margin-top: .2rem; font-size: .7rem; font-weight: 400; color: var(--ink-soft); }
+  .workspace-search-footer { padding: .7rem 1rem; border-top: 1px solid var(--line); color: var(--ink-soft); background: var(--surface-sunken); font-size: .7rem; text-align: center; }
+  .customer-review { border: 1px solid var(--line); background: var(--surface-sunken); border-radius: 1rem; overflow: hidden; }
+  .customer-review-heading { display: flex; align-items: center; gap: .65rem; padding: .9rem; }
+  .customer-review-icon { color: var(--brand); flex-shrink: 0; }
+  .customer-review-heading h4 { font-size: .9rem; font-weight: 800; color: var(--ink); }
+  .customer-review-heading p { font-size: .75rem; color: var(--ink-soft); margin-top: .2rem; }
+  .customer-review-heading button { margin-inline-start: auto; flex-shrink: 0; }
+  .customer-review-details { padding: 0 .9rem .9rem; }
+  .customer-review-details summary { min-height: 44px; padding-block: .65rem; cursor: pointer; font-size: .8rem; font-weight: 700; color: var(--ink); }
+  .customer-review-details li { display: flex; align-items: flex-start; gap: .5rem; font-size: .8rem; line-height: 1.8; padding: .6rem 0; border-top: 1px solid var(--line); color: var(--ink); }
+  .customer-review-details li > svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: .3rem; color: #b45309; }
+  .dark .customer-review-details li > svg { color: #fbbf24; }
+  .customer-review-link { min-height: 44px; color: var(--brand); text-decoration: underline; text-underline-offset: 3px; }
+  .customer-review-footnote { color: var(--ink-soft); font-size: .7rem; }
+  .customer-workflow-strip { display: grid; grid-template-columns: 1fr 1fr 2fr; border-top: 1px solid var(--line); padding: .75rem; gap: .75rem; background: var(--surface); }
+  .customer-workflow-strip span + span { border-inline-start: 1px solid var(--line); padding-inline-start: .75rem; }
+  .customer-workflow-strip strong, .customer-workflow-strip small { display: block; }
+  .customer-workflow-strip strong { font-size: .75rem; color: var(--ink); }
+  .customer-workflow-strip small { font-size: .7rem; color: var(--ink-soft); margin-top: .25rem; }
+  .customer-overview-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  @media (max-width: 480px) {
+    .workspace-search-pages, .workspace-search-scopes { grid-template-columns: minmax(0, 1fr); }
+    .customer-review-heading { flex-wrap: wrap; }
+    .customer-review-heading button { width: 100%; }
+    .customer-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    .customer-overview-grid > :last-child { grid-column: 1 / -1; }
+    .customer-workflow-strip { grid-template-columns: 1fr 1fr; }
+    .customer-workflow-strip > :last-child { grid-column: 1 / -1; border: 0; padding: .5rem 0 0; border-top: 1px solid var(--line); }
+  }
+}

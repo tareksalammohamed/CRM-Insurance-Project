@@ -1,7 +1,8 @@
+import { WorkspaceSearch } from '../features/workspace/WorkspaceSearch';
 import { useRequestGuard } from '../hooks/useRequestGuard';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { BellRing, Search, X, CircleUserRound, Settings2, LogOut, Menu, WalletCards, HelpCircle, Loader2, Moon, Sun } from 'lucide-react';
+import { BellRing, Search, CircleUserRound, Settings2, LogOut, Menu, WalletCards, HelpCircle, Loader2, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { ROLE_LABELS } from '../lib/supabase';
 import { useAppStore } from '../store/appStore';
@@ -28,7 +29,6 @@ export function Header() {
   const { isDark, toggleTheme } = useTheme();
 
   const [searchOpen,        setSearchOpen]        = useState(false);
-  const [searchQuery,       setSearchQuery]       = useState('');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications,     setNotifications]     = useState<Notification[]>([]);
   const [unreadCount,       setUnreadCount]       = useState(0);
@@ -65,6 +65,16 @@ export function Header() {
       document.removeEventListener('mousedown', h);
       document.removeEventListener('keydown', onKey);
     };
+  }, []);
+
+  useEffect(() => {
+    const openSearch = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k' && !document.querySelector('[aria-modal="true"]')) {
+        event.preventDefault(); setSearchOpen(true); setProfileOpen(false); setNotificationsOpen(false);
+      }
+    };
+    document.addEventListener('keydown', openSearch);
+    return () => document.removeEventListener('keydown', openSearch);
   }, []);
 
   // إغلاق الـ drawer والبحث عند تغيير الصفحة
@@ -187,11 +197,6 @@ export function Header() {
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) { navigate(`/customers?search=${encodeURIComponent(searchQuery.trim())}`); setSearchOpen(false); setSearchQuery(''); }
-  };
-
   const getNotifColor = (type: string) => {
     if (['due_today','due_this_week','month_closing_upcoming'].includes(type)) return 'bg-warning-100 text-warning-600';
     if (['overdue','policy_suspended','policy_cancelled','payment_cancelled','user_disabled','user_deleted','subscription_rejected','subscription_expired'].includes(type)) return 'bg-error-100 text-error-600';
@@ -205,6 +210,7 @@ export function Header() {
 
   return (
     <>
+      {searchOpen && <WorkspaceSearch key={user.id} role={user.role} onClose={() => setSearchOpen(false)} />}
       {/* ===========================  HEADER BAR  =========================== */}
       <header className={clsx(
         'app-header fixed top-0 left-0 right-0 h-14 md:h-16 z-30',
@@ -244,34 +250,9 @@ export function Header() {
             {isDark ? <Sun className="w-[21px] h-[21px]" /> : <Moon className="w-[21px] h-[21px]" />}
           </button>
 
-          {!isSuperAdmin && (
-            <>
-              {/* بحث تشغيلي عن العملاء — غير مطلوب لمدير النظام */}
-              {searchOpen ? (
-                <form
-                  onSubmit={handleSearch}
-                  className={clsx(
-                    'flex items-center gap-1.5',
-                    'absolute inset-x-2 top-1/2 -translate-y-1/2 z-10 bg-white rounded-xl',
-                    'md:static md:inset-auto md:translate-y-0 md:bg-transparent'
-                  )}
-                >
-                  <div className="relative flex-1 md:w-64 md:flex-none">
-                    <Search className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary-400" />
-                    <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="بحث عن عميل..." className="input-field !min-h-10 pr-9 text-sm" autoFocus />
-                  </div>
-                  <button type="button" onClick={() => setSearchOpen(false)} aria-label="إغلاق البحث" className="icon-button flex-shrink-0">
-                    <X className="w-5 h-5" />
-                  </button>
-                </form>
-              ) : (
-                <button data-tour-id="header-search" onClick={() => setSearchOpen(true)} aria-label="البحث" className="icon-button">
-                  <Search className="w-[22px] h-[22px]" />
-                </button>
-              )}
-            </>
-          )}
+          <button data-tour-id="header-search" type="button" onClick={() => setSearchOpen(true)} aria-label="البحث والتنقل" title="البحث والتنقل (Ctrl+K)" className="icon-button">
+            <Search className="w-[22px] h-[22px]" />
+          </button>
 
           {/* مساعدة الصفحة الحالية (؟) — متاحة لكل الأدوار */}
           <HelpButton />

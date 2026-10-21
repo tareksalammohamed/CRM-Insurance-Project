@@ -55,7 +55,7 @@ export function Customers() {
     deleteConfirm, setDeleteConfirm, deleting, handleDelete,
     moreMenuCustomer, setMoreMenuCustomer, handleOpenCustomerPolicies, handleIssueNewPolicy, handlePrintCustomer,
     detailsCustomer, setDetailsCustomer, showExtraInfo, setShowExtraInfo, policySummaries, handleOpenCustomerDetails,
-    handleOpenInstallmentsFilter,
+    policyInstallmentFilter,
     openPolicySummary, policyDetail, policyInstallments, loadingPolicyDetail,
     handleOpenPolicyDetails, handleClosePolicyDetails,
     selectedInstallment, showPayModal, setShowPayModal, paymentDateStr, setPaymentDateStr,
@@ -227,14 +227,15 @@ export function Customers() {
           onPrint={handlePrintCustomer}
           onIssueNewPolicy={handleIssueNewPolicyFromDetails}
           onOpenPolicyDetails={handleOpenPolicyDetails}
-          onOpenInstallmentsFilter={handleOpenInstallmentsFilter}
         />
       )}
 
       {/* ===== بوتوم شيت: تفاصيل الوثيقة + جدول الأقساط الموحّد (Lazy Loading) ===== */}
       {openPolicySummary && (
         <PolicyDetailsDialog
+          key={`${openPolicySummary.id}:${policyInstallmentFilter}`}
           openPolicySummary={openPolicySummary}
+          initialFilter={policyInstallmentFilter}
           policyDetail={policyDetail}
           policyInstallments={policyInstallments}
           loadingPolicyDetail={loadingPolicyDetail}

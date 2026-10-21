@@ -382,6 +382,7 @@ export function PolicyFormDialog({
                           <label className="input-label" htmlFor={`pf-split-number-${index}`}>رقم الوثيقة *</label>
                           <input
                             id={`pf-split-number-${index}`}
+                              name={`split_chunks.${index}.policy_number`}
                             value={chunk?.policy_number ?? ''}
                             onChange={(e) => updateSplitChunk(index, { policy_number: e.target.value })}
                             dir="ltr"
@@ -395,6 +396,7 @@ export function PolicyFormDialog({
                           <div className="relative">
                             <input
                               id={`pf-split-sum-${index}`}
+                              name={`split_chunks.${index}.sum_assured`}
                               value={Number.isFinite(chunk?.sum_assured) ? chunk.sum_assured : ''}
                               onChange={(e) => updateSplitChunk(index, { sum_assured: e.target.valueAsNumber })}
                               type="number"
@@ -413,6 +415,7 @@ export function PolicyFormDialog({
                           <div className="relative">
                             <input
                               id={`pf-split-premium-${index}`}
+                              name={`split_chunks.${index}.premium_amount`}
                               value={Number.isFinite(chunk?.premium_amount) ? chunk.premium_amount : ''}
                               onChange={(e) => updateSplitChunk(index, { premium_amount: e.target.valueAsNumber })}
                               type="number"
