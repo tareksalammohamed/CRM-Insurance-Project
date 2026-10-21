@@ -166,3 +166,16 @@
   .agent-picker-option { gap: .5rem; }
   .agent-picker-option > span:last-child { flex-direction: column; align-items: flex-end; gap: .25rem; max-width: 6rem; text-align: end; }
 }
+
+@media screen {
+  .commission-details-filters { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); align-items: end; gap: .75rem; }
+  .commission-mobile-list { border: 1px solid var(--line); border-radius: .85rem; overflow: hidden; }
+  .commission-mobile-row { padding: .85rem; background: var(--surface); }
+  .commission-mobile-row + .commission-mobile-row { border-top: 1px solid var(--line); }
+  .commission-row-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem; margin-top: .75rem; }
+  @media (max-width: 767px) {
+    .commission-details-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .commission-details-filters > :first-child { grid-column: 1 / -1; }
+    .commission-mobile-row > div:first-child { flex-wrap: wrap; }
+  }
+}

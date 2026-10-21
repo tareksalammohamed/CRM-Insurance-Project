@@ -1,3 +1,4 @@
+import { CommissionDetails } from './components/CommissionDetails';
 import { useCommissionRates } from '../../features/commissionSettings/useCommissionRates';
 import { useRequestGuard } from '../../hooks/useRequestGuard';
 import { LoadNotice } from '../../components/feedback/LoadNotice';
@@ -5,7 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useBranchContext } from '../../lib/branchContext';
 import { useReconnectRefetch } from '../../hooks/useReconnectRefetch';
-import { Wallet, CalendarClock, CalendarCheck2, Percent, AlertTriangle, Banknote, Coins, ReceiptText } from 'lucide-react';
+import { Wallet, CalendarClock, CalendarCheck2, Percent, AlertTriangle, Banknote, Coins } from 'lucide-react';
 import clsx from 'clsx';
 
 import type { CommissionRow } from './types';
@@ -14,7 +15,6 @@ import {
   computeCommissionRows,
   computeSummary,
   formatCurrency,
-  COMMISSION_TYPE_LABELS,
 } from './business/commissionsCalculator';
 
 // صفحة العمولات: مستقلة تماماً عن باقي صفحات النظام — للعرض فقط، لا تُخزَّن
@@ -91,7 +91,7 @@ export function Commissions() {
     <div className="space-y-3 md:space-y-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
-          <h2 className="text-xl md:text-2xl font-bold text-secondary-900 flex items-center gap-2"><Wallet aria-hidden="true" className="w-6 h-6 text-primary-600" />العمولات</h2>
+          <h1 className="text-xl md:text-2xl font-bold text-secondary-900 flex items-center gap-2"><Wallet aria-hidden="true" className="w-6 h-6 text-primary-600" />العمولات</h1>
           <p className="text-xs text-secondary-500 mt-1">
             ملخص عمولاتك ومواعيد صرفها خلال الشهر المختار.
           </p>
@@ -179,11 +179,6 @@ export function Commissions() {
 
       {/* الجدول */}
       <div className="card !p-3 md:!p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <ReceiptText aria-hidden="true" className="w-4 h-4 text-primary-600" />
-          <h3 className="text-sm font-bold text-secondary-900">تفاصيل العمولات</h3>
-          <span className="text-xs text-secondary-500">({rows.length})</span>
-        </div>
         {loading && !isInitialLoading && (
           <p className="text-xs text-secondary-400 flex items-center gap-1 mb-2">
             <span className="w-3 h-3 rounded-full border-2 border-secondary-300 border-t-primary-500 animate-spin" />
@@ -202,39 +197,7 @@ export function Commissions() {
             <p className="text-secondary-600 font-medium">لا توجد عمولات لهذا الشهر</p>
           </div>
         ) : (
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">اسم العميل</th>
-                  <th scope="col">رقم الوثيقة</th>
-                  <th scope="col">نوع العمولة</th>
-                  <th scope="col">قيمة العمولة</th>
-                  <th scope="col">تستحق يوم</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id}>
-                    <td>{row.customerName}</td>
-                    <td className="font-medium">{row.policyLast6}</td>
-                    <td>
-                      <span
-                        className={clsx(
-                          'badge',
-                          row.type === 'year1' ? 'badge-info' : 'badge-success'
-                        )}
-                      >
-                        {COMMISSION_TYPE_LABELS[row.type]}
-                      </span>
-                    </td>
-                    <td className="font-semibold tabular-nums"><span className="inline-flex items-center gap-1.5"><Banknote aria-hidden="true" className="w-4 h-4 text-success-600 shrink-0" />{formatCurrency(row.amount)}</span></td>
-                    <td><span className="inline-flex items-center gap-1 text-xs whitespace-nowrap"><CalendarClock aria-hidden="true" className="w-3.5 h-3.5 text-secondary-400" />يوم {row.dueDay}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <CommissionDetails key={selectedMonth} rows={rows} />
         )}
       </div>
       </>}

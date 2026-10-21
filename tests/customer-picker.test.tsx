@@ -1,0 +1,31 @@
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
+const mocks = vi.hoisted(() => ({ search: vi.fn() }));
+vi.mock('../src/pages/Policies/services/policiesService', () => ({ searchCustomersForPicker: mocks.search }));
+import { CustomerPickerModal } from '../src/pages/Policies/components/CustomerPickerModal';
+const customer = (id: string, name: string) => ({ id, name, created_at: '2026-10-01T12:00:00Z', phone: '01000000000' });
+beforeEach(() => { vi.useFakeTimers(); mocks.search.mockReset(); });
+afterEach(() => { cleanup(); vi.useRealTimers(); });
+it('ignores a previous search even before the next debounce request starts', async () => {
+  let finishOld!: (value: ReturnType<typeof customer>[]) => void;
+  mocks.search.mockImplementationOnce(() => new Promise(resolve => { finishOld = resolve; })).mockResolvedValueOnce([customer('new', 'عميل جديد')]);
+  render(<MemoryRouter><CustomerPickerModal isOpen onClose={vi.fn()} onSelect={vi.fn()} /></MemoryRouter>);
+  await act(async () => { vi.advanceTimersByTime(1); });
+  expect(mocks.search).toHaveBeenCalledTimes(1);
+  fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'جديد' } });
+  await act(async () => { finishOld([customer('old', 'عميل قديم')]); });
+  expect(screen.queryByText('عميل قديم')).toBeNull();
+  await act(async () => { vi.advanceTimersByTime(250); });
+  expect(screen.getByText('عميل جديد')).toBeTruthy();
+  expect(mocks.search).toHaveBeenCalledTimes(2);
+});
+it('uses a named modal and supports Escape to close', () => {
+  mocks.search.mockResolvedValue([]);
+  const close = vi.fn();
+  render(<MemoryRouter><CustomerPickerModal isOpen onClose={close} onSelect={vi.fn()} /></MemoryRouter>);
+  expect(screen.getByRole('dialog', { name: 'اختيار العميل' })).toBeTruthy();
+  expect(document.body.style.overflow).toBe('hidden');
+  fireEvent.keyDown(document, { key: 'Escape' });
+  expect(close).toHaveBeenCalledTimes(1);
+});
