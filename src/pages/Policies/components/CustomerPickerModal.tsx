@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, Phone, FileText, User, UserPlus, Inbox, Loader2 } from 'lucide-react';
+import { X, Phone, FileText, User, UserPlus, Inbox, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import clsx from 'clsx';
 
 import { searchCustomersForPicker, type CustomerPickerItem } from '../services/policiesService';
-import { DialogPortal } from '../../../components/ui/DialogPortal';
+import { AppDialog } from '../../../components/ui/AppDialog';
+import { SearchInput } from '../../../components/forms/SearchInput';
 
 interface CustomerPickerModalProps {
   isOpen: boolean;
@@ -23,25 +24,7 @@ export function CustomerPickerModal({ isOpen, onClose, onSelect }: CustomerPicke
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const requestTokenRef = useRef(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // إعادة الضبط فى كل مرة تُفتح فيها النافذة، وتحميل أحدث العملاء فوراً
-  useEffect(() => {
-    if (!isOpen) return;
-    setSearchTerm('');
-    setErrorMsg(null);
-    runSearch('');
-  }, [isOpen]);
-
-  // بحث لحظي مع Debounce — يعمل على الاسم/الهاتف/الرقم القومي، ومرتّب دائماً
-  // من الأحدث إضافةً للأقدم (نفس ترتيب runSearch الافتراضي)
-  useEffect(() => {
-    if (!isOpen) return;
-    const timer = setTimeout(() => runSearch(searchTerm), SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [searchTerm, isOpen]);
-
-  const runSearch = async (term: string) => {
+  const runSearch = useCallback(async (term: string) => {
     const token = ++requestTokenRef.current;
     setLoading(true);
     setErrorMsg(null);
@@ -58,7 +41,20 @@ export function CustomerPickerModal({ isOpen, onClose, onSelect }: CustomerPicke
     } finally {
       if (token === requestTokenRef.current) setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) setSearchTerm('');
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setLoading(true);
+    setResults([]);
+    setErrorMsg(null);
+    const timer = setTimeout(() => { void runSearch(searchTerm); }, searchTerm ? SEARCH_DEBOUNCE_MS : 0);
+    return () => { clearTimeout(timer); requestTokenRef.current += 1; };
+  }, [isOpen, searchTerm, runSearch]);
 
   const handleAddNewCustomer = () => {
     onClose();
@@ -67,22 +63,10 @@ export function CustomerPickerModal({ isOpen, onClose, onSelect }: CustomerPicke
 
   if (!isOpen) return null;
 
-  // بترندر مباشرة فى document.body (بدل جوه شجرة صفحة الوثائق) — نفس سبب
-  // استخدام DialogPortal فى PolicyFormDialog: حاوية الصفحة بتحمل
-  // animate-fadeIn (transform)، وده بيعمل containing block جديد لأى عنصر
-  // position:fixed جواه، فتظهر الخلفية (.modal-overlay) خارج الشاشة تمامًا
-  // وتبان القائمة "مش بتفتح" رغم إن onOpenCustomerPicker بيشتغل صح فعليًا.
   return (
-    <DialogPortal>
-    {/* z-[80]: زي نفس نمط "مودال جوه مودال" المستخدم فى print-setup-modal —
-        .modal-overlay أصلاً بتاخد z-index:70، فلازم رقم أعلى منه صراحةً
-        عشان تفضل فوق مودال إصدار/تعديل الوثيقة اللي فاتح تحتها، مش تحته */}
-    <div className="modal-overlay z-[80]" onClick={onClose}>
-      <div
-        className="modal-content max-w-lg flex flex-col animate-slideUp sm:animate-fadeIn"
-        style={{ height: 'min(85dvh, 640px)' }}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <AppDialog onClose={onClose} ariaLabel="اختيار العميل" overlayClassName="z-[80]"
+      className="max-w-lg flex flex-col animate-slideUp sm:animate-fadeIn"
+      style={{ height: 'min(85dvh, 640px)' }}>
         {/* رأس النافذة + مربع البحث */}
         <div className="p-4 sm:p-5 border-b border-secondary-200 shrink-0">
           <div className="flex items-center justify-between mb-3">
@@ -90,27 +74,22 @@ export function CustomerPickerModal({ isOpen, onClose, onSelect }: CustomerPicke
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-secondary-100"
+              aria-label="إغلاق اختيار العميل"
+              className="icon-button"
             >
               <X className="w-5 h-5 text-secondary-600" />
             </button>
           </div>
-          <div className="relative">
-            <Search className="w-4 h-4 text-secondary-400 absolute right-3 top-1/2 -translate-y-1/2" />
-            <input
-              ref={inputRef}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="ابحث بالاسم، رقم الهاتف، أو الرقم القومي"
-              className="input-field pr-9"
-              type="text"
-              inputMode="search"
-            />
-          </div>
+          <SearchInput value={searchTerm} onChange={value => {
+            requestTokenRef.current += 1;
+            setResults([]);
+            setLoading(true);
+            setSearchTerm(value);
+          }} placeholder="ابحث بالاسم، رقم الهاتف، أو الرقم القومي" />
         </div>
 
         {/* قائمة العملاء */}
-        <div className="overflow-y-auto flex-1 scrollbar-thin">
+        <div className="overflow-y-auto flex-1 min-h-0 scrollbar-thin" aria-busy={loading}>
           {loading && results.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-secondary-400 gap-2">
               <Loader2 className="w-6 h-6 animate-spin" />
@@ -155,8 +134,8 @@ export function CustomerPickerModal({ isOpen, onClose, onSelect }: CustomerPicke
                       <User className="w-4 h-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium text-secondary-900 truncate">{customer.name}</span>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-medium text-secondary-900 break-words">{customer.name}</span>
                         <span className="text-[11px] text-secondary-400 shrink-0">
                           {format(new Date(customer.created_at), 'd MMM yyyy', { locale: ar })}
                         </span>
@@ -165,13 +144,13 @@ export function CustomerPickerModal({ isOpen, onClose, onSelect }: CustomerPicke
                         {customer.phone && (
                           <span className="flex items-center gap-1">
                             <Phone className="w-3 h-3" />
-                            {customer.phone}
+                            <bdi>{customer.phone}</bdi>
                           </span>
                         )}
                         {customer.current_policy_number && (
                           <span className="flex items-center gap-1">
                             <FileText className="w-3 h-3" />
-                            {customer.current_policy_number}
+                            <bdi>{customer.current_policy_number}</bdi>
                           </span>
                         )}
                         {customer.owner_name && (
@@ -190,8 +169,6 @@ export function CustomerPickerModal({ isOpen, onClose, onSelect }: CustomerPicke
         </div>
 
         <div className="safe-area-bottom shrink-0" />
-      </div>
-    </div>
-    </DialogPortal>
+    </AppDialog>
   );
 }
