@@ -120,3 +120,25 @@
   .dark .form-advisory { background: #342710; color: #fde68a; border-color: #92400e; }
   .form-review button:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; border-radius: .25rem; }
 }
+
+/* Screen-only preferences preserve all printed reports and memos. */
+@media screen {
+  .crm-compact .card { padding: .8rem; }
+  .crm-compact .table td, .crm-compact .table th { padding-top: .5rem; padding-bottom: .5rem; }
+  .crm-large-text { font-size: 18px; }
+  .crm-reduce-motion *, .crm-reduce-motion *::before, .crm-reduce-motion *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  .workspace-page-settings > .card { border: 1px solid var(--border-color, #dbe4e1); }
+  .workspace-page-settings .table th { white-space: nowrap; font-size: .8rem; }
+  .workspace-page-settings .table td { font-size: .85rem; }
+  input[type="month"], input[type="date"] { min-width: 0; }
+  :is(button, a, input, select, textarea):focus-visible { outline: 2px solid #0f9488; outline-offset: 3px; }
+  .dark input[type="date"], .dark input[type="month"], .dark select { color-scheme: dark; }
+  @media (max-width: 640px) {
+    .workspace-page-settings .card { padding: 1rem; border-radius: 1rem; }
+    .workspace-page-settings { gap: 1rem; }
+    .workspace-page-settings .btn { min-height: 44px; }
+  }
+}
+@media screen and (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

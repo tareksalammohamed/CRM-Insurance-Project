@@ -1,3 +1,4 @@
+import { applyDisplayPreferences, readDisplayPreferences } from '../lib/displayPreferences';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { STORAGE_KEY, ThemeContext, type Theme } from './themeContext';
 
@@ -16,6 +17,12 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    const apply = () => applyDisplayPreferences(readDisplayPreferences());
+    apply();
+    window.addEventListener('storage', apply);
+    return () => window.removeEventListener('storage', apply);
+  }, []);
   const [theme, setThemeState] = useState<Theme>(getInitialTheme);
 
   useEffect(() => {

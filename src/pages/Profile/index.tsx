@@ -1,3 +1,4 @@
+import { DisplayPreferences } from '../../components/DisplayPreferences';
 import { useProfile } from './hooks/useProfile';
 import { ProfileHeader } from './components/ProfileHeader';
 import { ProfilePerformance } from './components/ProfilePerformance';
@@ -113,6 +114,7 @@ export function Profile() {
           )}
         </div>
       </div>
+      <DisplayPreferences />
     </div>
   );
 }
