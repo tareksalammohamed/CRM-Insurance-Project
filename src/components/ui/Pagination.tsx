@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import clsx from 'clsx';
 
 interface PaginationProps {
@@ -66,6 +66,9 @@ export function Pagination({ page, totalPages, onPageChange, className = 'pt-2' 
       className={clsx('pagination-bar', className)}
       aria-label={`تنقل بين الصفحات، صفحة ${page} من ${totalPages}`}
     >
+      <button type="button" className="btn btn-ghost btn-sm sm:hidden" aria-label="الصفحة الأولى" disabled={page === 1} onClick={() => onPageChange(() => 1)}>
+        <ChevronsRight className="w-4 h-4" aria-hidden="true" />
+      </button>
       <button
         type="button"
         onClick={() => onPageChange((p) => Math.max(1, p - 1))}
@@ -111,6 +114,9 @@ export function Pagination({ page, totalPages, onPageChange, className = 'pt-2' 
       >
         <span className="hidden xs:inline">التالي</span>
         <ChevronLeft className="w-4 h-4" />
+      </button>
+      <button type="button" className="btn btn-ghost btn-sm sm:hidden" aria-label="الصفحة الأخيرة" disabled={page === totalPages} onClick={() => onPageChange(() => totalPages)}>
+        <ChevronsLeft className="w-4 h-4" aria-hidden="true" />
       </button>
     </nav>
   );

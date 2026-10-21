@@ -1,5 +1,4 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import type { CSSProperties, ReactNode } from 'react';
 import { X } from 'lucide-react';
 import clsx from 'clsx';
@@ -84,6 +83,7 @@ export function AppBottomSheet({
   const dialog = (
     <AppDialog
       onClose={onClose}
+      ariaLabel={typeof title === 'string' ? title : 'قائمة الإجراءات'}
       contentRef={contentRef}
       overlayClassName={isAnchored ? 'modal-overlay-anchored' : isCentered ? 'modal-overlay-centered' : undefined}
       style={anchoredStyle}
@@ -93,9 +93,9 @@ export function AppBottomSheet({
         isAnchored && 'app-action-menu-anchored',
       )}
     >
-      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-secondary-100 bg-white/95 p-4 backdrop-blur-md sm:p-5">
+      <div className="action-sheet-header sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-secondary-100 bg-white/95 p-4 backdrop-blur-md sm:p-5">
         <div className="min-w-0">
-          <h3 className="text-base font-semibold text-secondary-900 truncate">{title}</h3>
+          <h3 className="text-base font-semibold text-secondary-900 break-words">{title}</h3>
           {subtitle}
         </div>
         <button onClick={onClose} aria-label="إغلاق" className="icon-button shrink-0">
@@ -109,7 +109,5 @@ export function AppBottomSheet({
     </AppDialog>
   );
 
-  return isAnchored && typeof document !== 'undefined'
-    ? createPortal(dialog, document.body)
-    : dialog;
+  return dialog;
 }
