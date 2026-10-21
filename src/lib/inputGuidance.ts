@@ -8,6 +8,15 @@ export function customerInputHints(values: Record<string, unknown>, today = new 
   if (phone && !/^\+?[\d\s()-]{7,20}$/.test(phone)) hints.push('راجع رقم الهاتف: قد يحتوي على حروف أو عدد أرقام غير معتاد؛ تأكد أنه صالح للتواصل مع العميل.');
   const birth = String(values.birth_date ?? '');
   if (birth && birth > localDateKey(today)) hints.push('تاريخ الميلاد في المستقبل؛ راجع السنة والشهر واليوم مع مستند العميل.');
+  // Check only a valid encoded date; this is a review hint, not identity verification.
+  if (/^[23]\d{13}$/.test(nationalId) && birth) {
+    const century = nationalId[0] === '2' ? '19' : '20';
+    const encoded = `${century}${nationalId.slice(1, 3)}-${nationalId.slice(3, 5)}-${nationalId.slice(5, 7)}`;
+    const parsed = new Date(`${encoded}T12:00:00`);
+    if (Number.isFinite(parsed.getTime()) && localDateKey(parsed) === encoded && birth !== encoded) {
+      hints.push(`تاريخ الميلاد المسجل لا يطابق التاريخ المستدل عليه من الرقم القومي (${encoded}). راجع الحقلين مع البطاقة؛ لن نغيّر أي بيانات تلقائيًا.`);
+    }
+  }
   return hints;
 }
 

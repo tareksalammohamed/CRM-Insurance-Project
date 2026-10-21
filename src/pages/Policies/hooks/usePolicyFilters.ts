@@ -1,3 +1,4 @@
+import { useDebouncedUrlSearch } from '../../../hooks/useDebouncedUrlSearch';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -13,7 +14,9 @@ export function usePolicyFilters() {
   const [page, setPage] = useState(1);
 
   const searchQuery = searchParams.get('search') || '';
-  const [localSearch, setLocalSearch] = useState(searchQuery);
+  const resetSearchPage = useCallback(() => setPage(1), []);
+  const { localSearch, setLocalSearch } = useDebouncedUrlSearch(searchQuery, setSearchParams, resetSearchPage);
+  useEffect(() => { setPage(1); }, [searchQuery]);
 
   // فلاتر مُطبَّقة فعلياً على الاستعلام (تتغير فقط عبر زر "تطبيق" أو "إعادة تعيين")
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -40,21 +43,6 @@ export function usePolicyFilters() {
     return opts;
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (localSearch !== searchQuery) {
-        if (localSearch) {
-          setSearchParams({ search: localSearch });
-        } else {
-          setSearchParams({});
-        }
-        setPage(1);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localSearch]);
-
   const handleApplyFilters = () => {
     setStatusFilter(statusDraft);
     setTypeFilter(typeDraft);
@@ -76,7 +64,7 @@ export function usePolicyFilters() {
     handleResetFilters();
     setLocalSearch('');
     setSearchParams({});
-  }, [handleResetFilters, setSearchParams]);
+  }, [handleResetFilters, setSearchParams, setLocalSearch]);
 
   return {
     searchParams,

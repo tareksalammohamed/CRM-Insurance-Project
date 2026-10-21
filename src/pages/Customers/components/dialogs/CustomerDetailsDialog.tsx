@@ -1,3 +1,5 @@
+import { CustomerReview } from '../CustomerReview';
+import { AppDialog } from '../../../../components/ui/AppDialog';
 import clsx from 'clsx';
 import { format } from 'date-fns';
 import { X, Phone, User as UserIcon, FileText, ChevronDown, ShieldPlus, CreditCard, Edit2, Printer, Inbox, BadgeCheck, CalendarClock, TimerReset } from 'lucide-react';
@@ -6,8 +8,6 @@ import type { PolicyInstallmentSummary } from '../../../../features/installments
 import type { CustomerPolicySummary, CustomerWithRelations } from '../../types';
 import { STATUS_BADGE_CLASS, STATUS_DOT_CLASS } from '../../constants';
 import { formatCurrency, sortPoliciesByStartDate } from '../../utils';
-import { useDialogBehavior } from '../../../../hooks/useDialogBehavior';
-import { DialogPortal } from '../../../../components/ui/DialogPortal';
 
 interface CustomerDetailsDialogProps {
   customer: CustomerWithRelations;
@@ -18,9 +18,8 @@ interface CustomerDetailsDialogProps {
   onEdit: (customer: CustomerWithRelations) => void;
   onPrint: (customer: CustomerWithRelations) => void;
   onIssueNewPolicy: (customer: CustomerWithRelations) => void;
-  onOpenPolicyDetails: (policy: CustomerPolicySummary) => void;
-  /** فتح صفحة الأقساط مباشرة بالفلتر المقابل لحالة الأقساط المضغوط عليها */
-  onOpenInstallmentsFilter: (quickFilter: 'month' | 'overdue' | 'paid') => void;
+  onOpenPolicyDetails: (policy: CustomerPolicySummary, filter?: 'all' | 'paid' | 'pending' | 'overdue') => void;
+
 }
 
 export function CustomerDetailsDialog({
@@ -33,31 +32,19 @@ export function CustomerDetailsDialog({
   onPrint,
   onIssueNewPolicy,
   onOpenPolicyDetails,
-  onOpenInstallmentsFilter,
 }: CustomerDetailsDialogProps) {
   const sortedPolicies = sortPoliciesByStartDate(customer.policies || []);
 
 
-  // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
-  useDialogBehavior(onClose);
-
   return (
-    <DialogPortal>
-      <div className="modal-overlay" onClick={onClose}>
-        <div
-          className="modal-content modal-form-shell max-w-lg animate-fadeIn"
-          onClick={(e) => e.stopPropagation()}
-          role="dialog"
-          aria-modal="true"
-          aria-label={`تفاصيل العميل ${customer.name}`}
-        >
+    <AppDialog onClose={onClose} ariaLabel={`تفاصيل العميل ${customer.name}`} className="customer-workspace modal-form-shell max-w-2xl animate-fadeIn">
           <div className="modal-form-header flex items-center justify-between gap-3 p-4 md:p-5 border-b border-secondary-200 bg-white">
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="data-card-avatar" aria-hidden="true">
                 <UserIcon className="w-4 h-4" />
               </span>
               <div className="min-w-0">
-                <h3 className="text-[15px] font-extrabold text-secondary-900 truncate tracking-tight">
+                <h3 className="text-[15px] font-extrabold text-secondary-900 break-words tracking-tight">
                   {customer.name}
                 </h3>
                 <p className="text-[11px] font-semibold text-secondary-400 mt-0.5">تفاصيل العميل</p>
@@ -69,19 +56,20 @@ export function CustomerDetailsDialog({
           </div>
 
           <div className="modal-form-scroll p-4 md:p-5 space-y-5">
+            <CustomerReview customer={customer} onEdit={() => onEdit(customer)} onOpenPolicy={onOpenPolicyDetails} />
             {/* ===== البيانات الأساسية فقط: رقم الهاتف، الوكيل المسؤول، عدد الوثائق ===== */}
-            <div className="detail-field-grid !grid-cols-3">
+            <div className="detail-field-grid customer-overview-grid">
               <div className="detail-field">
                 <span className="detail-field-label flex items-center gap-1">
                   <Phone className="w-3 h-3" /> رقم الهاتف
                 </span>
-                <span className="detail-field-value truncate" dir="ltr">{customer.phone || '-'}</span>
+                <span className="detail-field-value break-words" dir="ltr">{customer.phone || '-'}</span>
               </div>
               <div className="detail-field">
                 <span className="detail-field-label flex items-center gap-1">
                   <UserIcon className="w-3 h-3" /> الوكيل المسؤول
                 </span>
-                <span className="detail-field-value truncate">{customer.owner?.name || '-'}</span>
+                <span className="detail-field-value break-words">{customer.owner?.name || '-'}</span>
               </div>
               <div className="detail-field">
                 <span className="detail-field-label flex items-center gap-1">
@@ -210,36 +198,32 @@ export function CustomerDetailsDialog({
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-2 mt-2.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2.5">
                           <div className="min-w-0">
                             <p className="detail-field-label">مبلغ التأمين</p>
-                            <p className="detail-field-value text-figure truncate">
+                            <p className="detail-field-value text-figure break-words">
                               {policy.sum_assured != null ? formatCurrency(policy.sum_assured) : '—'}
                             </p>
                           </div>
                           <div className="min-w-0">
                             <p className="detail-field-label">القسط الصافي</p>
-                            <p className="detail-field-value text-figure truncate">
+                            <p className="detail-field-value text-figure break-words">
                               {formatCurrency(policy.premium_amount)}
                             </p>
                           </div>
                           <div className="min-w-0">
                             <p className="detail-field-label">تاريخ الإصدار</p>
-                            <p className="detail-field-value text-figure truncate">
+                            <p className="detail-field-value text-figure break-words">
                               {format(new Date(policy.start_date), 'dd/MM/yyyy')}
                             </p>
                           </div>
                         </div>
 
                         {summary && (
-                          // كل شارة حالة أقساط هنا بتفتح صفحة التحصيل مباشرة على نفس
-                          // الفلتر المقابل — المستخدم مش محتاج يفتح الصفحة ويختار
-                          // الفلتر بنفسه. بنستخدم نفس منظومة الفلترة الموجودة
-                          // (buildCollectionDrillDownUrl) بدون أى استعلام جديد.
                           <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
                             <button
                               type="button"
-                              onClick={() => onOpenInstallmentsFilter('paid')}
+                              onClick={() => onOpenPolicyDetails(policy, 'paid')}
                               className="badge badge-success badge-actionable"
                               aria-label={`عرض الأقساط المسددة (${summary.paid})`}
                             >
@@ -248,7 +232,7 @@ export function CustomerDetailsDialog({
                             </button>
                             <button
                               type="button"
-                              onClick={() => onOpenInstallmentsFilter('month')}
+                              onClick={() => onOpenPolicyDetails(policy, 'pending')}
                               className="badge badge-warning badge-actionable"
                               aria-label={`عرض الأقساط المستحقة (${summary.pending})`}
                             >
@@ -257,7 +241,7 @@ export function CustomerDetailsDialog({
                             </button>
                             <button
                               type="button"
-                              onClick={() => onOpenInstallmentsFilter('overdue')}
+                              onClick={() => onOpenPolicyDetails(policy, 'overdue')}
                               className="badge badge-error badge-actionable"
                               aria-label={`عرض الأقساط المتأخرة (${summary.overdue})`}
                             >
@@ -294,8 +278,6 @@ export function CustomerDetailsDialog({
           </div>
 
           <div className="safe-area-bottom" />
-        </div>
-      </div>
-    </DialogPortal>
+    </AppDialog>
   );
 }

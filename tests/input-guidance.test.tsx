@@ -52,3 +52,10 @@ it('error summary focuses the field and hides technical validator messages', () 
   fireEvent.click(screen.getByRole('button'));
   expect(document.activeElement).toBe(screen.getByLabelText('premium'));
 });
+it('explains each nested split-policy error and focuses the exact document field', () => {
+  const ref = createRef<HTMLFormElement>();
+  render(<form ref={ref}><FormReview formRef={ref} errors={{ split_chunks: [{}, { policy_number: { message: 'رقم الوثيقة مطلوب' }, premium_amount: { message: 'أدخل قيمة موجبة' } }] }} /><input name="split_chunks.1.policy_number" aria-label="second number" /><input name="split_chunks.1.premium_amount" aria-label="second premium" /></form>);
+  fireEvent.click(screen.getByRole('button', { name: 'الوثيقة الفرعية 2 — القسط الصافي: أدخل قيمة موجبة' }));
+  expect(document.activeElement).toBe(screen.getByLabelText('second premium'));
+  expect(screen.getByRole('button', { name: 'الوثيقة الفرعية 2 — رقم الوثيقة: رقم الوثيقة مطلوب' })).toBeTruthy();
+});

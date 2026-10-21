@@ -1,3 +1,4 @@
+import { useRequestGuard } from '../../../hooks/useRequestGuard';
 import { friendlyError, getErrorCode } from '../../../lib/errorMessages';
 import { useNotify } from '../../../lib/notify';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -12,7 +13,6 @@ import {
   updateCustomer, createCustomer, deleteCustomer, fetchCustomerById,
 } from '../services/customersService';
 import { buildCustomerPrintHtml } from '../services/customerHelpers';
-import { buildCollectionDrillDownUrl } from '../../Dashboard/utils';
 import { fetchPolicyById } from '../../PolicyDetail/services/policyDetailService';
 import type { PolicyWithRelations } from '../../PolicyDetail/types';
 import {
@@ -37,6 +37,10 @@ export function useCustomerActions({
   user, searchParams, setSearchParams, loadCustomers, loadStats,
 }: UseCustomerActionsParams) {
   const navigate = useNavigate();
+  const summaryGuard = useRequestGuard();
+  const detailGuard = useRequestGuard();
+  const [policyInstallmentFilter, setPolicyInstallmentFilter] = useState<'all' | 'paid' | 'pending' | 'overdue'>('all');
+  useEffect(() => () => { summaryGuard.invalidate(); detailGuard.invalidate(); }, [user?.id, summaryGuard, detailGuard]);
   const notify = useNotify();
 
   const [showModal, setShowModal] = useState(false);
@@ -240,23 +244,13 @@ export function useCustomerActions({
     }
   };
 
-  // إصدار وثيقة جديدة لنفس العميل — بيفتح نموذج الوثائق الحالي مع تثبيت
-  // العميل تلقائياً (owner_id هيتحدد من نفس وكيل العميل عند الحفظ، بدون
-  // إمكانية اختيار وكيل مختلف)
-  // تنقّل ذكى لحالات الأقساط: أى شارة/رقم يشير لمستحق/متأخر/تم السداد
-  // بيفتح صفحة التحصيل بنفس الفلتر مُطبَقًا تلقائيًا، بنفس منطق الفلترة
-  // الموجود أصلاً (buildCollectionDrillDownUrl) بدون أى نظام فلترة جديد
-  // وبدون أى تغيير فى الاستعلامات أو قاعدة البيانات.
-  const handleOpenInstallmentsFilter = useCallback((quickFilter: 'month' | 'overdue' | 'paid') => {
-    setDetailsCustomer(null);
-    navigate(buildCollectionDrillDownUrl({ quickFilter }));
-  }, [navigate]);
-
   // ===================================
   // فتح تفاصيل العميل — تحميل ملخص سريع لأقساط جميع وثائقه دفعة واحدة
   // (استعلام واحد فقط، بدون تفاصيل الأقساط نفسها)
   // ===================================
   const handleOpenCustomerDetails = useCallback(async (customer: CustomerWithRelations) => {
+    const request = summaryGuard.start();
+    setPolicySummaries({});
     setDetailsCustomer(customer);
     setShowExtraInfo(false);
 
@@ -264,17 +258,20 @@ export function useCustomerActions({
     if (policyIds.length === 0) return;
 
     try {
-      setPolicySummaries(await fetchInstallmentSummaryByPolicyIds(policyIds));
+      const summaries = await fetchInstallmentSummaryByPolicyIds(policyIds);
+      if (summaryGuard.isCurrent(request)) setPolicySummaries(summaries);
     } catch (error) {
       console.error('Error loading policy installment summaries:', error);
     }
-  }, []);
+  }, [summaryGuard]);
 
   // ===================================
   // فتح "عرض التفاصيل" لوثيقة معينة — تحميل بيانات الوثيقة الكاملة وأقساطها
   // فقط الآن (Lazy Loading)، دون تحميل أي وثيقة أخرى لنفس العميل
   // ===================================
-  const handleOpenPolicyDetails = async (summary: CustomerPolicySummary) => {
+  const handleOpenPolicyDetails = async (summary: CustomerPolicySummary, filter: 'all' | 'paid' | 'pending' | 'overdue' = 'all') => {
+    const request = detailGuard.start();
+    setPolicyInstallmentFilter(filter);
     setOpenPolicySummary(summary);
     setLoadingPolicyDetail(true);
     setPolicyDetail(null);
@@ -285,16 +282,18 @@ export function useCustomerActions({
         fetchPolicyById(summary.id),
         fetchInstallmentsByPolicyId(summary.id),
       ]);
+      if (!detailGuard.isCurrent(request)) return;
       setPolicyDetail(detail);
       setPolicyInstallments(installmentsData);
     } catch (error) {
       console.error('Error loading policy details:', error);
     } finally {
-      setLoadingPolicyDetail(false);
+      if (detailGuard.isCurrent(request)) setLoadingPolicyDetail(false);
     }
   };
 
   const handleClosePolicyDetails = () => {
+    detailGuard.invalidate();
     setOpenPolicySummary(null);
     setPolicyDetail(null);
     setPolicyInstallments([]);
@@ -414,7 +413,7 @@ export function useCustomerActions({
     setShowExtraInfo,
     policySummaries,
     handleOpenCustomerDetails,
-    handleOpenInstallmentsFilter,
+    policyInstallmentFilter,
 
     // تفاصيل الوثيقة
     openPolicySummary,

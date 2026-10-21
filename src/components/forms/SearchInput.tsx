@@ -5,19 +5,21 @@ interface SearchInputProps {
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
+  autoFocus?: boolean;
 }
 
 /**
  * حقل بحث عام بأيقونة بحث وزر مسح.
  * استُخرج من الأنماط المتطابقة فى صفحات العملاء، الوثائق والتحصيل.
  */
-export function SearchInput({ value, onChange, placeholder }: SearchInputProps) {
+export function SearchInput({ value, onChange, placeholder, autoFocus = false }: SearchInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div className="relative flex-1">
       <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary-400 pointer-events-none" aria-hidden="true" />
       <input
         ref={inputRef}
+        autoFocus={autoFocus}
         type="search"
         inputMode="search"
         enterKeyHint="search"

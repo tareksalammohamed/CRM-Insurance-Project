@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { AppDialog } from '../../../../components/ui/AppDialog';
 import clsx from 'clsx';
 import { format } from 'date-fns';
 import { X } from 'lucide-react';
@@ -7,11 +9,10 @@ import { InstallmentsTable } from '../../../../features/installments/Installment
 import type { PolicyWithRelations } from '../../../PolicyDetail/types';
 import type { CustomerPolicySummary } from '../../types';
 import { formatCurrency } from '../../utils';
-import { useDialogBehavior } from '../../../../hooks/useDialogBehavior';
-import { DialogPortal } from '../../../../components/ui/DialogPortal';
 
 interface PolicyDetailsDialogProps {
   openPolicySummary: CustomerPolicySummary;
+  initialFilter?: 'all' | 'paid' | 'pending' | 'overdue';
   policyDetail: PolicyWithRelations | null;
   policyInstallments: Installment[];
   loadingPolicyDetail: boolean;
@@ -23,6 +24,7 @@ interface PolicyDetailsDialogProps {
 // ===== بوتوم شيت: تفاصيل الوثيقة + جدول الأقساط الموحّد (Lazy Loading) =====
 export function PolicyDetailsDialog({
   openPolicySummary,
+  initialFilter = 'all',
   policyDetail,
   policyInstallments,
   loadingPolicyDetail,
@@ -31,31 +33,23 @@ export function PolicyDetailsDialog({
   onCancel,
 }: PolicyDetailsDialogProps) {
 
-  // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
-  useDialogBehavior(onClose);
-
+  const [filter, setFilter] = useState(initialFilter);
+  const visibleInstallments = filter === 'all' ? policyInstallments : policyInstallments.filter(item => item.status === filter);
   return (
-    <DialogPortal>
-      <div className="modal-overlay" onClick={onClose}>
-        <div
-          className="modal-content max-w-2xl animate-fadeIn max-h-[92dvh] overflow-y-auto"
-          role="dialog"
-          aria-modal="true"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="flex items-center justify-between p-6 border-b border-secondary-200 sticky top-0 bg-white z-10">
+    <AppDialog onClose={onClose} ariaLabel={`أقساط الوثيقة ${openPolicySummary.policy_number}`} className="max-w-2xl animate-fadeIn max-h-[92dvh] overflow-y-auto">
+          <div className="action-sheet-header flex items-center justify-between p-4 sm:p-6 border-b border-secondary-200 sticky top-0 bg-white z-10">
             <div className="min-w-0">
               <h3 className="text-lg font-semibold text-secondary-900 truncate font-mono" dir="ltr">
                 #{openPolicySummary.policy_number}
               </h3>
               <p className="text-xs text-secondary-500 mt-0.5">تفاصيل الوثيقة</p>
             </div>
-            <button onClick={onClose} className="p-2 rounded-lg hover:bg-secondary-100 shrink-0">
+            <button onClick={onClose} aria-label="إغلاق تفاصيل الوثيقة" className="icon-button shrink-0">
               <X className="w-5 h-5 text-secondary-600" />
             </button>
           </div>
 
-          <div className="p-6 space-y-6">
+          <div className="p-4 sm:p-6 space-y-4">
             {loadingPolicyDetail ? (
               <div className="flex items-center justify-center h-32">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600" />
@@ -102,8 +96,14 @@ export function PolicyDetailsDialog({
                 {/* ===== جدول الأقساط الموحّد — نفس المكوّن المستخدم فى صفحة التحصيل والسداد وصفحة تفاصيل الوثيقة ===== */}
                 <div>
                   <h4 className="text-sm font-semibold text-secondary-900 mb-3">جدول الأقساط</h4>
-                  <InstallmentsTable
-                    installments={policyInstallments}
+                  <label className="block space-y-1"><span className="input-label">أقساط هذه الوثيقة فقط</span>
+                  <select className="input-field" value={filter} onChange={event => setFilter(event.target.value as typeof filter)}>
+                    <option value="all">كل الأقساط</option><option value="paid">المسددة</option><option value="pending">المستحقة</option><option value="overdue">المتأخرة</option>
+                  </select>
+                </label>
+                <InstallmentsTable
+                    installments={visibleInstallments}
+                  emptyMessage="لا توجد أقساط مطابقة للحالة المختارة لهذه الوثيقة"
                     policyStatus={policyDetail?.status}
                     onPay={onPay}
                     onCancel={onCancel}
@@ -114,8 +114,6 @@ export function PolicyDetailsDialog({
           </div>
 
           <div className="safe-area-bottom" />
-        </div>
-      </div>
-    </DialogPortal>
+    </AppDialog>
   );
 }
