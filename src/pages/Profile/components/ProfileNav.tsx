@@ -9,8 +9,9 @@ interface ProfileNavProps {
 
 export function ProfileNav({ activeTab, setActiveTab, canSeeSubscription }: ProfileNavProps) {
   return (
-    <div className="card profile-section-nav p-2">
+    <nav aria-label="أقسام الملف الشخصي" className="card profile-section-nav p-2">
       <button
+        type="button"
         aria-pressed={activeTab === 'personal'} onClick={() => setActiveTab('personal')}
         className={clsx(
           'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-medium',
@@ -21,6 +22,7 @@ export function ProfileNav({ activeTab, setActiveTab, canSeeSubscription }: Prof
         المعلومات الشخصية
       </button>
       <button
+        type="button"
         aria-pressed={activeTab === 'security'} onClick={() => setActiveTab('security')}
         className={clsx(
           'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-medium mt-1',
@@ -32,6 +34,7 @@ export function ProfileNav({ activeTab, setActiveTab, canSeeSubscription }: Prof
       </button>
       {canSeeSubscription && (
         <button
+        type="button"
           aria-pressed={activeTab === 'subscription'} onClick={() => setActiveTab('subscription')}
           className={clsx(
             'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm font-medium mt-1',
@@ -42,6 +45,6 @@ export function ProfileNav({ activeTab, setActiveTab, canSeeSubscription }: Prof
           الاشتراك
         </button>
       )}
-    </div>
+    </nav>
   );
 }

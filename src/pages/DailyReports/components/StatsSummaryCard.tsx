@@ -1,6 +1,5 @@
-import { CalendarClock, BadgeCheck, UserPlus, MapPin, Phone, PhoneCall, CalendarCheck2 } from 'lucide-react';
+import { BadgeCheck, UserPlus, MapPin, Phone, PhoneCall, CalendarCheck2 } from 'lucide-react';
 
-import { StatsCard } from '../../../components/ui/StatsCard';
 import type { StatsAggregate } from '../types';
 import { APPOINTMENTS_QUALITY_LABELS } from '../types';
 
@@ -28,70 +27,24 @@ export function StatsSummaryCard({ aggregate, title }: StatsSummaryCardProps) {
     <div className="daily-stats-summary space-y-2">
       {title && <h3 className="font-bold text-secondary-900">{title}</h3>}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        <StatsCard
-          label="أيام مسجّلة"
-          value={a.entriesCount}
-          icon={CalendarClock}
-          tone="brand"
-          borderClassName="border-r-4 border-r-primary-500"
-          iconClassName="w-4 h-4"
-        />
-        <StatsCard
-          label="الالتزام بالمواعيد والزي"
-          value={punctualityPct !== null ? `${punctualityPct}%` : '—'}
-          icon={BadgeCheck}
-          tone="success"
-          borderClassName="border-r-4 border-r-success-500"
-          iconClassName="w-4 h-4"
-          valueClassName="font-bold text-success-600 mt-1.5"
-        />
-        <StatsCard
-          label="طلبات تأمين جديدة"
-          value={a.newClients}
-          icon={UserPlus}
-          tone="info"
-          borderClassName="border-r-4 border-r-info-500"
-          iconClassName="w-4 h-4"
-        />
-        <StatsCard
-          label="أيام عمل ميداني"
-          value={a.outdoorDaysCount}
-          icon={MapPin}
-          tone="warning"
-          borderClassName="border-r-4 border-r-warning-500"
-          iconClassName="w-4 h-4"
-          valueClassName="font-bold text-warning-600 mt-1.5"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        <StatsCard
-          label="إجمالي المكالمات"
-          value={a.callsActual}
-          icon={Phone}
-          tone="brand"
-          borderClassName="border-r-4 border-r-primary-500"
-          iconClassName="w-4 h-4"
-        />
-        <StatsCard
-          label="مكالمات نتج عنها مواعيد"
-          value={a.callsToAppointments}
-          icon={PhoneCall}
-          tone="info"
-          borderClassName="border-r-4 border-r-info-500"
-          iconClassName="w-4 h-4"
-        />
-        <StatsCard
-          label="إجمالي المواعيد الفعلية"
-          value={a.appointmentsActual}
-          icon={CalendarCheck2}
-          tone="success"
-          borderClassName="border-r-4 border-r-success-500"
-          iconClassName="w-4 h-4"
-          valueClassName="font-bold text-success-600 mt-1.5"
-        />
-      </div>
+      <section className="daily-activity-overview" aria-label="ملخص النشاط">
+        <div className="daily-activity-heading"><h4>النشاط خلال الفترة</h4><span>{a.entriesCount} يومًا مسجلًا</span></div>
+        <div className="daily-activity-primary">
+          {[
+            { label: 'إجمالي المكالمات', value: a.callsActual, icon: Phone, tone: 'brand' },
+            { label: 'مكالمات نتج عنها مواعيد', value: a.callsToAppointments, icon: PhoneCall, tone: 'info' },
+            { label: 'إجمالي المواعيد الفعلية', value: a.appointmentsActual, icon: CalendarCheck2, tone: 'success' },
+          ].map(({ label, value, icon: Icon, tone }) => <div key={label} className="daily-activity-metric">
+            <span className={`kpi-icon-tile kpi-icon-tile--${tone}`}><Icon aria-hidden="true" className="w-5 h-5" /></span>
+            <p>{label}</p><strong>{value}</strong>
+          </div>)}
+        </div>
+        <dl className="daily-activity-secondary">
+          <div><dt><UserPlus aria-hidden="true" />طلبات تأمين جديدة</dt><dd>{a.newClients}</dd></div>
+          <div><dt><MapPin aria-hidden="true" />أيام عمل ميداني</dt><dd>{a.outdoorDaysCount}</dd></div>
+          <div><dt><BadgeCheck aria-hidden="true" />الالتزام بالمواعيد والزي</dt><dd>{punctualityPct !== null ? `${punctualityPct}%` : '—'}</dd></div>
+        </dl>
+      </section>
 
       <div className="card daily-quality-card">
         <p className="input-label mb-1.5">جودة المواعيد بعد المراجعة</p>
