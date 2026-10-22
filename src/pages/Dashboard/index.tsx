@@ -56,8 +56,6 @@ function OperationalDashboard() {
         userName={user?.name}
       />
 
-      {isCurrentMonth && user && <DashboardPriorities userId={user.id} />}
-
       {stats && stats.totalPolicies === 0 && stats.totalCustomers === 0 && (
         <DashboardEmptyState />
       )}
@@ -89,6 +87,8 @@ function OperationalDashboard() {
           selectedMonth={selectedMonth}
         />
       </section>
+
+      {isCurrentMonth && user && <DashboardPriorities userId={user.id} />}
 
       <section className="dashboard-section-block" aria-labelledby="dashboard-collection-title">
         <div className="dashboard-section-heading">
