@@ -1,10 +1,11 @@
+import { SearchInput } from '../../components/forms/SearchInput';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useReconnectRefetch } from '../../hooks/useReconnectRefetch';
 import { useBranchContext } from '../../lib/branchContext';
 import { POLICY_TYPE_LABELS, type PolicyType } from '../../lib/supabase';
-import { ArrowRight, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
 
@@ -171,20 +172,12 @@ export function Cancellations() {
           </div>
 
           <div className="card">
-            <div className="flex flex-col sm:flex-row gap-3 mb-4">
-              <div className="relative flex-1">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary-400" />
-                <input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="ابحث باسم العميل، الوكيل، رقم الوثيقة..."
-                  className="input-field pr-10 w-full"
-                />
-              </div>
-
+            <div className="cancellation-filter-toolbar print:hidden">
+              <SearchInput value={searchTerm} onChange={setSearchTerm} placeholder="اسم العميل أو الوكيل أو آخر 6 أرقام من الوثيقة" />
+              <label className="space-y-1 min-w-0"><span className="input-label">نوع الوثيقة</span>
               <select
                 value={policyTypeFilter}
-                onChange={(e) => setPolicyTypeFilter(e.target.value as any)}
+                onChange={(e) => setPolicyTypeFilter(e.target.value as PolicyType | 'all')}
                 className="input-field w-auto"
               >
                 <option value="all">كل أنواع الوثائق</option>
@@ -192,7 +185,9 @@ export function Cancellations() {
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
+              </label>
 
+              <label className="space-y-1 min-w-0"><span className="input-label">مدة الوثيقة قبل الإلغاء</span>
               <select
                 value={monthsBucket}
                 onChange={(e) => setMonthsBucket(e.target.value as MonthsBucket)}
@@ -203,7 +198,13 @@ export function Cancellations() {
                 <option value="6to12">من 6 إلى أقل من 12 شهر</option>
                 <option value="12to18">من 12 إلى أقل من 18 شهر</option>
               </select>
+              </label>
             </div>
+            <div className="cancellation-results-note print:hidden">
+              <p role="status">{filteredRows.length} وثيقة مطابقة من {summary?.rows.length ?? 0}</p>
+              {(searchTerm || policyTypeFilter !== 'all' || monthsBucket !== 'all') && <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setSearchTerm(''); setPolicyTypeFilter('all'); setMonthsBucket('all'); }}>مسح البحث والتصفية</button>}
+            </div>
+
 
             {filteredRows.length === 0 ? (
               <p className="text-center text-secondary-400 py-10">
@@ -217,7 +218,7 @@ export function Cancellations() {
                   onChange={(e) => toggleSort(e.target.value as SortKey)}>
                   {columns.filter((col) => col.key).map((col) => <option key={col.key} value={col.key!}>{col.label}</option>)}
                 </select>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => toggleSort(sortKey)} aria-label="عكس ترتيب النتائج"><ArrowUpDown className="w-4 h-4" /></button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => toggleSort(sortKey)} aria-label="عكس ترتيب النتائج"><ArrowUpDown className="w-4 h-4" /><span>{sortDir === 'asc' ? 'تصاعدي' : 'تنازلي'}</span></button>
               </div>
               <div className="cancellation-mobile-list lg:hidden print:hidden space-y-3">
                 {filteredRows.map((row) => (
@@ -247,6 +248,7 @@ export function Cancellations() {
                       {columns.map((col) => (
                         <th scope="col"
                           key={col.label}
+                          aria-sort={col.key === sortKey ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}
                           className="text-right py-2 px-3 text-secondary-500 font-medium whitespace-nowrap"
                         >
                           {col.key ? (

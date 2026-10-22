@@ -1,10 +1,10 @@
+import { SearchInput } from '../components/forms/SearchInput';
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase, type ActivityLog as ActivityLogEntry, type ActionType } from '../lib/supabase';
 import { dalRead } from '../lib/dataAccessLayer';
 import { useReconnectRefetch } from '../hooks/useReconnectRefetch';
 import {
-  Search,
   History,
   User,
   FileText,
@@ -160,7 +160,7 @@ export function ActivityLog() {
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="activity-log-page space-y-4 animate-fadeIn">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-secondary-900">سجل العمليات</h2>
@@ -171,19 +171,9 @@ export function ActivityLog() {
       </div>
 
       <div className="card">
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary-400" />
-              <input
-                type="text"
-                value={localSearch}
-                onChange={(e) => setLocalSearch(e.target.value)}
-                placeholder="بحث باسم المستخدم..."
-                className="input-field pr-10"
-              />
-            </div>
-          </div>
+        <div className="activity-log-filters">
+          <SearchInput value={localSearch} onChange={setLocalSearch} placeholder="بحث باسم المستخدم..." />
+          <label className="space-y-1 min-w-0"><span className="input-label">نوع العملية</span>
           <select
             value={actionFilter}
             onChange={(e) => {
@@ -223,6 +213,7 @@ export function ActivityLog() {
               <option value="month_open">فتح شهر</option>
             </optgroup>
           </select>
+          </label>
         </div>
 
         {loading && !isInitialLoading && (
@@ -238,38 +229,39 @@ export function ActivityLog() {
         ) : logs.length === 0 ? (
           <div className="text-center py-12">
             <History className="w-16 h-16 text-secondary-300 mx-auto mb-4" />
-            <p className="text-secondary-500">لا يوجد سجل عمليات</p>
+            <p className="text-secondary-500">{searchQuery || actionFilter !== 'all' ? 'لا توجد عمليات تطابق البحث والفلاتر' : 'لا يوجد سجل عمليات'}</p>
+            {(localSearch || actionFilter !== 'all') && <button type="button" className="btn btn-secondary mt-3" onClick={() => { setLocalSearch(''); setActionFilter('all'); setPage(1); }}>مسح البحث والتصفية</button>}
           </div>
         ) : (
           <>
-            <div className="space-y-3">
+            <div className="activity-timeline">
               {logs.map((log) => {
                 const config = getActionConfig(log.action_type);
                 const Icon = config.icon;
                 return (
                   <div
                     key={log.id}
-                    className="flex items-start gap-4 p-4 bg-secondary-50 rounded-lg"
+                    className="activity-event"
                   >
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${config.color}`}>
+                    <div className={`activity-event-icon w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${config.color}`}>
                       <Icon className="w-5 h-5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="activity-event-heading">
                         <p className="font-medium text-secondary-900">
                           {config.label}
                         </p>
-                        <p className="text-xs text-secondary-400 flex-shrink-0">
-                          {format(new Date(log.created_at), 'dd/MM/yyyy HH:mm')}
-                        </p>
+                        <time dateTime={log.created_at} className="activity-event-time">
+                          <span>{format(new Date(log.created_at), 'dd/MM/yyyy')}</span><span dir="ltr">{format(new Date(log.created_at), 'HH:mm')}</span>
+                        </time>
                       </div>
                       <p className="text-sm text-secondary-600 mt-1">
                         بواسطة: {(log as any).user?.name || 'غير معروف'}
                       </p>
                       {log.entity_type && (
                         <p className="text-xs text-secondary-400 mt-1">
-                          {log.entity_type}
-                          {log.entity_id && ` - ${log.entity_id.slice(0, 8)}...`}
+                          {({ policy: 'وثيقة', customer: 'عميل', installment: 'قسط', user: 'مستخدم', monthly_closing: 'إقفال شهري', payment: 'سداد', settings: 'إعدادات' } as Record<string, string>)[log.entity_type] ?? log.entity_type}
+                          {log.entity_id && <bdi className="mr-1" title={log.entity_id}>{log.entity_id.slice(0, 8)}…</bdi>}
                         </p>
                       )}
                     </div>
