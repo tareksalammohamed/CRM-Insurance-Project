@@ -56,6 +56,8 @@ export async function fetchAgentsForCurrentUser(user: User, branchId: string | n
 // ===== إحصائيات أعلى الصفحة =====
 
 export interface CustomerStats {
+  readStatus?: import('../../../lib/dataAccessLayer').DalStatus;
+  loadMessage?: string | null;
   total: number;
   active: number;
   withDueInstallments: number;
@@ -170,7 +172,7 @@ export async function fetchCustomerStats(userId: string, branchId: string | null
     },
     { emptyValue: EMPTY_CUSTOMER_STATS },
   );
-  return result.data;
+  return { ...result.data, readStatus: result.status, loadMessage: readStatusMessage(result) };
 }
 
 // ===== قائمة العملاء (بحث + فلاتر + صفحات) =====

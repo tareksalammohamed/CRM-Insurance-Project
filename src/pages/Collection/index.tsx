@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom';
 import { LoadNotice } from '../../components/feedback/LoadNotice';
 import { useState } from 'react';
 import { Route, Gauge, SlidersHorizontal, ReceiptText } from 'lucide-react';
@@ -42,7 +43,13 @@ export function Collection() {
     useCollectionUrlParams();
 
   // تبدأ الصفحة مباشرة بالسنة الأولى، مع بقاء القسمين مفصولين منطقياً.
-  const [yearMode, setYearMode] = useState<YearMode>('year1');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const yearMode: YearMode = searchParams.get('year') === 'year2' ? 'year2' : 'year1';
+  const setYearMode = (mode: YearMode) => setSearchParams(previous => {
+    const next = new URLSearchParams(previous);
+    if (mode === 'year2') next.set('year', mode); else next.delete('year');
+    return next;
+  });
 
   const {
     quickFilter,
