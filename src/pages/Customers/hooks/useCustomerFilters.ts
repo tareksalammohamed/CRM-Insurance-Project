@@ -31,12 +31,18 @@ export function useCustomerFilters() {
 
   // فلتر ثابت (زر "طلبات الإصدار") موجود دايماً تحت زر الفلاتر — مش جزء من
   // لوحة الفلاتر القابلة للطي، وبيتفعّل فوراً بالضغط بدون مرور بـ"تطبيق"
-  const [noPolicyOnly, setNoPolicyOnly] = useState(false);
+  const noPolicyOnly = searchParams.get('noPolicy') === '1';
 
   const handleToggleNoPolicyOnly = useCallback(() => {
-    setNoPolicyOnly((v) => !v);
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      if (next.get('noPolicy') === '1') next.delete('noPolicy'); else next.set('noPolicy', '1');
+      return next;
+    });
     setPage(1);
-  }, []);
+  }, [setSearchParams]);
+
+  useEffect(() => { setPage(1); }, [noPolicyOnly]);
 
   const activeFilterCount =
     (statusFilter !== 'all' ? 1 : 0) + (agentFilter !== 'all' ? 1 : 0) + (monthFilter !== 'all' ? 1 : 0);
@@ -71,7 +77,6 @@ export function useCustomerFilters() {
 
   const handleResetAll = useCallback(() => {
     handleResetFilters();
-    setNoPolicyOnly(false);
     setLocalSearch('');
     setSearchParams({});
   }, [handleResetFilters, setSearchParams, setLocalSearch]);

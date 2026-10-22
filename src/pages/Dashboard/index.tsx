@@ -1,3 +1,5 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { DashboardPriorities } from './components/DashboardPriorities';
 import { useDashboard } from './hooks/useDashboard';
 import { DashboardLoading } from './components/DashboardLoading';
 import { DashboardHeader } from './components/DashboardHeader';
@@ -11,6 +13,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { AdminDashboard } from '../AdminDashboard';
 
 function OperationalDashboard() {
+  const queryClient = useQueryClient();
   const {
     stats,
     loading,
@@ -49,9 +52,11 @@ function OperationalDashboard() {
         onCurrentMonth={goToCurrentMonth}
         lastUpdated={lastUpdated}
         refreshing={refreshing}
-        onRefresh={refresh}
+        onRefresh={() => { void queryClient.invalidateQueries({ queryKey: ['dashboard-priorities'] }); void refresh(); }}
         userName={user?.name}
       />
+
+      {isCurrentMonth && user && <DashboardPriorities userId={user.id} />}
 
       {stats && stats.totalPolicies === 0 && stats.totalCustomers === 0 && (
         <DashboardEmptyState />

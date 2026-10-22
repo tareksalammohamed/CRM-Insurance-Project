@@ -119,6 +119,8 @@ async function fetchInstallmentsOnline({ quickFilter, subType, ownerFilter, page
 // تارجت أو محقق، وتخص السنة الأولى فقط (نفس فصل السنة الثانية القائم أصلاً)
 // ===================================
 export interface CollectionQuickStats {
+  readStatus?: import('../../../lib/dataAccessLayer').DalStatus;
+  loadMessage?: string | null;
   // "المستحق" — إجمالي الأقساط المستحقة (status='pending') خلال الشهر الحالي
   // بالكامل، بنفس منطق فلتر "الشهر" السريع أعلاه تماماً (بدون subType)،
   // وليس مستحقات اليوم فقط كما كانت سابقاً.
@@ -305,7 +307,7 @@ export async function fetchCollectionQuickStats(branchId: string | null = null):
     },
     { emptyValue: EMPTY_COLLECTION_QUICK_STATS },
   );
-  return result.data;
+  return { ...result.data, readStatus: result.status, loadMessage: readStatusMessage(result) };
 }
 
 // ===================================
