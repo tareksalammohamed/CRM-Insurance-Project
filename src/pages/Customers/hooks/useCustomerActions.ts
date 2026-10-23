@@ -10,7 +10,7 @@ import type { User, Installment } from '../../../lib/supabase';
 
 import { customerSchema, type CustomerFormData, type CustomerWithRelations, type CustomerPolicySummary } from '../types';
 import {
-  updateCustomer, createCustomer, deleteCustomer, fetchCustomerById,
+  markCustomerRequestExpired, updateCustomer, createCustomer, deleteCustomer, fetchCustomerById,
 } from '../services/customersService';
 import { buildCustomerPrintHtml } from '../services/customerHelpers';
 import { fetchPolicyById } from '../../PolicyDetail/services/policyDetailService';
@@ -46,6 +46,26 @@ export function useCustomerActions({
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<CustomerWithRelations | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<CustomerWithRelations | null>(null);
+  const [expireConfirm, setExpireConfirm] = useState<CustomerWithRelations | null>(null);
+  const [expiring, setExpiring] = useState(false);
+  const expiringRef = useRef(false);
+  const handleExpireRequest = async () => {
+    if (!user || !expireConfirm || expiringRef.current) return;
+    expiringRef.current = true;
+    setExpiring(true);
+    try {
+      await markCustomerRequestExpired(expireConfirm.id);
+      setExpireConfirm(null);
+      notify.success('تم تحويل الطلب إلى تالف. يمكنك إصدار وثيقة له عند استكماله.');
+      await Promise.all([loadCustomers(), loadStats()]);
+    } catch (error) {
+      notify.error(friendlyError(error, 'تعذّر تحويل الطلب؛ راجع الاتصال وحاول مرة أخرى.'));
+    } finally {
+      expiringRef.current = false;
+      setExpiring(false);
+    }
+  };
+  const closeExpireConfirm = () => { if (!expiringRef.current) setExpireConfirm(null); };
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
@@ -392,6 +412,8 @@ export function useCustomerActions({
     setValue,
     errors,
     ownerIdValue,
+
+    expireConfirm, setExpireConfirm, expiring, handleExpireRequest, closeExpireConfirm,
 
     // حذف
     deleteConfirm,

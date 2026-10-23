@@ -1,0 +1,23 @@
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
+import { MoreActionsDialog } from '../src/pages/Customers/components/dialogs/MoreActionsDialog';
+import type { CustomerWithRelations } from '../src/pages/Customers/types';
+afterEach(cleanup);
+it('offers manual expiry only for pending requests while keeping issuance available for expired requests', () => {
+  const customer = { id: 'customer', name: 'عميل', created_at: new Date().toISOString(), policies: [] } as unknown as CustomerWithRelations;
+  const issue = vi.fn(); const expire = vi.fn();
+  const props = { customer, canDelete: true, onClose: vi.fn(), onEdit: vi.fn(), onIssueNewPolicy: issue, onExpireRequest: expire, onOpenCustomerPolicies: vi.fn(), onPrint: vi.fn(), onDeleteRequest: vi.fn() };
+  const { rerender } = render(<MoreActionsDialog {...props} />);
+  fireEvent.click(screen.getByText('تحويل إلى طلب تالف'));
+  expect(expire).toHaveBeenCalledWith(customer);
+  const manual = { ...customer, request_manually_expired: true };
+  rerender(<MoreActionsDialog {...props} customer={manual} />);
+  expect(screen.queryByText('تحويل إلى طلب تالف')).toBeNull();
+  fireEvent.click(screen.getByText('إصدار وثيقة جديدة'));
+  expect(issue).toHaveBeenLastCalledWith(manual);
+  const aged = { ...customer, created_at: '2000-01-01T00:00:00Z' };
+  rerender(<MoreActionsDialog {...props} customer={aged} />);
+  expect(screen.queryByText('تحويل إلى طلب تالف')).toBeNull();
+  fireEvent.click(screen.getByText('إصدار وثيقة جديدة'));
+  expect(issue).toHaveBeenLastCalledWith(aged);
+});

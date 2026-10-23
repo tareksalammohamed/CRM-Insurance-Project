@@ -90,7 +90,7 @@ async function getActiveCustomerIds(ownerIds: string[] | null = null): Promise<s
 // مع نتيجة الفلتر الفعلي لما المستخدم يضغط الزرار
 async function getNoPolicyCustomerCount(ownerIds: string[] | null = null): Promise<number> {
   let query = supabase.from('customers').select('id, policies(id)', { count: 'exact', head: true })
-    .is('policies', null).gt('created_at', requestExpiryCutoff());
+    .is('policies', null).eq('request_manually_expired', false).gt('created_at', requestExpiryCutoff());
   if (ownerIds) query = query.in('owner_id', ownerIds);
   const { count, error } = await query;
   if (error) throw error;
@@ -126,7 +126,7 @@ export async function fetchCustomerStats(userId: string, branchId: string | null
   const monthEnd = format(new Date(now.getFullYear(), now.getMonth() + 1, 1), 'yyyy-MM-dd');
 
   const result = await dalRead(
-    `customers:stats:v2:${monthStart}:${branchId ?? 'none'}`,
+    `customers:stats:v3:${monthStart}:${branchId ?? 'none'}`,
     async () => {
       const ownerIds = await getScopedOwnerIds(userId, branchId);
 
@@ -202,7 +202,7 @@ export async function fetchCustomersPage({
   userId,
   branchId = null,
 }: FetchCustomersParams): Promise<CustomersPageResult> {
-  const cacheKey = `customers:page:v2:${page}:${searchQuery.trim()}:${statusFilter}:${agentFilter}:${monthFilter}:${noPolicyOnly ? 'req' : ''}:${branchId ?? 'none'}`;
+  const cacheKey = `customers:page:v3:${page}:${searchQuery.trim()}:${statusFilter}:${agentFilter}:${monthFilter}:${noPolicyOnly ? 'req' : ''}:${branchId ?? 'none'}`;
 
   const result = await dalRead(
     cacheKey,
@@ -251,8 +251,8 @@ export async function fetchCustomersPage({
       if (noPolicyOnly || statusFilter === 'expired') {
         query = query.is('policies', null);
         query = statusFilter === 'expired'
-          ? query.lte('created_at', requestExpiryCutoff())
-          : query.gt('created_at', requestExpiryCutoff());
+          ? query.or(`request_manually_expired.eq.true,created_at.lte.${requestExpiryCutoff()}`)
+          : query.eq('request_manually_expired', false).gt('created_at', requestExpiryCutoff());
       } else if (statusFilter === 'active' || statusFilter === 'inactive') {
         const activeIds = await getActiveCustomerIds(ownerIds);
         if (statusFilter === 'active') {
@@ -466,4 +466,10 @@ export async function deleteCustomer(id: string): Promise<{ error?: string }> {
   });
 
   return {};
+}
+
+// Online acknowledgement is required before showing the new request status.
+export async function markCustomerRequestExpired(customerId: string): Promise<void> {
+  const { error } = await supabase.rpc('mark_customer_request_expired', { p_customer_id: customerId });
+  if (error) throw error;
 }

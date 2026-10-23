@@ -15,3 +15,11 @@ it('uses elapsed days across month lengths and time zones', () => {
   expect(customerRequestStatus({ created_at: '2026-08-01T13:15:00+03:00', policies: [] }, boundary)).toBe('expired');
   expect(customerRequestStatus({ created_at: new Date(boundary + 1000).toISOString() }, boundary)).toBe('issuance');
 });
+it('manually expires a recent request, but issuing any policy takes precedence', () => {
+  const request = { created_at: created, request_manually_expired: true, policies: [] as unknown[] };
+  expect(customerRequestStatus(request, Date.parse(created) + 1000)).toBe('expired');
+  for (const status of ['active', 'cancelled']) {
+    expect(customerRequestStatus({ ...request, policies: [{ status }] }, boundary + 1)).toBe('with_policy');
+  }
+  expect(customerRequestStatus({ ...request, request_manually_expired: false }, boundary - 1)).toBe('issuance');
+});

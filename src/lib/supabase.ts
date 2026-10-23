@@ -50,6 +50,7 @@ export type UserRole =
   | 'premium_agent';
 
 export type Customer = {
+  request_manually_expired?: boolean;
   id: string;
   name: string;
   national_id?: string;
