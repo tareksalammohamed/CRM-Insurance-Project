@@ -42,43 +42,33 @@ export function AppBottomSheet({
 }: AppBottomSheetProps) {
   const isAnchored = !!anchor;
   const isCentered = presentation === 'centered' && !isAnchored;
-  const viewportWidth = typeof window === 'undefined' ? 0 : window.innerWidth;
-  const viewportHeight = typeof window === 'undefined' ? 0 : window.innerHeight;
-  const menuWidth = Math.min(300, Math.max(0, viewportWidth - 24));
   const contentRef = useRef<HTMLDivElement>(null);
-  const [anchoredPosition, setAnchoredPosition] = useState<{ top: number; left: number } | null>(null);
+  const [anchoredStyle, setAnchoredStyle] = useState<CSSProperties | undefined>();
 
   useLayoutEffect(() => {
-    if (!isAnchored || !anchor || !viewportWidth || !viewportHeight) {
-      setAnchoredPosition(null);
+    if (!anchor) {
+      setAnchoredStyle(undefined);
       return;
     }
 
     const placeMenu = () => {
-      const menuHeight = contentRef.current?.getBoundingClientRect().height || estimatedHeight;
+      const width = Math.min(300, Math.max(0, window.innerWidth - 24));
+      const maxHeight = Math.max(0, window.innerHeight - 24);
+      const height = Math.min(contentRef.current?.getBoundingClientRect().height || estimatedHeight, maxHeight);
       const belowTop = anchor.bottom + 8;
-      const aboveTop = anchor.top - menuHeight - 8;
-      const top = belowTop + menuHeight <= window.innerHeight - 12
-        ? belowTop
-        : Math.max(12, aboveTop);
-      const anchorCenter = (anchor.left + anchor.right) / 2;
-      const left = Math.min(
-        Math.max(12, anchorCenter - menuWidth / 2),
-        window.innerWidth - menuWidth - 12,
-      );
-      setAnchoredPosition({ top, left });
+      const preferredTop = belowTop + height <= window.innerHeight - 12 ? belowTop : anchor.top - height - 8;
+      const top = Math.max(12, Math.min(preferredTop, window.innerHeight - height - 12));
+      const left = Math.max(12, Math.min((anchor.left + anchor.right - width) / 2, window.innerWidth - width - 12));
+      setAnchoredStyle(previous => previous?.top === top && previous.left === left && previous.width === width && previous.maxHeight === maxHeight
+        ? previous : { top, left, width, maxHeight });
     };
 
     placeMenu();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(placeMenu);
+    if (contentRef.current) observer?.observe(contentRef.current);
     window.addEventListener('resize', placeMenu);
-    return () => window.removeEventListener('resize', placeMenu);
-  }, [anchor, estimatedHeight, isAnchored, menuWidth, viewportHeight, viewportWidth]);
-
-  const anchoredStyle: CSSProperties | undefined = isAnchored && anchoredPosition
-    ? { top: anchoredPosition.top, left: anchoredPosition.left, width: menuWidth }
-    : isAnchored
-      ? { top: anchor?.bottom ? anchor.bottom + 8 : 12, left: 12, width: menuWidth }
-      : undefined;
+    return () => { observer?.disconnect(); window.removeEventListener('resize', placeMenu); };
+  }, [anchor, estimatedHeight]);
 
   const dialog = (
     <AppDialog
@@ -86,7 +76,7 @@ export function AppBottomSheet({
       ariaLabel={typeof title === 'string' ? title : 'قائمة الإجراءات'}
       contentRef={contentRef}
       overlayClassName={isAnchored ? 'modal-overlay-anchored' : isCentered ? 'modal-overlay-centered' : undefined}
-      style={anchoredStyle}
+      style={isAnchored ? anchoredStyle : undefined}
       className={clsx(
         'max-w-sm animate-fadeIn max-h-[88dvh] overflow-y-auto',
         isCentered && 'app-action-menu',
