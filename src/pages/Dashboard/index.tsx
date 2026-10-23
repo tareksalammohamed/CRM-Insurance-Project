@@ -1,5 +1,3 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { DashboardPriorities } from './components/DashboardPriorities';
 import { useDashboard } from './hooks/useDashboard';
 import { DashboardLoading } from './components/DashboardLoading';
 import { DashboardHeader } from './components/DashboardHeader';
@@ -13,7 +11,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { AdminDashboard } from '../AdminDashboard';
 
 function OperationalDashboard() {
-  const queryClient = useQueryClient();
   const {
     stats,
     loading,
@@ -52,7 +49,7 @@ function OperationalDashboard() {
         onCurrentMonth={goToCurrentMonth}
         lastUpdated={lastUpdated}
         refreshing={refreshing}
-        onRefresh={() => { void queryClient.invalidateQueries({ queryKey: ['dashboard-priorities'] }); void refresh(); }}
+        onRefresh={refresh}
         userName={user?.name}
       />
 
@@ -87,8 +84,6 @@ function OperationalDashboard() {
           selectedMonth={selectedMonth}
         />
       </section>
-
-      {isCurrentMonth && user && <DashboardPriorities userId={user.id} />}
 
       <section className="dashboard-section-block" aria-labelledby="dashboard-collection-title">
         <div className="dashboard-section-heading">
