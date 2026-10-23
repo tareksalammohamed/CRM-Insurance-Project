@@ -1,4 +1,5 @@
-import { Edit2, ShieldPlus, FileText, ListChecks, Printer, Trash2 } from 'lucide-react';
+import { customerRequestStatus } from '../../../../lib/customerRequestStatus';
+import { Archive, Edit2, ShieldPlus, FileText, ListChecks, Printer, Trash2 } from 'lucide-react';
 import { AppBottomSheet, type ActionMenuAnchor } from '../../../../components/ui/AppBottomSheet';
 import type { CustomerWithRelations } from '../../types';
 
@@ -10,6 +11,7 @@ interface MoreActionsDialogProps {
   onIssueNewPolicy: (customer: CustomerWithRelations) => void;
   onOpenCustomerPolicies: (customer: CustomerWithRelations) => void;
   onPrint: (customer: CustomerWithRelations) => void;
+  onExpireRequest: (customer: CustomerWithRelations) => void;
   onDeleteRequest: (customer: CustomerWithRelations) => void;
   anchor?: ActionMenuAnchor | null;
 }
@@ -23,6 +25,7 @@ export function MoreActionsDialog({
   onOpenCustomerPolicies,
   onPrint,
   onDeleteRequest,
+  onExpireRequest,
   anchor,
 }: MoreActionsDialogProps) {
   return (
@@ -70,6 +73,11 @@ export function MoreActionsDialog({
         <Printer className="w-4 h-4" />
         <span>طباعة بيانات العميل</span>
       </button>
+      {customerRequestStatus(customer) === 'issuance' && (
+        <button onClick={() => onExpireRequest(customer)} className="dropdown-item w-full text-error-600">
+          <Archive className="w-4 h-4" /><span>تحويل إلى طلب تالف</span>
+        </button>
+      )}
       {canDelete ? (
         <button
           onClick={() => onDeleteRequest(customer)}

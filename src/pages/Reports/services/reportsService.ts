@@ -27,7 +27,7 @@ export async function fetchCustomersInRange(userIds: string[], start: Date, end:
     async () => {
       const { data, error } = await supabase
         .from('customers')
-        .select('id, name, created_at, insurance_amount, owner:owner_id(id, name), policies(id, policy_number, premium_amount, sum_assured, status, created_at)')
+        .select('id, name, created_at, request_manually_expired, insurance_amount, owner:owner_id(id, name), policies(id, policy_number, premium_amount, sum_assured, status, created_at)')
         .in('owner_id', userIds)
         .gte('created_at', start.toISOString())
         .lte('created_at', end.toISOString())
@@ -52,13 +52,13 @@ export async function fetchCustomerRequestsReport(
   filter: CustomerRequestFilter = 'all',
 ) {
   const result = await dalRead(
-    `reports:customerRequests:v2:${userIds.slice().sort().join(',')}:${start.toISOString()}:${end.toISOString()}:${filter}`,
+    `reports:customerRequests:v3:${userIds.slice().sort().join(',')}:${start.toISOString()}:${end.toISOString()}:${filter}`,
     async () => {
       const rows: { created_at: string; policies: unknown[] }[] = [];
       for (let offset = 0; ; offset += 500) {
         const { data, error } = await supabase
           .from('customers')
-          .select('id, name, created_at, insurance_amount, owner:owner_id(id, name), policies(id, policy_number, premium_amount, sum_assured, status, created_at)')
+          .select('id, name, created_at, request_manually_expired, insurance_amount, owner:owner_id(id, name), policies(id, policy_number, premium_amount, sum_assured, status, created_at)')
           .in('owner_id', userIds)
           .gte('created_at', start.toISOString()).lte('created_at', end.toISOString())
           .order('created_at', { ascending: false }).order('id').range(offset, offset + 499);

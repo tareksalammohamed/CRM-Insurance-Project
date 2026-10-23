@@ -1,3 +1,5 @@
+import { Archive } from 'lucide-react';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { AppliedFilters } from '../../components/forms/AppliedFilters';
 import { LoadNotice } from '../../components/feedback/LoadNotice';
 import { useCallback } from 'react';
@@ -53,6 +55,7 @@ export function Customers() {
   const {
     showModal, editingCustomer, saving, handleOpenModal, handleCloseModal, onSubmit,
     register, handleSubmit, setValue, errors, ownerIdValue,
+    expireConfirm, setExpireConfirm, expiring, handleExpireRequest, closeExpireConfirm,
     deleteConfirm, setDeleteConfirm, deleting, handleDelete,
     moreMenuCustomer, setMoreMenuCustomer, handleOpenCustomerPolicies, handleIssueNewPolicy, handlePrintCustomer,
     detailsCustomer, setDetailsCustomer, showExtraInfo, setShowExtraInfo, policySummaries, handleOpenCustomerDetails,
@@ -198,6 +201,16 @@ export function Customers() {
         />
       )}
 
+      {expireConfirm && <ConfirmDialog
+        icon={Archive}
+        title="تحويل إلى طلب تالف"
+        message={`سيخرج طلب ${expireConfirm.name} من قيد الإصدار وبدون وثائق. تظل بياناته محفوظة ويمكن إصدار وثيقة له لاحقًا.`}
+        confirmLabel="تحويل إلى تالف"
+        confirmBusyLabel="جاري التحويل..."
+        busy={expiring}
+        onConfirm={handleExpireRequest}
+        onClose={closeExpireConfirm}
+      />}
       {/* ===== مودال تأكيد الحذف ===== */}
       {deleteConfirm && (
         <DeleteCustomerDialog
@@ -221,6 +234,7 @@ export function Customers() {
           onIssueNewPolicy={handleIssueNewPolicy}
           onOpenCustomerPolicies={handleOpenCustomerPolicies}
           onPrint={handlePrintCustomer}
+          onExpireRequest={(customer) => { setMoreMenuCustomer(null); setExpireConfirm(customer); }}
           onDeleteRequest={handleDeleteRequest}
           anchor={moreMenuAnchor}
         />
