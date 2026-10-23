@@ -1,3 +1,4 @@
+import { REQUEST_EXPIRY_MS } from '../../../lib/customerRequestStatus';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { User } from '../../../lib/supabase';
 import { fetchAgentsForCurrentUser, fetchCustomersPage, computeDeletableCustomerIds,
@@ -76,6 +77,15 @@ export function useCustomers(user: User | null | undefined, page: number, search
   // Agent options depend on identity/branch, never page/search/filter changes.
   useEffect(() => { setAgents([]); void loadAgents(); return agentsGuard.invalidate; }, [loadAgents, agentsGuard]);
   useEffect(() => { void loadStats(); return statsGuard.invalidate; }, [loadStats, statsGuard]);
+  // Reclassify visible unissued requests at the exact 60-day boundary while this page stays open.
+  useEffect(() => {
+    const now = Date.now();
+    const nextExpiry = Math.min(...customers.filter(customer => !customer.policies?.length)
+      .map(customer => new Date(customer.created_at).getTime() + REQUEST_EXPIRY_MS).filter(time => time > now));
+    if (!Number.isFinite(nextExpiry)) return;
+    const timer = window.setTimeout(() => { void loadCustomers(); void loadStats(); }, Math.min(nextExpiry - now + 25, 2_147_000_000));
+    return () => window.clearTimeout(timer);
+  }, [customers, loadCustomers, loadStats]);
   useReconnectRefetch(loadCustomers, loadAgents, loadStats);
   return { customers, agents, loading, isInitialLoading: loading && customers.length === 0, loadMessage,
     totalCount, stats, statsLoading, totalPages, deletableIds, loadCustomers, loadStats };

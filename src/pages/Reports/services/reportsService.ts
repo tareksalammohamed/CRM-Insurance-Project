@@ -1,3 +1,4 @@
+import { customerRequestStatus } from '../../../lib/customerRequestStatus';
 import { supabase } from '../../../lib/supabase';
 import { format } from 'date-fns';
 import { dalRead } from '../../../lib/dataAccessLayer';
@@ -39,10 +40,10 @@ export async function fetchCustomersInRange(userIds: string[], start: Date, end:
   return result.data;
 }
 
-export type CustomerRequestFilter = 'all' | 'issuance' | 'with_policy';
+export type CustomerRequestFilter = 'all' | 'issuance' | 'with_policy' | 'expired';
 
 // تقرير طلبات التأمين يعتمد على نفس تعريف صفحة العملاء: طلب "في الإصدار"
-// هو العميل الذي لا يملك أي وثيقة، و"له وثائق" هو العميل الذي يملك وثيقة واحدة
+// هو العميل بلا وثيقة قبل اكتمال 60 يومًا؛ بعد ذلك طلب تالف. "له وثائق" يملك وثيقة واحدة
 // على الأقل. نُبقي الفلترة بعد جلب العلاقات حتى يظل التعريف مطابقاً للصفحة الأصلية.
 export async function fetchCustomerRequestsReport(
   userIds: string[],
@@ -51,25 +52,26 @@ export async function fetchCustomerRequestsReport(
   filter: CustomerRequestFilter = 'all',
 ) {
   const result = await dalRead(
-    `reports:customerRequests:${userIds.slice().sort().join(',')}:${start.toISOString()}:${end.toISOString()}:${filter}`,
+    `reports:customerRequests:v2:${userIds.slice().sort().join(',')}:${start.toISOString()}:${end.toISOString()}:${filter}`,
     async () => {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('id, name, created_at, insurance_amount, owner:owner_id(id, name), policies(id, policy_number, premium_amount, sum_assured, status, created_at)')
-        .in('owner_id', userIds)
-        .gte('created_at', start.toISOString())
-        .lte('created_at', end.toISOString())
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-
-      return (data || []).filter((customer: any) => {
-        const hasPolicies = Array.isArray(customer.policies) && customer.policies.length > 0;
-        return filter === 'all' || (filter === 'issuance' ? !hasPolicies : hasPolicies);
-      });
+      const rows: { created_at: string; policies: unknown[] }[] = [];
+      for (let offset = 0; ; offset += 500) {
+        const { data, error } = await supabase
+          .from('customers')
+          .select('id, name, created_at, insurance_amount, owner:owner_id(id, name), policies(id, policy_number, premium_amount, sum_assured, status, created_at)')
+          .in('owner_id', userIds)
+          .gte('created_at', start.toISOString()).lte('created_at', end.toISOString())
+          .order('created_at', { ascending: false }).order('id').range(offset, offset + 499);
+        if (error) throw error;
+        rows.push(...(data || []));
+        if (!data || data.length < 500) break;
+      }
+      return rows;
     },
     { emptyValue: [] as any[] },
   );
-  return result.data;
+  const now = Date.now();
+  return result.data.filter(customer => filter === 'all' || customerRequestStatus(customer, now) === filter);
 }
 
 export async function fetchPoliciesForOwners(userIds: string[]) {

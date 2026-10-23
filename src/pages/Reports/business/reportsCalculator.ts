@@ -1,3 +1,4 @@
+import { customerRequestStatus } from '../../../lib/customerRequestStatus';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { POLICY_TYPE_LABELS, POLICY_STATUS_LABELS } from '../../../lib/supabase';
@@ -41,7 +42,9 @@ export function computeCustomersReport(customers: any[]) {
   const withPolicyCount = customers.filter(
     (c: any) => Array.isArray(c.policies) && c.policies.length > 0,
   ).length;
-  const issuanceCount = customers.length - withPolicyCount;
+  const now = Date.now();
+  const expiredCount = customers.filter(c => customerRequestStatus(c, now) === 'expired').length;
+  const issuanceCount = customers.length - withPolicyCount - expiredCount;
   const totalInsuranceAmount = customers.reduce(
     (sum: number, c: any) => sum + Number(c.insurance_amount || 0),
     0,
@@ -54,7 +57,7 @@ export function computeCustomersReport(customers: any[]) {
       'تاريخ التسجيل': format(new Date(c.created_at), 'd MMMM yyyy', { locale: ar }),
       'مبلغ التأمين': c.insurance_amount ? formatCurrency(Number(c.insurance_amount)) : '-',
       'اسم الوكيل': c.owner?.name || '-',
-      'الحالة': hasPolicy ? 'لها وثائق' : 'في الإصدار',
+      'الحالة': hasPolicy ? 'لها وثائق' : customerRequestStatus(c, now) === 'expired' ? 'طلب تالف' : 'في الإصدار',
     };
   });
 
@@ -63,6 +66,7 @@ export function computeCustomersReport(customers: any[]) {
       customers: customers.length,
       total: customers.length,
       issuanceCount,
+      expiredCount,
       withPolicyCount,
       totalInsuranceAmount,
       details,

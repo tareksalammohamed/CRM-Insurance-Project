@@ -15,3 +15,14 @@ it('opens and clears the no-policy queue from URL navigation without losing the 
   act(() => result.current.navigate(-1));
   expect(result.current.noPolicyOnly).toBe(true);
 });
+it('switches between issuance and expired requests without intersecting the two queues', () => {
+  const { result } = renderHook(() => ({ ...useCustomerFilters(), navigate: useNavigate() }), { wrapper });
+  act(() => result.current.navigate('/customers?noPolicy=1'));
+  act(() => result.current.setStatusDraft('expired'));
+  act(() => result.current.handleApplyFilters());
+  expect(result.current.noPolicyOnly).toBe(false);
+  expect(result.current.statusFilter).toBe('expired');
+  act(() => result.current.handleToggleNoPolicyOnly());
+  expect(result.current.noPolicyOnly).toBe(true);
+  expect(result.current.statusFilter).toBe('all');
+});

@@ -1,3 +1,4 @@
+import { PerformanceTrend } from './components/PerformanceTrend';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -147,6 +148,7 @@ export function Reports() {
   };
 
   const loadReport = async () => {
+    if (reportType === 'trend') return;
     setLoading(true);
     try {
       const { start, end } = getDateRange();
@@ -319,6 +321,7 @@ export function Reports() {
   };
 
   const mainReportButtons: { id: ReportType; label: string; icon: typeof Users }[] = [
+    { id: 'trend', label: 'اتجاه الأداء · 6 شهور', icon: TrendingUp },
     { id: 'customers', label: 'طلبات التأمين', icon: Users },
     { id: 'policies', label: 'تقرير الوثائق', icon: FileText },
     { id: 'production', label: 'الإنتاج الجديد', icon: TrendingUp },
@@ -354,6 +357,13 @@ export function Reports() {
   // اسم ملف موحّد للطباعة/حفظ PDF وللصورة — بياخد اسم التقرير المختار
   // والفترة، فكل تقرير ينزل باسمه الحقيقى بدل اسم الشركة الثابت.
   const printFileName = `${currentReportLabel ?? 'تقرير'}-${format(periodStart, 'yyyy-MM-dd')}-${format(periodEnd, 'yyyy-MM-dd')}`;
+
+  if (reportType === 'trend') return <div className="workspace-page space-y-5">
+    <PageHeader title="اتجاه الأداء" subtitle="تطور الإنتاج والتحصيل عبر الشهور ضمن صلاحياتك والفرع المختار" />
+    <button type="button" className="btn btn-secondary" onClick={() => setReportType('customers')}>العودة إلى التقارير</button>
+    <div><label htmlFor="trend-user" className="input-label">نطاق الفريق</label><select id="trend-user" className="input-field" value={selectedUserId} onChange={event => setSelectedUserId(event.target.value)}><option value="">نطاقي بالكامل</option>{selectableUsers.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}</select></div>
+    {user && <PerformanceTrend userId={user.id} branchId={currentBranchId} selectedUserId={selectedUserId} />}
+  </div>;
 
   return (
     <div ref={printReportRef} className="workspace-page workspace-page-reports print-report space-y-6 animate-fadeIn print:space-y-3">
@@ -512,11 +522,12 @@ export function Reports() {
             </div>
             <span className="badge badge-primary">{data?.total ?? 0} نتيجة</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {([
               { value: 'all' as const, label: 'كل الطلبات', icon: Layers },
               { value: 'issuance' as const, label: 'طلبات في الإصدار', icon: RefreshCw },
               { value: 'with_policy' as const, label: 'لها وثائق', icon: FileText },
+              { value: 'expired' as const, label: 'طلبات تالفة', icon: XCircle },
             ]).map(({ value, label, icon: Icon }) => {
               const isActive = customerRequestFilter === value;
               return (
@@ -583,6 +594,7 @@ export function Reports() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 print:hidden">
               {[
                 { label: 'إجمالي الطلبات', value: data.total, accentClass: 'bg-primary-50 text-primary-700', icon: Users },
+                { label: 'طلبات تالفة', value: data.expiredCount, accentClass: 'bg-secondary-100 text-secondary-700', icon: XCircle },
                 { label: 'طلبات في الإصدار', value: data.issuanceCount, accentClass: 'bg-warning-50 text-warning-700', icon: RefreshCw },
                 { label: 'طلبات لها وثائق', value: data.withPolicyCount, accentClass: 'bg-success-50 text-success-700', icon: FileText },
                 { label: 'إجمالي مبالغ التأمين', value: formatCurrency(data.totalInsuranceAmount || 0), accentClass: 'bg-info-50 text-info-700', icon: Wallet },
@@ -812,7 +824,7 @@ export function Reports() {
                           <td className="font-bold text-primary-700">{row['مبلغ التأمين']}</td>
                           <td className="text-secondary-700">{row['اسم الوكيل']}</td>
                           <td>
-                            <span className={row['الحالة'] === 'في الإصدار' ? 'badge badge-warning' : 'badge badge-success'}>
+                            <span className={row['الحالة'] === 'في الإصدار' ? 'badge badge-warning' : row['الحالة'] === 'طلب تالف' ? 'badge badge-secondary' : 'badge badge-success'}>
                               {row['الحالة']}
                             </span>
                           </td>

@@ -1,3 +1,4 @@
+import { customerRequestStatus } from '../../../lib/customerRequestStatus';
 import { ClipboardCheck, AlertTriangle, ArrowLeft, FileWarning } from 'lucide-react';
 import { customerInputHints } from '../../../lib/inputGuidance';
 import type { CustomerPolicySummary, CustomerWithRelations } from '../types';
@@ -7,6 +8,7 @@ export function CustomerReview({ customer, onEdit, onOpenPolicy }: {
   onEdit: () => void;
   onOpenPolicy: (policy: CustomerPolicySummary) => void;
 }) {
+  const expired = customerRequestStatus(customer) === 'expired';
   const hints = customerInputHints({ ...customer });
   if (!customer.phone?.trim()) hints.unshift('رقم الهاتف غير مسجل؛ أضفه لتسهيل التواصل ومتابعة التحصيل.');
   if (!customer.national_id?.trim()) hints.push('الرقم القومي غير مسجل؛ راجعه مع المستند للمساعدة في تمييز العميل وتجنب تكراره.');
@@ -25,10 +27,11 @@ export function CustomerReview({ customer, onEdit, onOpenPolicy }: {
       </ul>
       <p className="customer-review-footnote">ملاحظات للمراجعة وفق البيانات المسجلة؛ لا تمنع الحفظ ولا تعدّل البيانات تلقائيًا.</p>
     </details>}
+    {expired && <p className="text-sm text-secondary-600">طلب تالف: مرّ 60 يومًا كاملة منذ التسجيل دون إصدار وثيقة. محفوظ للمراجعة وخارج قائمة قيد الإصدار.</p>}
     <div className="customer-workflow-strip">
       <span><strong>العميل</strong><small>ملف مسجل</small></span>
       <span><strong>الوثائق</strong><small>{policies.length} وثيقة مرتبطة</small></span>
-      <span><strong>الخطوة التالية</strong><small>{policies.length ? 'افتح حالة الأقساط داخل الوثيقة بالأسفل' : 'راجع بيانات الطلب ثم اختر وثيقة جديدة'}</small></span>
+      <span><strong>الخطوة التالية</strong><small>{policies.length ? 'افتح حالة الأقساط داخل الوثيقة بالأسفل' : expired ? 'مراجعة الطلب التالف مع المسؤول' : 'راجع بيانات الطلب ثم اختر وثيقة جديدة'}</small></span>
     </div>
   </section>;
 }

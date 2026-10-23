@@ -34,6 +34,7 @@ export function useCustomerFilters() {
   const noPolicyOnly = searchParams.get('noPolicy') === '1';
 
   const handleToggleNoPolicyOnly = useCallback(() => {
+    setStatusFilter('all'); setStatusDraft('all');
     setSearchParams(previous => {
       const next = new URLSearchParams(previous);
       if (next.get('noPolicy') === '1') next.delete('noPolicy'); else next.set('noPolicy', '1');
@@ -59,6 +60,7 @@ export function useCustomerFilters() {
   }, []);
 
   const handleApplyFilters = () => {
+    if (statusDraft === 'expired') setSearchParams(previous => { const next = new URLSearchParams(previous); next.delete('noPolicy'); return next; });
     setStatusFilter(statusDraft);
     setAgentFilter(agentDraft);
     setMonthFilter(monthDraft);
