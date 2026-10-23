@@ -1,3 +1,4 @@
+import { AppBottomSheet } from '../src/components/ui/AppBottomSheet';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { AppDialog } from '../src/components/ui/AppDialog';
@@ -36,4 +37,40 @@ it('keeps the app and theme toggle usable when localStorage is blocked', () => {
 it('returns focus to the search field after clearing', () => {
   const clear = vi.fn(); render(<SearchInput value="text" onChange={clear} placeholder="search" />);
   fireEvent.click(screen.getByLabelText('مسح البحث')); expect(clear).toHaveBeenCalledWith(''); expect(document.activeElement).toBe(screen.getByRole('searchbox'));
+});
+it('only dismisses for a press that starts and ends on the backdrop', () => {
+  const close = vi.fn();
+  render(<AppDialog onClose={close}><button>inside</button></AppDialog>);
+  const backdrop = screen.getByRole('dialog').parentElement!;
+  fireEvent.pointerDown(screen.getByText('inside'));
+  fireEvent.click(backdrop);
+  expect(close).not.toHaveBeenCalled();
+  fireEvent.pointerDown(backdrop);
+  fireEvent.pointerCancel(backdrop);
+  fireEvent.click(backdrop);
+  expect(close).not.toHaveBeenCalled();
+  fireEvent.pointerDown(backdrop);
+  fireEvent.click(backdrop);
+  expect(close).toHaveBeenCalledOnce();
+});
+
+it('keeps an anchored menu inside a resized viewport', () => {
+  const originalWidth = window.innerWidth;
+  const originalHeight = window.innerHeight;
+  try {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 800 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 700 });
+    render(<AppBottomSheet title="actions" onClose={() => {}} anchor={{ top: 600, bottom: 630, left: 680, right: 720 }}><button>action</button></AppBottomSheet>);
+    const dialog = screen.getByRole('dialog');
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 280 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 240 });
+    fireEvent(window, new Event('resize'));
+    expect(dialog.style.width).toBe('256px');
+    expect(dialog.style.left).toBe('12px');
+    expect(dialog.style.top).toBe('12px');
+    expect(dialog.style.maxHeight).toBe('216px');
+  } finally {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalHeight });
+  }
 });

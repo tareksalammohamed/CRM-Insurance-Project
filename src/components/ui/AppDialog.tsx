@@ -44,10 +44,19 @@ export function AppDialog({ onClose, className, overlayClassName, contentRef, st
   // تستخدمه أيضًا النوافذ التى تبنى الـoverlay بنفسها
   const dialogRef = useRef<HTMLDivElement | null>(null);
   useDialogBehavior(onClose, true, dialogRef);
+  const startedOnBackdrop = useRef(false);
 
   return (
     <DialogPortal>
-      <div className={clsx('modal-overlay', overlayClassName)} onClick={onClose}>
+      <div
+        className={clsx('modal-overlay', overlayClassName)}
+        onPointerDown={(event) => { startedOnBackdrop.current = event.target === event.currentTarget; }}
+        onPointerCancel={() => { startedOnBackdrop.current = false; }}
+        onClick={(event) => {
+          if (event.target === event.currentTarget && startedOnBackdrop.current) onClose?.();
+          startedOnBackdrop.current = false;
+        }}
+      >
         <div
           ref={(element) => {
             dialogRef.current = element;
