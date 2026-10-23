@@ -1,3 +1,4 @@
+import { CopyValueButton } from '../../../../components/ui/CopyValueButton';
 import { CustomerReview } from '../CustomerReview';
 import { AppDialog } from '../../../../components/ui/AppDialog';
 import clsx from 'clsx';
@@ -63,7 +64,7 @@ export function CustomerDetailsDialog({
                 <span className="detail-field-label flex items-center gap-1">
                   <Phone className="w-3 h-3" /> رقم الهاتف
                 </span>
-                <span className="detail-field-value break-words" dir="ltr">{customer.phone || '-'}</span>
+                <span className="detail-field-value break-words select-text" dir="ltr">{customer.phone || '-'}</span>
               </div>
               <div className="detail-field">
                 <span className="detail-field-label flex items-center gap-1">
@@ -81,10 +82,13 @@ export function CustomerDetailsDialog({
 
             {/* اتصال سريع — الإجراء الأكثر تكرارًا، بارز فى متناول الإبهام */}
             {customer.phone && (
-              <a href={`tel:${customer.phone}`} className="btn btn-outline btn-sm w-full">
-                <Phone className="w-4 h-4" />
-                <span>الاتصال بالعميل</span>
-              </a>
+              <div className="customer-contact-actions">
+                <a href={`tel:${customer.phone}`} className="btn btn-outline btn-sm">
+                  <Phone className="w-4 h-4" />
+                  <span>الاتصال بالعميل</span>
+                </a>
+                <CopyValueButton key={customer.phone} value={customer.phone} label="نسخ الرقم" />
+              </div>
             )}
 
             {/* ===== بيانات إضافية (اختيارية) — نفس البيانات محفوظة وقابلة للتعديل، فقط غير معروضة افتراضياً ===== */}

@@ -297,3 +297,12 @@
   .applied-filters li { max-width: 100%; overflow-wrap: anywhere; padding: .2rem .5rem; border: 1px solid var(--line); border-radius: .5rem; color: var(--ink); background: var(--surface-sunken); }
   .applied-filters > button { flex-shrink: 0; }
 }
+
+@media screen {
+  .customer-card-name, .customer-data-card .customer-card-owner { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
+  .customer-contact-actions { display: flex; align-items: flex-start; flex-wrap: wrap; gap: .5rem; }
+  .customer-contact-actions > a, .customer-contact-actions > .copy-value-control { flex: 1 1 130px; min-width: 0; }
+  .copy-value-control > button { width: 100%; }
+  .copy-value-status { display: block; color: var(--ink-soft); font-size: .75rem; line-height: 1.6; }
+  .copy-value-status:not(:empty) { margin-top: .3rem; }
+}
