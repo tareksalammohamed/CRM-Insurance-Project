@@ -1,3 +1,4 @@
+import { AppliedFilters } from '../../components/forms/AppliedFilters';
 import { useSearchParams } from 'react-router-dom';
 import { LoadNotice } from '../../components/feedback/LoadNotice';
 import { useState } from 'react';
@@ -211,6 +212,16 @@ export function Collection() {
                 showFilters={showFilters}
                 activeFilterCount={activeFilterCount}
                 onOpenFilters={handleOpenFilters}
+              />
+
+              <AppliedFilters
+                labels={[
+                  ...(searchQuery ? [`بحث: ${searchQuery}`] : []),
+                  ...(subType !== 'all' ? [subType === 'new' ? 'إنتاج جديد فقط' : 'تحصيل دوري فقط'] : []),
+                  ...(ownerFilter !== 'all' ? [`الفريق: ${teamMembers.find(member => member.id === ownerFilter)?.name ?? (ownerFilter === user?.id ? user.name : 'العضو المختار')}`] : []),
+                ]}
+                onReset={() => { setLocalSearch(''); handleResetFilters(); }}
+                resetLabel="إعادة عرض الشهر"
               />
 
               <CollectionFilters

@@ -19,6 +19,7 @@ export function useCollectionFilters({ initialQuickFilter, initialSubType, initi
   const [showFilters, setShowFilters]           = useState(false);
 
   const handleOpenFilters = () => {
+    if (showFilters) { setShowFilters(false); return; }
     setQuickFilterDraft(quickFilter);
     setSubTypeDraft(subType);
     setOwnerFilterDraft(ownerFilter);

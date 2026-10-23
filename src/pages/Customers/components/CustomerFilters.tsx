@@ -35,8 +35,8 @@ export function CustomerFilters({
     <div className="compact-filter-panel pt-3 border-t border-secondary-200 space-y-3 animate-fadeIn">
       <div className="compact-filter-grid grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div>
-          <label className="input-label">حالة العميل</label>
-          <select
+          <label htmlFor="customers-status-filter" className="input-label">حالة العميل</label>
+          <select id="customers-status-filter"
             value={statusDraft}
             onChange={(e) => onStatusDraftChange(e.target.value)}
             className="input-field"
@@ -60,8 +60,8 @@ export function CustomerFilters({
           </div>
         )}
         <div>
-          <label className="input-label">الشهر</label>
-          <select
+          <label htmlFor="customers-month-filter" className="input-label">الشهر</label>
+          <select id="customers-month-filter"
             value={monthDraft}
             onChange={(e) => onMonthDraftChange(e.target.value)}
             className="input-field"

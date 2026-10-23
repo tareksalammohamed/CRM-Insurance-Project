@@ -41,7 +41,7 @@ export function CustomerSearch({
 }: CustomerSearchProps) {
   return (
     <>
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex items-center gap-2">
         <SearchInput
           value={localSearch}
           onChange={onLocalSearchChange}
@@ -51,6 +51,8 @@ export function CustomerSearch({
       </div>
 
       <button
+        type="button"
+        aria-pressed={noPolicyOnly}
         onClick={onToggleNoPolicyOnly}
         className={clsx(
           'btn btn-warning w-full sm:w-auto shrink-0',

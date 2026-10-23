@@ -15,6 +15,8 @@ interface FilterButtonProps {
 export function FilterButton({ active, count, onClick, label = 'الفلاتر' }: FilterButtonProps) {
   return (
     <button
+      type="button"
+      aria-expanded={active}
       onClick={onClick}
       className={clsx('btn relative shrink-0', active || count > 0 ? 'btn-outline' : 'btn-secondary')}
     >
