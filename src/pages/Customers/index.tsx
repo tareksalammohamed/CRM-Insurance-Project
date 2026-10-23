@@ -1,3 +1,4 @@
+import { AppliedFilters } from '../../components/forms/AppliedFilters';
 import { LoadNotice } from '../../components/feedback/LoadNotice';
 import { useCallback } from 'react';
 import { useState } from 'react';
@@ -142,6 +143,16 @@ export function Customers() {
               onReset={handleResetFilters}
             />
           )}
+        />
+        <AppliedFilters
+          labels={[
+            ...(searchQuery ? [`بحث: ${searchQuery}`] : []),
+            ...(statusFilter !== 'all' ? [statusFilter === 'active' ? 'عملاء نشطون' : 'عملاء غير نشطين'] : []),
+            ...(agentFilter !== 'all' ? [`الوكيل: ${agents.find(agent => agent.id === agentFilter)?.name ?? (agentFilter === user?.id ? user.name : 'الوكيل المختار')}`] : []),
+            ...(monthFilter !== 'all' ? [monthOptions.find(month => month.value === monthFilter)?.label ?? monthFilter] : []),
+            ...(noPolicyOnly ? ['طلبات بدون وثائق'] : []),
+          ]}
+          onReset={handleResetAll}
         />
         </div>
       </section>

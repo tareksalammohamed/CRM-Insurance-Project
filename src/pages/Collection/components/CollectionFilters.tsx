@@ -77,8 +77,8 @@ export function CollectionFilters({
           <div className="col-filters-grid">
             {(quickFilterDraft === 'month' || quickFilterDraft === 'paid') && (
               <div>
-                <label className="input-label">النوع</label>
-                <select
+                <label htmlFor="collection-type-filter" className="input-label">النوع</label>
+                <select id="collection-type-filter"
                   value={subTypeDraft}
                   onChange={(e) => onSubTypeDraftChange(e.target.value as SubType)}
                   className="input-field"

@@ -289,3 +289,11 @@
   @media (max-width: 1023px) { .dashboard-priority-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 480px) { .dashboard-priorities { padding: .75rem; } .dashboard-priority-card { padding: .5rem; } .dashboard-priority-card strong { font-size: 1.15rem; } .dashboard-priorities-heading { align-items: flex-start; } }
 }
+
+@media screen {
+  .applied-filters { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; padding-block: .4rem; color: var(--ink-soft); font-size: .75rem; }
+  .applied-filters-label { font-weight: 700; }
+  .applied-filters ul { display: flex; flex: 1; flex-wrap: wrap; gap: .35rem; min-width: 0; list-style: none; margin: 0; padding: 0; }
+  .applied-filters li { max-width: 100%; overflow-wrap: anywhere; padding: .2rem .5rem; border: 1px solid var(--line); border-radius: .5rem; color: var(--ink); background: var(--surface-sunken); }
+  .applied-filters > button { flex-shrink: 0; }
+}

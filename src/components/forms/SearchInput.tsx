@@ -15,7 +15,7 @@ interface SearchInputProps {
 export function SearchInput({ value, onChange, placeholder, autoFocus = false }: SearchInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
-    <div className="relative flex-1">
+    <div className="relative min-w-0 flex-1">
       <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary-400 pointer-events-none" aria-hidden="true" />
       <input
         ref={inputRef}
