@@ -147,7 +147,7 @@ export function Customers() {
         <AppliedFilters
           labels={[
             ...(searchQuery ? [`بحث: ${searchQuery}`] : []),
-            ...(statusFilter !== 'all' ? [statusFilter === 'active' ? 'عملاء نشطون' : 'عملاء غير نشطين'] : []),
+            ...(statusFilter !== 'all' ? [statusFilter === 'expired' ? 'طلبات تالفة' : statusFilter === 'active' ? 'عملاء نشطون' : 'عملاء غير نشطين'] : []),
             ...(agentFilter !== 'all' ? [`الوكيل: ${agents.find(agent => agent.id === agentFilter)?.name ?? (agentFilter === user?.id ? user.name : 'الوكيل المختار')}`] : []),
             ...(monthFilter !== 'all' ? [monthOptions.find(month => month.value === monthFilter)?.label ?? monthFilter] : []),
             ...(noPolicyOnly ? ['طلبات بدون وثائق'] : []),

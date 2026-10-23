@@ -60,7 +60,7 @@ export function CustomerSearch({
         )}
       >
         <ClipboardList className="w-4 h-4" />
-        <span>طلبات فى الاصدار ({noPolicyCount})</span>
+        <span>طلبات قيد الإصدار ({noPolicyCount})</span>
       </button>
 
       {filtersPanel}

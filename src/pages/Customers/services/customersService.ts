@@ -1,3 +1,4 @@
+import { customerRequestStatus, requestExpiryCutoff } from '../../../lib/customerRequestStatus';
 import { supabase, type Customer, type User, type PolicyStatus } from '../../../lib/supabase';
 import { format } from 'date-fns';
 import type { CustomerFormData, CustomerWithRelations } from '../types';
@@ -84,24 +85,13 @@ async function getActiveCustomerIds(ownerIds: string[] | null = null): Promise<s
 // عملاء ليس لديهم أي وثيقة على الإطلاق — تُستخدم فى فلتر "طلبات الإصدار"
 // الثابت أعلى قائمة العملاء (عملاء عندهم بيانات طلب تأمين لكن لسه محدش أصدر
 // لهم وثيقة فعلية)
-async function getCustomerIdsWithAnyPolicy(ownerIds: string[] | null = null): Promise<string[]> {
-  let query = supabase
-    .from('policies')
-    .select('customer_id');
-  if (ownerIds) query = query.in('owner_id', ownerIds);
-  const { data, error } = await query;
-  if (error) throw error;
-  return Array.from(new Set((data || []).map((p: any) => p.customer_id)));
-}
-
 // عدد عملاء "طلبات فى الإصدار" — نفس تعريف الفلتر بالظبط (عملاء بدون أي
-// وثيقة) لكن count فقط (head: true) بدل جلب كل الصفوف، عشان يتطابق الرقم
+// وثيقة وعمرها أقل من 60 يومًا) لكن count فقط (head: true) بدل جلب كل الصفوف، عشان يتطابق الرقم
 // مع نتيجة الفلتر الفعلي لما المستخدم يضغط الزرار
 async function getNoPolicyCustomerCount(ownerIds: string[] | null = null): Promise<number> {
-  const idsWithPolicies = await getCustomerIdsWithAnyPolicy(ownerIds);
-  let query = supabase.from('customers').select('id', { count: 'exact', head: true });
+  let query = supabase.from('customers').select('id, policies(id)', { count: 'exact', head: true })
+    .is('policies', null).gt('created_at', requestExpiryCutoff());
   if (ownerIds) query = query.in('owner_id', ownerIds);
-  if (idsWithPolicies.length > 0) query = query.not('id', 'in', `(${idsWithPolicies.join(',')})`);
   const { count, error } = await query;
   if (error) throw error;
   return count || 0;
@@ -136,7 +126,7 @@ export async function fetchCustomerStats(userId: string, branchId: string | null
   const monthEnd = format(new Date(now.getFullYear(), now.getMonth() + 1, 1), 'yyyy-MM-dd');
 
   const result = await dalRead(
-    `customers:stats:${monthStart}:${branchId ?? 'none'}`,
+    `customers:stats:v2:${monthStart}:${branchId ?? 'none'}`,
     async () => {
       const ownerIds = await getScopedOwnerIds(userId, branchId);
 
@@ -212,7 +202,7 @@ export async function fetchCustomersPage({
   userId,
   branchId = null,
 }: FetchCustomersParams): Promise<CustomersPageResult> {
-  const cacheKey = `customers:page:${page}:${searchQuery.trim()}:${statusFilter}:${agentFilter}:${monthFilter}:${noPolicyOnly ? 'req' : ''}:${branchId ?? 'none'}`;
+  const cacheKey = `customers:page:v2:${page}:${searchQuery.trim()}:${statusFilter}:${agentFilter}:${monthFilter}:${noPolicyOnly ? 'req' : ''}:${branchId ?? 'none'}`;
 
   const result = await dalRead(
     cacheKey,
@@ -258,14 +248,11 @@ export async function fetchCustomersPage({
         query = query.or(orParts.join(','));
       }
 
-      if (noPolicyOnly) {
-        // فلتر "طلبات الإصدار": عملاء ليس لهم أي وثيقة على الإطلاق، بترتيب
-        // الأحدث أولاً دايماً (نفس ترتيب query الافتراضي created_at desc
-        // أعلاه، بدون أي تغيير عليه)
-        const idsWithPolicies = await getCustomerIdsWithAnyPolicy(ownerIds);
-        if (idsWithPolicies.length > 0) {
-          query = query.not('id', 'in', `(${idsWithPolicies.join(',')})`);
-        }
+      if (noPolicyOnly || statusFilter === 'expired') {
+        query = query.is('policies', null);
+        query = statusFilter === 'expired'
+          ? query.lte('created_at', requestExpiryCutoff())
+          : query.gt('created_at', requestExpiryCutoff());
       } else if (statusFilter === 'active' || statusFilter === 'inactive') {
         const activeIds = await getActiveCustomerIds(ownerIds);
         if (statusFilter === 'active') {
@@ -303,7 +290,10 @@ export async function fetchCustomersPage({
     },
     { emptyValue: EMPTY_CUSTOMERS_PAGE },
   );
-  return { ...result.data, loadMessage: readStatusMessage(result) };
+  const customers = (noPolicyOnly || statusFilter === 'expired')
+    ? result.data.customers.filter(customer => customerRequestStatus(customer) === (statusFilter === 'expired' ? 'expired' : 'issuance'))
+    : result.data.customers;
+  return { ...result.data, customers, loadMessage: readStatusMessage(result) };
 }
 
 // أحدث وثيقة للعميل (حسب تاريخ بداية التأمين) — تُستخدم لعرض ملخص الوثيقة
@@ -316,8 +306,8 @@ export function getLatestPolicy(customer: CustomerWithRelations) {
   )[0];
 }
 
-export function getCustomerPolicyStatus(customer: CustomerWithRelations): PolicyStatus | 'no_policy' {
-  return getLatestPolicy(customer)?.status || 'no_policy';
+export function getCustomerPolicyStatus(customer: CustomerWithRelations): PolicyStatus | 'no_policy' | 'expired' {
+  return getLatestPolicy(customer)?.status || (customerRequestStatus(customer) === 'expired' ? 'expired' : 'no_policy');
 }
 
 // جلب عميل واحد بمعرّفه (بنفس شكل CustomerWithRelations) — تُستخدم لفتح

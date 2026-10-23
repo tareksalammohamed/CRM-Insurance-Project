@@ -44,6 +44,7 @@ export function CustomerFilters({
             <option value="all">جميع الحالات</option>
             <option value="active">نشط</option>
             <option value="inactive">غير نشط</option>
+            <option value="expired">طلبات تالفة (60 يومًا بدون وثائق)</option>
           </select>
         </div>
         {isManagerRole && (
