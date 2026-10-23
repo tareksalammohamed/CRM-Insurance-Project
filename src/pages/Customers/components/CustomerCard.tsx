@@ -35,7 +35,7 @@ function CustomerCardImpl({ customer, onOpenDetails, onOpenMoreMenu }: CustomerC
         <div className="flex items-start gap-2.5 min-w-0">
           <span className="data-card-avatar" aria-hidden="true">{initialOf(customer.name)}</span>
           <div className="min-w-0">
-            <div className="font-semibold text-secondary-900 truncate">{customer.name}</div>
+            <div className="customer-card-name font-semibold text-secondary-900" title={customer.name}>{customer.name}</div>
             <p className="data-card-ident" dir="ltr">
               <Hash />
               <span className="truncate font-mono">
@@ -57,7 +57,7 @@ function CustomerCardImpl({ customer, onOpenDetails, onOpenMoreMenu }: CustomerC
         </div>
         <div>
           <p>اسم الوكيل</p>
-          <p className="truncate">{customer.owner?.name || '-'}</p>
+          <p className="customer-card-owner" title={customer.owner?.name}>{customer.owner?.name || '-'}</p>
         </div>
         <div>
           <p>قيمة القسط الصافي</p>
