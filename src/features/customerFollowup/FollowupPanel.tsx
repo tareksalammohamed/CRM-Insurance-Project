@@ -7,16 +7,31 @@ import { FollowupForm } from './FollowupForm';
 import { FollowupList } from './FollowupList';
 import type { PromiseContext } from './model';
 export function FollowupPanel({ customerId, context, initiallyOpen = false }: { customerId: string; context?: PromiseContext; initiallyOpen?: boolean }) {
-  const [open, setOpen] = useState(initiallyOpen); const [revision, setRevision] = useState(0);
+  const [open, setOpen] = useState(initiallyOpen);
+  const [visited, setVisited] = useState(initiallyOpen);
+  const [revision, setRevision] = useState(0);
+  const [section, setSection] = useState<'history' | 'add'>(context ? 'add' : 'history');
+  const [formVisited, setFormVisited] = useState(!!context);
   const { user } = useAuth(); const { currentBranchId } = useBranchContext();
   return <section className="space-y-3" aria-label={context ? 'وعود السداد' : 'متابعة العميل'}>
-    <button type="button" className="btn btn-secondary w-full justify-between" onClick={() => setOpen(v => !v)} aria-expanded={open}><MessageSquare className="w-4 h-4" />{context ? 'وعود السداد والسجل' : 'سجل متابعة العميل'}<span>{open ? 'إخفاء' : 'فتح'}</span></button>
-    {open && <div key={`${user?.id}:${currentBranchId}:${customerId}:${context?.installmentId || context?.policyId || ''}`} className="space-y-4">
-      <FollowupForm customerId={customerId} context={context} onSaved={() => setRevision(v => v + 1)} />
-      <FollowupList customerId={customerId} policyId={context?.policyId} installmentId={context?.installmentId} revision={revision} />
+    {!initiallyOpen && <button type="button" className="btn btn-secondary w-full justify-between" onClick={() => { setVisited(true); setOpen(v => !v); }} aria-expanded={open}><MessageSquare className="w-4 h-4" />{context ? 'وعود السداد والسجل' : 'سجل متابعة العميل'}<span>{open ? 'إخفاء' : 'فتح'}</span></button>}
+    {visited && <div hidden={!open} key={`${user?.id}:${currentBranchId}:${customerId}:${context?.installmentId || context?.policyId || ''}`}>
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="اختيار قسم المتابعة">
+          <button type="button" className={`btn btn-sm ${section === 'history' ? 'btn-primary' : 'btn-secondary'}`} aria-pressed={section === 'history'} onClick={() => setSection('history')}>السجل والمتابعات</button>
+          <button type="button" className={`btn btn-sm ${section === 'add' ? 'btn-primary' : 'btn-secondary'}`} aria-pressed={section === 'add'} onClick={() => { setFormVisited(true); setSection('add'); }}>{context ? 'إضافة وعد سداد' : 'إضافة متابعة'}</button>
+        </div>
+        <div hidden={section !== 'add'}>
+          {formVisited && <FollowupForm customerId={customerId} context={context} onSaved={() => setRevision(v => v + 1)} />}
+        </div>
+        <div hidden={section !== 'history'}>
+          {section === 'history' && open && <FollowupList customerId={customerId} policyId={context?.policyId} installmentId={context?.installmentId} revision={revision} />}
+        </div>
+      </div>
     </div>}
   </section>;
 }
+
 export function FollowupWorkspaceButton() {
   const [open, setOpen] = useState(false); const { user } = useAuth(); const { currentBranchId } = useBranchContext();
   return <><button type="button" className="btn btn-secondary btn-sm" onClick={() => setOpen(true)}><CalendarClock className="w-4 h-4" />متابعات العملاء ووعود السداد</button>

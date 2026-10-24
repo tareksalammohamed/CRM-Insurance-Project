@@ -76,7 +76,7 @@ export function FollowupList({ customerId, policyId, installmentId, revision = 0
       {row.next_action && <p className="text-sm text-secondary-700">الخطوة القادمة: {row.next_action}</p>}
       {row.next_date && <p className="text-xs font-semibold text-secondary-700">الموعد: <bdi>{row.next_date}</bdi></p>}
       {row.close_note && <p className="text-sm text-secondary-600">نتيجة الإغلاق: {row.close_note}</p>}
-      <p className="text-xs text-secondary-500">{row.author_name || 'مستخدم سابق'} · {new Date(row.created_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo', dateStyle: 'short', timeStyle: 'short' })}</p>
+      <p className="text-xs text-secondary-500">{row.author_name || 'اسم المستخدم غير متاح'} · {new Date(row.created_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo', dateStyle: 'short', timeStyle: 'short' })}</p>
       <CloseFollowup row={row} onSaved={() => void load()} />
     </article>)}
     {total > 10 && <div className="flex items-center justify-between gap-2 text-sm text-secondary-700"><button type="button" className="btn btn-secondary btn-sm" disabled={page === 1 || loading} onClick={() => setPage(p => p - 1)}>السابق</button><span>{page} / {Math.ceil(total / 10)}</span><button type="button" className="btn btn-secondary btn-sm" disabled={page * 10 >= total || loading} onClick={() => setPage(p => p + 1)}>التالي</button></div>}
