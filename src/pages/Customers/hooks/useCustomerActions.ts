@@ -103,7 +103,7 @@ export function useCustomerActions({
     reset,
     setValue,
     watch,
-    formState: { errors }
+    formState: { errors, isDirty }
   } = useForm<CustomerFormData>({
     mode: 'onBlur',
     resolver: zodResolver(customerSchema) as Resolver<CustomerFormData>
@@ -413,6 +413,7 @@ export function useCustomerActions({
     handleSubmit,
     setValue,
     errors,
+    isDirty,
     ownerIdValue,
 
     expireConfirm, setExpireConfirm, expiring, handleExpireRequest, closeExpireConfirm,

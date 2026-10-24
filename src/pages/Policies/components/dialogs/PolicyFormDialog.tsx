@@ -1,3 +1,4 @@
+import { useUnsavedFormClose } from '../../../../hooks/useUnsavedFormClose';
 import { FormReview } from '../../../../components/feedback/FormReview';
 import { useEffect, useRef } from 'react';
 import clsx from 'clsx';
@@ -32,6 +33,7 @@ interface PolicyFormDialogProps {
   setValue: UseFormSetValue<PolicyFormData>;
   watch: UseFormWatch<PolicyFormData>;
   saving: boolean;
+  dirty: boolean;
   onClose: () => void;
 }
 
@@ -53,6 +55,7 @@ export function PolicyFormDialog({
   setValue,
   watch,
   saving,
+  dirty,
   onClose,
 }: PolicyFormDialogProps) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -92,24 +95,24 @@ export function PolicyFormDialog({
 
   const updateSplitChunk = (index: number, patch: Partial<PolicySplitChunkFormData>) => {
     const next = watchedSplitChunks.map((c, i) => (i === index ? { ...c, ...patch } : c));
-    setValue('split_chunks', next, { shouldValidate: true });
+    setValue('split_chunks', next, { shouldValidate: true, shouldDirty: true });
   };
 
   const addSplitChunk = () => {
     setValue(
       'split_chunks',
       [...watchedSplitChunks, { policy_number: '', sum_assured: undefined as unknown as number, premium_amount: undefined as unknown as number }],
-      { shouldValidate: true }
+      { shouldValidate: true, shouldDirty: true }
     );
   };
 
   const removeSplitChunk = (index: number) => {
     if (watchedSplitChunks.length <= 2) return; // حد أدنى وثيقتين عند التقسيم
-    setValue('split_chunks', watchedSplitChunks.filter((_, i) => i !== index), { shouldValidate: true });
+    setValue('split_chunks', watchedSplitChunks.filter((_, i) => i !== index), { shouldValidate: true, shouldDirty: true });
   };
 
   // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
-  const closeWhenIdle = () => { if (!saving) onClose(); };
+  const closeWhenIdle = useUnsavedFormClose({ dirty, saving, onClose });
   useDialogBehavior(closeWhenIdle);
 
   return (

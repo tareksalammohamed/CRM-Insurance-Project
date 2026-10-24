@@ -59,7 +59,7 @@ export function usePolicyActions({
     reset,
     setValue,
     watch,
-    formState: { errors }
+    formState: { errors, isDirty }
   } = useForm<PolicyFormData>({
     // z.preprocess يجعل نوع الإدخال الداخلي للـresolver أوسع من نوع القيم
     // التي يديرها النموذج فعلياً (خصوصاً الحقول الرقمية الفارغة). نثبت هنا
@@ -189,7 +189,7 @@ export function usePolicyActions({
 
   const handleSelectCustomer = (customer: CustomerPickerItem) => {
     setSelectedCustomer(customer);
-    setValue('customer_id', customer.id, { shouldValidate: true });
+    setValue('customer_id', customer.id, { shouldValidate: true, shouldDirty: true });
 
     // عند إصدار وثيقة جديدة (مش تعديل وثيقة موجودة) لعميل مالوش أي وثيقة
     // سابقة، وكان عنده بيانات "طلب تأمين" محفوظة، بنعبّي مبلغ التأمين وطريقة
@@ -202,8 +202,8 @@ export function usePolicyActions({
     // الجديدة مفروض تكون مستقلة تماماً عن الوثيقة الموجودة (قيمة قسط ومبلغ
     // تأمين وطريقة سداد مختلفين محتمل).
     if (!editingPolicy && !customer.current_policy_number && customer.insurance_amount != null && customer.payment_method) {
-      setValue('sum_assured', customer.insurance_amount, { shouldValidate: true });
-      setValue('payment_method', customer.payment_method as PaymentMethod, { shouldValidate: true });
+      setValue('sum_assured', customer.insurance_amount, { shouldValidate: true, shouldDirty: true });
+      setValue('payment_method', customer.payment_method as PaymentMethod, { shouldValidate: true, shouldDirty: true });
     }
 
     setShowCustomerPicker(false);
@@ -348,6 +348,7 @@ export function usePolicyActions({
     setValue,
     watch,
     errors,
+    isDirty,
 
     deleteConfirm,
     setDeleteConfirm,
