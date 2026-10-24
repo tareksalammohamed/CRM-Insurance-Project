@@ -1,3 +1,4 @@
+import { useState, useId } from 'react';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -57,11 +58,15 @@ function buildPageList(page: number, totalPages: number): (number | 'gap')[] {
 }
 
 export function Pagination({ page, totalPages, onPageChange, className = 'pt-2' }: PaginationProps) {
+  const [jumpOpen, setJumpOpen] = useState(false);
+  const [target, setTarget] = useState('');
+  const inputId = useId();
   if (totalPages <= 1) return null;
 
   const pageList = buildPageList(page, totalPages);
 
   return (
+    <div>
     <nav
       className={clsx('pagination-bar', className)}
       aria-label={`تنقل بين الصفحات، صفحة ${page} من ${totalPages}`}
@@ -101,9 +106,9 @@ export function Pagination({ page, totalPages, onPageChange, className = 'pt-2' 
       </div>
 
       {/* عدّاد مدمج — الموبايل (يمنع أى تجاوز أفقي على الشاشات الضيقة) */}
-      <span className="pagination-counter sm:hidden" aria-hidden="true">
+      <button type="button" className="pagination-counter sm:hidden min-h-11" aria-expanded={jumpOpen} aria-controls={inputId} aria-label={`صفحة ${page} من ${totalPages}، الانتقال لرقم صفحة`} onClick={() => { setTarget(String(page)); setJumpOpen(v => !v); }}>
         {page} / {totalPages}
-      </span>
+      </button>
 
       <button
         type="button"
@@ -119,5 +124,18 @@ export function Pagination({ page, totalPages, onPageChange, className = 'pt-2' 
         <ChevronsLeft className="w-4 h-4" aria-hidden="true" />
       </button>
     </nav>
+    {jumpOpen && <form id={inputId} className="sm:hidden flex flex-wrap items-end gap-2 rounded-xl bg-secondary-50 p-3 mt-2" onSubmit={event => {
+      event.preventDefault();
+      const value = Number(target);
+      if (!Number.isInteger(value) || value < 1 || value > totalPages) return;
+      onPageChange(() => value); setJumpOpen(false);
+    }}>
+      <label className="flex-1 min-w-0 text-xs text-secondary-600">رقم الصفحة (١–{totalPages})
+        <input className="input-field mt-1 w-full" type="number" inputMode="numeric" min={1} max={totalPages} step={1} required value={target} onChange={event => setTarget(event.target.value)} />
+      </label>
+      <button type="submit" className="btn btn-primary btn-sm">انتقال</button>
+      <button type="button" className="btn btn-secondary btn-sm" onClick={() => setJumpOpen(false)}>إلغاء</button>
+    </form>}
+    </div>
   );
 }

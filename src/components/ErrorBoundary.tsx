@@ -4,7 +4,7 @@ import { isOnline } from '../lib/networkManager';
 
 interface Props {
   children: ReactNode;
-  // اسم اختياري للجزء اللي بيتغطى (لتمييز الأخطاء فى الـ console فقط)
+  // هوية الجزء: تميّز الأخطاء وتسمح بالتعافي عند الانتقال لصفحة أخرى.
   boundaryName?: string;
 }
 
@@ -41,6 +41,12 @@ export class ErrorBoundary extends Component<Props, State> {
     // نسجّل الخطأ فقط، من غير ما نخفيه أو نمنع ظهوره فى الـ console —
     // الهدف هنا منع انهيار الواجهة، مش إخفاء الخطأ نفسه
     console.error(`[ErrorBoundary${this.props.boundaryName ? `:${this.props.boundaryName}` : ''}]`, error, info.componentStack);
+  }
+
+  componentDidUpdate(previous: Props) {
+    if (previous.boundaryName !== this.props.boundaryName && this.state.hasError) {
+      this.setState({ hasError: false, chunkError: false });
+    }
   }
 
   handleRetry = () => {
