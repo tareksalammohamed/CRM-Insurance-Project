@@ -1,3 +1,4 @@
+import { FollowupPanel } from '../../../../features/customerFollowup/FollowupPanel';
 import { CopyValueButton } from '../../../../components/ui/CopyValueButton';
 import { CustomerReview } from '../CustomerReview';
 import { AppDialog } from '../../../../components/ui/AppDialog';
@@ -156,6 +157,8 @@ export function CustomerDetailsDialog({
                 </div>
               )}
             </div>
+
+            <FollowupPanel key={customer.id} customerId={customer.id} />
 
             {/* ===== الوثائق: بطاقة مستقلة لكل وثيقة ===== */}
             <div>

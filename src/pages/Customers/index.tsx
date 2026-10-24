@@ -1,5 +1,5 @@
-import { Archive } from 'lucide-react';
-import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { ExpireRequestDialog } from '../../features/customerFollowup/ExpireRequestDialog';
+import { FollowupWorkspaceButton } from '../../features/customerFollowup/FollowupPanel';
 import { AppliedFilters } from '../../components/forms/AppliedFilters';
 import { LoadNotice } from '../../components/feedback/LoadNotice';
 import { useCallback } from 'react';
@@ -160,6 +160,7 @@ export function Customers() {
         </div>
       </section>
 
+      <div className="flex justify-end"><FollowupWorkspaceButton /></div>
       <LoadNotice message={loadMessage} loading={loading} onRetry={() => void loadCustomers()} />
 
       {/* ===== قائمة العملاء ===== */}
@@ -201,12 +202,9 @@ export function Customers() {
         />
       )}
 
-      {expireConfirm && <ConfirmDialog
-        icon={Archive}
-        title="تحويل إلى طلب تالف"
-        message={`سيخرج طلب ${expireConfirm.name} من قيد الإصدار وبدون وثائق. تظل بياناته محفوظة ويمكن إصدار وثيقة له لاحقًا.`}
-        confirmLabel="تحويل إلى تالف"
-        confirmBusyLabel="جاري التحويل..."
+      {expireConfirm && <ExpireRequestDialog
+        key={expireConfirm.id}
+        customerName={expireConfirm.name}
         busy={expiring}
         onConfirm={handleExpireRequest}
         onClose={closeExpireConfirm}

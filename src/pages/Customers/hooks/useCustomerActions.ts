@@ -1,3 +1,5 @@
+import { followupError } from '../../../features/customerFollowup/errors';
+import type { ExpiryReason } from '../../../features/customerFollowup/model';
 import { useRequestGuard } from '../../../hooks/useRequestGuard';
 import { friendlyError, getErrorCode } from '../../../lib/errorMessages';
 import { useNotify } from '../../../lib/notify';
@@ -49,17 +51,17 @@ export function useCustomerActions({
   const [expireConfirm, setExpireConfirm] = useState<CustomerWithRelations | null>(null);
   const [expiring, setExpiring] = useState(false);
   const expiringRef = useRef(false);
-  const handleExpireRequest = async () => {
+  const handleExpireRequest = async (reason: ExpiryReason, note: string, operationId: string) => {
     if (!user || !expireConfirm || expiringRef.current) return;
     expiringRef.current = true;
     setExpiring(true);
     try {
-      await markCustomerRequestExpired(expireConfirm.id);
+      await markCustomerRequestExpired(expireConfirm.id, reason, note, operationId);
       setExpireConfirm(null);
       notify.success('تم تحويل الطلب إلى تالف. يمكنك إصدار وثيقة له عند استكماله.');
       await Promise.all([loadCustomers(), loadStats()]);
     } catch (error) {
-      notify.error(friendlyError(error, 'تعذّر تحويل الطلب؛ راجع الاتصال وحاول مرة أخرى.'));
+      notify.error(followupError(error, 'تعذّر تحويل الطلب؛ راجع الاتصال وحاول مرة أخرى.'));
     } finally {
       expiringRef.current = false;
       setExpiring(false);

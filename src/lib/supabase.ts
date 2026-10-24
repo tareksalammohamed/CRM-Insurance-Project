@@ -51,6 +51,8 @@ export type UserRole =
 
 export type Customer = {
   request_manually_expired?: boolean;
+  request_expiry_reason?: string | null;
+  request_expiry_note?: string | null;
   id: string;
   name: string;
   national_id?: string;

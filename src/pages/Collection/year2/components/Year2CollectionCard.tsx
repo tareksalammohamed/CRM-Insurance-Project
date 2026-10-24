@@ -1,4 +1,6 @@
-import { Hash, UserRound, CalendarDays, CheckCircle2, AlertTriangle, Clock3, History, ListChecks, CheckCircle } from 'lucide-react';
+import { useState } from 'react';
+import { PromiseDialog } from '../../../../features/customerFollowup/FollowupPanel';
+import { CalendarClock, Hash, UserRound, CalendarDays, CheckCircle2, AlertTriangle, Clock3, History, ListChecks, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import clsx from 'clsx';
 import type { Year2EligiblePolicy } from '../types';
@@ -31,6 +33,7 @@ function yearBadgeLabel(yearNumber: number | undefined): string {
 }
 
 function Year2CollectionCardImpl({ policy, formatCurrency, onHistory, onAddPayment }: Year2CollectionCardProps) {
+  const [showPromise, setShowPromise] = useState(false);
   const status = policy.year2_status ?? 'month';
   // نفس نبرات الألوان المستخدمة فى بطاقة السنة الأولى بالضبط (مسدد = أخضر،
   // متأخر = أحمر، مستحق = عنبري) — عشان الشعور البصري يفضل واحد فى الشاشتين
@@ -42,6 +45,10 @@ function Year2CollectionCardImpl({ policy, formatCurrency, onHistory, onAddPayme
 
   return (
     <div className={clsx('col-row', tone)}>
+      {showPromise && <PromiseDialog customerId={policy.customer_id} customerName={policy.customer?.name || ''}
+        context={{ policyId: policy.id, policyNumber: policy.policy_number, minimumMonth: `${Number(policy.start_date.slice(0, 4)) + 1}${policy.start_date.slice(4, 7)}` }}
+        onClose={() => setShowPromise(false)} />}
+
       {/* ===== الهوية: العميل + رقم الوثيقة + السنة التأمينية الحالية + حالة التحصيل ===== */}
       <div className="col-row-head">
         <span className="col-row-avatar" aria-hidden="true">
@@ -109,7 +116,8 @@ function Year2CollectionCardImpl({ policy, formatCurrency, onHistory, onAddPayme
         </div>
       </div>
 
-      <div className="col-row-actions">
+      <div className="col-row-actions flex-wrap">
+      {policy.status === 'active' && <button type="button" className="btn btn-secondary btn-sm self-end" onClick={() => setShowPromise(true)}><CalendarClock className="w-4 h-4" />وعد بالسداد</button>}
         <button onClick={() => onAddPayment(policy)} className="btn btn-primary btn-sm flex-1">
           <CheckCircle className="w-4 h-4" />
           <span>تسجيل تحصيل</span>

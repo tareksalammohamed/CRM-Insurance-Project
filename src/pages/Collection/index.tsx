@@ -1,3 +1,4 @@
+import { PromiseDialog, FollowupWorkspaceButton } from '../../features/customerFollowup/FollowupPanel';
 import { AppliedFilters } from '../../components/forms/AppliedFilters';
 import { useSearchParams } from 'react-router-dom';
 import { LoadNotice } from '../../components/feedback/LoadNotice';
@@ -145,6 +146,7 @@ export function Collection() {
     loadPolicyInstallments,
   });
 
+  const [promiseInstallment, setPromiseInstallment] = useState<InstallmentWithRelations | null>(null);
   const [moreMenuInstallment, setMoreMenuInstallment] = useState<InstallmentWithRelations | null>(null);
   const [moreMenuAnchor, setMoreMenuAnchor] = useState<ActionMenuAnchor | null>(null);
   const closeMoreMenu = () => {
@@ -157,6 +159,7 @@ export function Collection() {
     <div className="workspace-page workspace-page-collection col-page space-y-3 md:space-y-3.5 animate-fadeIn pb-2">
 
       <CollectionHeader />
+      <div className="flex justify-end"><FollowupWorkspaceButton /></div>
 
       {/* ===== مسار التحصيل ===== */}
       {/* نفس زر التبديل الأصلي ونفس السلوك — الإطار بقى لوحًا معنونًا. */}
@@ -308,6 +311,10 @@ export function Collection() {
       )}
 
       {/* ===== مودال "المزيد" — إجراءات إضافية لكل قسط ===== */}
+      {promiseInstallment && <PromiseDialog key={promiseInstallment.id}
+        customerId={promiseInstallment.policy.customer_id} customerName={promiseInstallment.policy.customer?.name || ''}
+        context={{ policyId: promiseInstallment.policy_id, policyNumber: promiseInstallment.policy.policy_number, installmentId: promiseInstallment.id, installmentNumber: promiseInstallment.installment_number }}
+        onClose={() => setPromiseInstallment(null)} />}
       {moreMenuInstallment && (
         <MoreMenuDialog
           installment={moreMenuInstallment}
@@ -316,6 +323,7 @@ export function Collection() {
           onShowPolicyDetails={() => { setDetailsView({ installment: moreMenuInstallment, view: 'policy' }); closeMoreMenu(); }}
           onOpenPolicyHistory={() => { handleOpenPolicyDetails(moreMenuInstallment.policy); closeMoreMenu(); }}
           onOpenCancel={() => { handleOpenCancel(moreMenuInstallment); closeMoreMenu(); }}
+          onOpenPromise={() => { setPromiseInstallment(moreMenuInstallment); closeMoreMenu(); }}
           onOpenPayment={() => { handleOpenPayment(moreMenuInstallment); closeMoreMenu(); }}
           anchor={moreMenuAnchor}
         />
