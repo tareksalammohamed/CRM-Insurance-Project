@@ -134,15 +134,15 @@ export function JobCenter() {
       )}
 
       <div className="compact-job-stats grid grid-cols-3 gap-2 sm:gap-3">
-        <button aria-pressed={filter === 'active'} onClick={() => setFilter('active')} className="kpi-card text-right">
+        <button aria-pressed={filter === 'active'} onClick={() => setFilter('active')} className="kpi-card kpi-card--summary text-right">
           <p className="text-xs text-secondary-500">جارية الآن</p>
           <p className="text-2xl font-extrabold text-primary-700 mt-1">{counts.active}</p>
         </button>
-        <button aria-pressed={filter === 'attention'} onClick={() => setFilter('attention')} className="kpi-card text-right">
+        <button aria-pressed={filter === 'attention'} onClick={() => setFilter('attention')} className="kpi-card kpi-card--summary text-right">
           <p className="text-xs text-secondary-500">تحتاج انتباه</p>
           <p className="text-2xl font-extrabold text-warning-700 mt-1">{counts.attention}</p>
         </button>
-        <button aria-pressed={filter === 'done'} onClick={() => setFilter('done')} className="kpi-card text-right">
+        <button aria-pressed={filter === 'done'} onClick={() => setFilter('done')} className="kpi-card kpi-card--summary text-right">
           <p className="text-xs text-secondary-500">مكتملة</p>
           <p className="text-2xl font-extrabold text-success-700 mt-1">{counts.done}</p>
         </button>

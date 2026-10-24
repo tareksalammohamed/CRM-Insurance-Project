@@ -1,3 +1,4 @@
+import { useId, useState } from 'react';
 import { FollowupPanel } from '../../../../features/customerFollowup/FollowupPanel';
 import { CopyValueButton } from '../../../../components/ui/CopyValueButton';
 import { CustomerReview } from '../CustomerReview';
@@ -35,11 +36,15 @@ export function CustomerDetailsDialog({
   onIssueNewPolicy,
   onOpenPolicyDetails,
 }: CustomerDetailsDialogProps) {
+  const [section, setSection] = useState<'overview' | 'policies' | 'followups'>('overview');
+  const [policiesVisited, setPoliciesVisited] = useState(false);
+  const [followupsVisited, setFollowupsVisited] = useState(false);
+  const sectionId = useId();
   const sortedPolicies = sortPoliciesByStartDate(customer.policies || []);
 
 
   return (
-    <AppDialog onClose={onClose} ariaLabel={`تفاصيل العميل ${customer.name}`} className="customer-workspace modal-form-shell max-w-2xl animate-fadeIn">
+    <AppDialog onClose={onClose} ariaLabel={`تفاصيل العميل ${customer.name}`} className="customer-workspace modal-form-shell max-w-4xl animate-fadeIn">
           <div className="modal-form-header flex items-center justify-between gap-3 p-4 md:p-5 border-b border-secondary-200 bg-white">
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="data-card-avatar" aria-hidden="true">
@@ -49,7 +54,7 @@ export function CustomerDetailsDialog({
                 <h3 className="text-[15px] font-extrabold text-secondary-900 break-words tracking-tight">
                   {customer.name}
                 </h3>
-                <p className="text-[11px] font-semibold text-secondary-400 mt-0.5">تفاصيل العميل</p>
+                <p className="text-[11px] font-semibold text-secondary-400 mt-0.5">مساحة عمل العميل</p>
               </div>
             </div>
             <button onClick={onClose} className="icon-button shrink-0" aria-label="إغلاق">
@@ -57,8 +62,11 @@ export function CustomerDetailsDialog({
             </button>
           </div>
 
-          <div className="modal-form-scroll p-4 md:p-5 space-y-5">
-            <CustomerReview customer={customer} onEdit={() => onEdit(customer)} onOpenPolicy={onOpenPolicyDetails} />
+          <div className="customer-workspace-nav" role="group" aria-label="أقسام ملف العميل">
+            {([{ id: 'overview', label: 'البيانات والمراجعة' }, { id: 'policies', label: `الوثائق والأقساط (${sortedPolicies.length})` }, { id: 'followups', label: 'المتابعات ووعود السداد' }] as const).map(item => <button key={item.id} type="button" aria-pressed={section === item.id} aria-controls={`${sectionId}-${item.id}`} onClick={() => { setSection(item.id); if (item.id === 'policies') setPoliciesVisited(true); if (item.id === 'followups') setFollowupsVisited(true); }}>{item.label}</button>)}
+          </div>
+          <div className="modal-form-scroll p-4 md:p-5">
+            <div id={`${sectionId}-overview`} hidden={section !== 'overview'}><div className="space-y-4">
             {/* ===== البيانات الأساسية فقط: رقم الهاتف، الوكيل المسؤول، عدد الوثائق ===== */}
             <div className="detail-field-grid customer-overview-grid">
               <div className="detail-field">
@@ -73,12 +81,7 @@ export function CustomerDetailsDialog({
                 </span>
                 <span className="detail-field-value break-words">{customer.owner?.name || '-'}</span>
               </div>
-              <div className="detail-field">
-                <span className="detail-field-label flex items-center gap-1">
-                  <FileText className="w-3 h-3" /> عدد الوثائق
-                </span>
-                <span className="detail-field-value text-figure">{sortedPolicies.length}</span>
-              </div>
+
             </div>
 
             {/* اتصال سريع — الإجراء الأكثر تكرارًا، بارز فى متناول الإبهام */}
@@ -91,6 +94,8 @@ export function CustomerDetailsDialog({
                 <CopyValueButton key={customer.phone} value={customer.phone} label="نسخ الرقم" />
               </div>
             )}
+
+            <CustomerReview policySummaries={policySummaries} customer={customer} onEdit={() => onEdit(customer)} onOpenPolicy={onOpenPolicyDetails} />
 
             {/* ===== بيانات إضافية (اختيارية) — نفس البيانات محفوظة وقابلة للتعديل، فقط غير معروضة افتراضياً ===== */}
             <div className="surface-sunken !p-0">
@@ -158,10 +163,14 @@ export function CustomerDetailsDialog({
               )}
             </div>
 
-            <FollowupPanel key={customer.id} customerId={customer.id} />
+            </div></div>
+            <div id={`${sectionId}-followups`} hidden={section !== 'followups'}>
+              {followupsVisited && <FollowupPanel key={customer.id} customerId={customer.id} initiallyOpen />}
+            </div>
 
             {/* ===== الوثائق: بطاقة مستقلة لكل وثيقة ===== */}
-            <div>
+            <div id={`${sectionId}-policies`} hidden={section !== 'policies'}>
+              {policiesVisited && <>
               <div className="card-section-head">
                 <span className="card-section-title">
                   <FileText className="w-4 h-4 text-primary-600" />
@@ -270,6 +279,7 @@ export function CustomerDetailsDialog({
                   })}
                 </div>
               )}
+              </>}
             </div>
           </div>
 

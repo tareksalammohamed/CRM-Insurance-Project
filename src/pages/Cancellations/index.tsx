@@ -151,19 +151,19 @@ export function Cancellations() {
       ) : (
         <>
           <div className="cancellation-summary-grid grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
-            <div className="kpi-card border-r-4 border-r-error-500">
+            <div className="kpi-card kpi-card--summary border-r-4 border-r-error-500">
               <p className="text-sm text-secondary-500">نسبة الإلغاءات</p>
               <p className="text-2xl font-bold text-error-600 mt-1">
                 {summary?.cancellationRate ?? 0}%
               </p>
             </div>
-            <div className="kpi-card border-r-4 border-r-error-500">
+            <div className="kpi-card kpi-card--summary border-r-4 border-r-error-500">
               <p className="text-sm text-secondary-500">قيمة الإلغاءات</p>
               <p className="text-2xl font-bold text-error-600 mt-1">
                 {formatCurrency(summary?.cancelledValue || 0)}
               </p>
             </div>
-            <div className="kpi-card">
+            <div className="kpi-card kpi-card--summary">
               <p className="text-sm text-secondary-500">إجمالي الأقساط المسددة هذا العام</p>
               <p className="text-2xl font-bold text-secondary-900 mt-1">
                 {formatCurrency(summary?.totalCollected || 0)}

@@ -88,7 +88,7 @@ export function StatsCard({
         onClick={onClick}
         aria-label={ariaLabel || label}
         className={clsx(
-          'kpi-card kpi-card-clickable card-interactive text-right w-full cursor-pointer active:translate-y-0 touch-target',
+          'kpi-card kpi-card--summary kpi-card-clickable card-interactive text-right w-full cursor-pointer active:translate-y-0 touch-target',
           borderClassName
         )}
       >
@@ -99,5 +99,5 @@ export function StatsCard({
     );
   }
 
-  return <div className={clsx('kpi-card', borderClassName)}>{content}</div>;
+  return <div className={clsx('kpi-card kpi-card--summary', borderClassName)}>{content}</div>;
 }

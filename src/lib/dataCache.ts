@@ -1,3 +1,4 @@
+import { clearClientDiagnostics } from './clientDiagnostics';
 import { idbGet, idbPut, idbDelete, idbClearStore, DATA_CACHE_STORE } from './offlineDb';
 
 // ===================================
@@ -54,6 +55,7 @@ export async function clearAllDataCache(): Promise<void> {
 let cacheIdentity: { userId: string | null; generation: number } = { userId: null, generation: 0 };
 export function setDataCacheIdentity(userId: string | null): void {
   if (cacheIdentity.userId !== userId) {
+    clearClientDiagnostics();
     cacheIdentity = { userId, generation: cacheIdentity.generation + 1 };
   }
 }
