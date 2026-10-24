@@ -284,3 +284,37 @@
   .copy-value-status { display: block; color: var(--ink-soft); font-size: .75rem; line-height: 1.6; }
   .copy-value-status:not(:empty) { margin-top: .3rem; }
 }
+
+/* Shared compact summaries: full figures remain visible; print sizes are unchanged. */
+@media screen {
+  .kpi-card.kpi-card--summary,
+  .workspace-page .kpi-card.kpi-card--summary {
+    min-height: 0 !important;
+    padding: .75rem !important;
+    border-radius: .9rem !important;
+  }
+  .kpi-card--summary .kpi-icon-tile { width: 30px !important; height: 30px !important; border-radius: .6rem !important; }
+  .kpi-card--summary > .flex { gap: .5rem; align-items: center; }
+  .kpi-card--summary > .flex > p { font-size: .72rem !important; line-height: 1.5 !important; }
+  .kpi-card--summary > p.text-figure, .kpi-card--summary > p.text-xl, .kpi-card--summary > p.text-2xl { font-size: clamp(1.05rem, 2.4vw, 1.45rem) !important; line-height: 1.4 !important; margin-top: .25rem !important; overflow-wrap: anywhere; }
+  .kpi-card--summary.skeleton-shimmer { min-height: 88px !important; }
+  .page-header-single { gap: .25rem; }
+  .page-header-subtitle { line-height: 1.6; }
+  .workspace-section-head { gap: .65rem; margin-bottom: .8rem; }
+  .customer-workspace-nav { display: flex; flex-shrink: 0; gap: .35rem; padding: .65rem 1rem; border-bottom: 1px solid var(--line); background: var(--surface-sunken); overflow-x: auto; }
+  .customer-workspace-nav button { flex: 1 1 0; min-width: 0; white-space: normal; line-height: 1.5; min-height: 44px; padding: .55rem .75rem; border-radius: .65rem; font-size: .78rem; font-weight: 750; color: var(--ink-soft); }
+  .customer-workspace-nav button[aria-pressed="true"] { color: var(--ink); background: var(--surface); box-shadow: 0 1px 4px rgb(0 0 0 / .07); }
+  .customer-workspace-nav button:focus-visible { outline: 2px solid #0d9488; outline-offset: -2px; }
+  .customer-workspace .customer-overview-grid { gap: .6rem; }
+  @media (max-width: 479px) {
+    .customer-workspace-nav { padding: .5rem; }
+    .customer-workspace-nav button { font-size: .7rem; padding: .5rem; }
+    .workspace-section { padding: .8rem; }
+  }
+}
+@media screen {
+  .customer-workspace .customer-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .customer-workspace .customer-overview-grid > .detail-field { grid-column: auto !important; }
+  .customer-workspace .modal-actions { gap: .6rem; margin-inline: 0 !important; padding-inline: 1rem; }
+  .customer-workspace .modal-actions > button { min-width: 0; flex: 1 1 0; padding-inline: .65rem; }
+}

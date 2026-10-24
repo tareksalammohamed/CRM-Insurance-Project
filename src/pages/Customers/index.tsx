@@ -241,7 +241,7 @@ export function Customers() {
 
       {/* ===== مودال تفاصيل العميل ===== */}
       {detailsCustomer && (
-        <CustomerDetailsDialog
+        <CustomerDetailsDialog key={detailsCustomer.id}
           customer={detailsCustomer}
           showExtraInfo={showExtraInfo}
           onToggleExtraInfo={() => setShowExtraInfo((v) => !v)}

@@ -13,6 +13,7 @@ afterEach(cleanup);
 it('opens installments for the selected policy and exact status instead of a general collection page', () => {
   const open = vi.fn();
   render(<CustomerDetailsDialog customer={{ id: 'customer-a', name: 'عميل', phone: '', policies: [policy] } as CustomerWithRelations} showExtraInfo={false} onToggleExtraInfo={vi.fn()} policySummaries={{ 'policy-a': { paid: 2, pending: 3, overdue: 1 } }} onClose={vi.fn()} onEdit={vi.fn()} onPrint={vi.fn()} onIssueNewPolicy={vi.fn()} onOpenPolicyDetails={open} />);
+  fireEvent.click(screen.getByRole('button', { name: 'الوثائق والأقساط (1)' }));
   fireEvent.click(screen.getByRole('button', { name: 'عرض الأقساط المتأخرة (1)' }));
   expect(open).toHaveBeenCalledWith(policy, 'overdue');
 });
@@ -32,4 +33,19 @@ it('keeps policy details scoped while allowing the user to clear the status filt
   expect(screen.queryByRole('button', { name: 'إلغاء سداد القسط رقم 1' })).toBeNull();
   fireEvent.change(screen.getByLabelText('أقساط هذه الوثيقة فقط'), { target: { value: 'all' } });
   expect(screen.getAllByRole('button', { name: 'إلغاء سداد القسط رقم 1' }).length).toBeGreaterThan(0);
+});
+it('organizes customer information separately from policy rendering', () => {
+  render(<CustomerDetailsDialog customer={{ id: 'customer-a', name: 'عميل', phone: '01012345678', policies: [policy] } as CustomerWithRelations} showExtraInfo={false} onToggleExtraInfo={vi.fn()} policySummaries={{}} onClose={vi.fn()} onEdit={vi.fn()} onPrint={vi.fn()} onIssueNewPolicy={vi.fn()} onOpenPolicyDetails={vi.fn()} />);
+  expect(screen.getByRole('button', { name: 'البيانات والمراجعة' }).getAttribute('aria-pressed')).toBe('true');
+  expect(screen.queryByText('100001')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'الوثائق والأقساط (1)' }));
+  expect(screen.getByText('100001')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'وثيقة جديدة' })).toBeTruthy();
+});
+it('explains overdue attention from the loaded summary and opens the exact policy filter', () => {
+  const open = vi.fn();
+  render(<CustomerDetailsDialog customer={{ id: 'customer-a', name: 'عميل', phone: '01012345678', policies: [policy] } as CustomerWithRelations} showExtraInfo={false} onToggleExtraInfo={vi.fn()} policySummaries={{ 'policy-a': { paid: 1, pending: 2, overdue: 3 } }} onClose={vi.fn()} onEdit={vi.fn()} onPrint={vi.fn()} onIssueNewPolicy={vi.fn()} onOpenPolicyDetails={open} />);
+  fireEvent.click(screen.getByText('عرض الملاحظات وأسبابها'));
+  fireEvent.click(screen.getByText('فتح الوثيقة والأقساط'));
+  expect(open).toHaveBeenCalledWith(policy, 'overdue');
 });

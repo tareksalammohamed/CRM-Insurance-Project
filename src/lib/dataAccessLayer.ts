@@ -1,3 +1,4 @@
+import { recordClientRead } from './clientDiagnostics';
 import { isOnline } from './networkManager';
 import { getCachedData, setCachedData, getDataCacheIdentity } from './dataCache';
 import { emitOfflineEvent } from './offlineEvents';
@@ -145,7 +146,7 @@ function minutesAgoLabel(cachedAt: number): string {
  * @param fetcher الدالة اللي بتنفذ الاستعلام الحقيقي (نفس المنطق الحالي بالظبط)
  * @param options.emptyValue القيمة الافتراضية عند عدم وجود بيانات إطلاقاً
  */
-export async function dalRead<T>(
+async function performDalRead<T>(
   key: string,
   fetcher: () => Promise<T>,
   options: DalOptions<T>,
@@ -216,4 +217,12 @@ export function readStatusMessage(result: Pick<DalResult<unknown>, 'status' | 'c
   return result.status === 'offline-empty'
     ? 'تعذر الاتصال ولا توجد بيانات محفوظة. أعد المحاولة عند عودة الإنترنت.'
     : 'تعذر تحميل البيانات. أعد المحاولة؛ هذه ليست نتيجة بحث فارغة.';
+}
+
+export async function dalRead<T>(key: string, fetcher: () => Promise<T>, options: DalOptions<T>): Promise<DalResult<T>> {
+  const identity = getDataCacheIdentity();
+  const started = performance.now();
+  const result = await performDalRead(key, fetcher, options);
+  if (identity === getDataCacheIdentity()) recordClientRead(key, performance.now() - started, result.status);
+  return result;
 }

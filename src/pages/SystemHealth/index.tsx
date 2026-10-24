@@ -1,3 +1,4 @@
+import { ClientDiagnostics } from '../../features/diagnostics/ClientDiagnostics';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Activity, Bot, CheckCircle2, Clock3, Database, DatabaseBackup, RefreshCw, ServerCog, AlertTriangle, XCircle } from 'lucide-react';
 import clsx from 'clsx';
@@ -208,6 +209,7 @@ export function SystemHealth() {
         </button>
       </div>
 
+      <ClientDiagnostics />
       {error && (
         <div className="card border-error-200 bg-error-50 text-error-700 flex items-start gap-2">
           <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" />
