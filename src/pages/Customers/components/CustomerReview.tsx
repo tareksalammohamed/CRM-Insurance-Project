@@ -1,3 +1,4 @@
+import { EXPIRY_REASONS, type ExpiryReason } from '../../../features/customerFollowup/model';
 import { customerRequestStatus } from '../../../lib/customerRequestStatus';
 import { ClipboardCheck, AlertTriangle, ArrowLeft, FileWarning } from 'lucide-react';
 import { customerInputHints } from '../../../lib/inputGuidance';
@@ -27,7 +28,8 @@ export function CustomerReview({ customer, onEdit, onOpenPolicy }: {
       </ul>
       <p className="customer-review-footnote">ملاحظات للمراجعة وفق البيانات المسجلة؛ لا تمنع الحفظ ولا تعدّل البيانات تلقائيًا.</p>
     </details>}
-    {expired && <p className="text-sm text-secondary-600">{customer.request_manually_expired ? 'تم تحويل الطلب إلى تالف يدويًا.' : 'طلب تالف: مرّ 60 يومًا كاملة منذ التسجيل دون إصدار وثيقة.'} بياناته محفوظة ويمكن إصدار وثيقة له عند استكمال الطلب.</p>}
+    {expired && <p className="text-sm text-secondary-600">{customer.request_manually_expired ? `تم تحويل الطلب إلى تالف يدويًا${customer.request_expiry_reason ? `: ${EXPIRY_REASONS[customer.request_expiry_reason as ExpiryReason] || customer.request_expiry_reason}` : ' (لم يُسجّل سبب وقت التحويل)'}.` : 'طلب تالف: مرّ 60 يومًا كاملة منذ التسجيل دون إصدار وثيقة.'} بياناته محفوظة ويمكن إصدار وثيقة له عند استكمال الطلب.</p>}
+    {expired && customer.request_expiry_note && <p className="text-sm text-secondary-600 break-words">{customer.request_expiry_note}</p>}
     <div className="customer-workflow-strip">
       <span><strong>العميل</strong><small>ملف مسجل</small></span>
       <span><strong>الوثائق</strong><small>{policies.length} وثيقة مرتبطة</small></span>

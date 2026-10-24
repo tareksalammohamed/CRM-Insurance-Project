@@ -1,3 +1,4 @@
+import type { ExpiryReason } from '../../../features/customerFollowup/model';
 import { customerRequestStatus, requestExpiryCutoff } from '../../../lib/customerRequestStatus';
 import { supabase, type Customer, type User, type PolicyStatus } from '../../../lib/supabase';
 import { format } from 'date-fns';
@@ -469,7 +470,7 @@ export async function deleteCustomer(id: string): Promise<{ error?: string }> {
 }
 
 // Online acknowledgement is required before showing the new request status.
-export async function markCustomerRequestExpired(customerId: string): Promise<void> {
-  const { error } = await supabase.rpc('mark_customer_request_expired', { p_customer_id: customerId });
+export async function markCustomerRequestExpired(customerId: string, reason: ExpiryReason, note: string, operationId: string): Promise<void> {
+  const { error } = await supabase.rpc('mark_customer_request_expired_with_reason', { p_customer_id: customerId, p_reason: reason, p_note: note, p_operation_id: operationId });
   if (error) throw error;
 }

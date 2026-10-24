@@ -1,0 +1,32 @@
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
+import { FollowupForm } from '../src/features/customerFollowup/FollowupForm';
+const { save } = vi.hoisted(() => ({ save: vi.fn() }));
+vi.mock('../src/features/customerFollowup/service', () => ({ saveFollowup: save }));
+afterEach(() => { cleanup(); vi.resetAllMocks(); });
+it('preserves the entered note and operation id after a failed save and ignores duplicate clicks', async () => {
+  let reject!: (value: Error) => void;
+  save.mockImplementationOnce(() => new Promise((_, fail) => { reject = fail; })).mockResolvedValueOnce(undefined);
+  const saved = vi.fn(); render(<FollowupForm customerId="customer" onSaved={saved} />);
+  fireEvent.change(screen.getByLabelText('ماذا حدث في التواصل؟'), { target: { value: 'اتصال بالعميل' } });
+  const button = screen.getByText('حفظ المتابعة'); fireEvent.click(button); fireEvent.click(button);
+  expect(save).toHaveBeenCalledTimes(1);
+  reject(new Error('network')); await waitFor(() => expect(screen.getByText('حفظ المتابعة')).toBeTruthy());
+  expect((screen.getByLabelText('ماذا حدث في التواصل؟') as HTMLTextAreaElement).value).toBe('اتصال بالعميل');
+  const firstId = save.mock.calls[0][0].id;
+  fireEvent.click(screen.getByText('حفظ المتابعة'));
+  await waitFor(() => expect(saved).toHaveBeenCalledOnce());
+  expect(save.mock.calls[1][0].id).toBe(firstId);
+  expect(save.mock.calls[1][0]).toMatchObject({ customer_id: 'customer', kind: 'contact', policy_id: null, installment_id: null, next_date: null });
+});
+it('stores an installment reference without a payment amount or settlement mutation', async () => {
+  save.mockResolvedValue(undefined);
+  render(<FollowupForm customerId="c" context={{ policyId: 'p', policyNumber: '123', installmentId: 'i' }} onSaved={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText('تفاصيل الاتفاق مع العميل'), { target: { value: 'وعد العميل بالسداد' } });
+  fireEvent.change(screen.getByLabelText('تاريخ وعد السداد'), { target: { value: '2099-01-01' } });
+  fireEvent.click(screen.getByText('حفظ وعد السداد'));
+  await waitFor(() => expect(save).toHaveBeenCalledOnce());
+  expect(save.mock.calls[0][0]).toMatchObject({ kind: 'promise', policy_id: 'p', installment_id: 'i', payment_month: null, next_date: '2099-01-01' });
+  expect(save.mock.calls[0][0]).not.toHaveProperty('amount');
+  expect(save.mock.calls[0][0]).not.toHaveProperty('status');
+});

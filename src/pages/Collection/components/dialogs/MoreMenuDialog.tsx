@@ -1,4 +1,4 @@
-import { User, Receipt, History as HistoryIcon, XCircle, CheckCircle } from 'lucide-react';
+import { CalendarClock, User, Receipt, History as HistoryIcon, XCircle, CheckCircle } from 'lucide-react';
 import { AppBottomSheet, type ActionMenuAnchor } from '../../../../components/ui/AppBottomSheet';
 import type { InstallmentWithRelations } from '../../types';
 
@@ -10,6 +10,7 @@ interface MoreMenuDialogProps {
   onOpenPolicyHistory: () => void;
   onOpenCancel: () => void;
   onOpenPayment: () => void;
+  onOpenPromise: () => void;
   anchor?: ActionMenuAnchor | null;
 }
 
@@ -22,6 +23,7 @@ export function MoreMenuDialog({
   onOpenPolicyHistory,
   onOpenCancel,
   onOpenPayment,
+  onOpenPromise,
   anchor,
 }: MoreMenuDialogProps) {
   return (
@@ -48,6 +50,7 @@ export function MoreMenuDialog({
         <HistoryIcon className="w-4 h-4" />
         <span>سجل التحصيل (كل أقساط الوثيقة)</span>
       </button>
+      {installment.status !== 'paid' && installment.policy.status === 'active' && <button onClick={onOpenPromise} className="dropdown-item w-full"><CalendarClock className="w-4 h-4" /><span>وعد بالسداد / متابعة الوعد</span></button>}
       {installment.status === 'paid' ? (
         <button onClick={onOpenCancel} className="dropdown-item w-full text-error-600">
           <XCircle className="w-4 h-4" />
