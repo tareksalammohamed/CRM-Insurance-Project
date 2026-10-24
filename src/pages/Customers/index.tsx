@@ -54,7 +54,7 @@ export function Customers() {
 
   const {
     showModal, editingCustomer, saving, handleOpenModal, handleCloseModal, onSubmit,
-    register, handleSubmit, setValue, errors, ownerIdValue,
+    register, handleSubmit, setValue, errors, isDirty, ownerIdValue,
     expireConfirm, setExpireConfirm, expiring, handleExpireRequest, closeExpireConfirm,
     deleteConfirm, setDeleteConfirm, deleting, handleDelete,
     moreMenuCustomer, setMoreMenuCustomer, handleOpenCustomerPolicies, handleIssueNewPolicy, handlePrintCustomer,
@@ -198,6 +198,7 @@ export function Customers() {
           ownerIdValue={ownerIdValue}
           setValue={setValue}
           saving={saving}
+          dirty={isDirty}
           onClose={handleCloseModal}
         />
       )}

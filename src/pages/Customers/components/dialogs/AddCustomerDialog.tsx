@@ -1,3 +1,4 @@
+import { useUnsavedFormClose } from '../../../../hooks/useUnsavedFormClose';
 import { customerInputHints } from '../../../../lib/inputGuidance';
 import { FormReview } from '../../../../components/feedback/FormReview';
 import { useRef, useState } from 'react';
@@ -23,6 +24,7 @@ interface CustomerFormDialogProps {
   ownerIdValue: string | undefined;
   setValue: UseFormSetValue<CustomerFormData>;
   saving: boolean;
+  dirty: boolean;
   onClose: () => void;
 }
 
@@ -42,6 +44,7 @@ export function CustomerFormDialog({
   ownerIdValue,
   setValue,
   saving,
+  dirty,
   onClose,
 }: CustomerFormDialogProps) {
   const [hints, setHints] = useState<string[]>([]);
@@ -49,7 +52,7 @@ export function CustomerFormDialog({
 
 
   // Escape للإغلاق + قفل تمرير الخلفية + إرجاع التركيز للعنصر المُستدعى
-  const closeWhenIdle = () => { if (!saving) onClose(); };
+  const closeWhenIdle = useUnsavedFormClose({ dirty, saving, onClose });
   useDialogBehavior(closeWhenIdle);
 
   return (
@@ -277,7 +280,7 @@ export function CustomerFormDialog({
                   <AgentCombobox
                     agents={agents}
                     value={ownerIdValue || ''}
-                    onChange={(id) => setValue('owner_id', id, { shouldValidate: true })}
+                    onChange={(id) => setValue('owner_id', id, { shouldValidate: true, shouldDirty: true })}
                     currentUserId={user?.id}
                     placeholder="اختر الوكيل"
                     hasError={!!errors.owner_id}
