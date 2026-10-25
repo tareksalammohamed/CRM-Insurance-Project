@@ -152,9 +152,11 @@ export async function closeMonth(monthStr: string, userId: string) {
     month: monthStr, closed_by_user_id: userId, is_open: false,
   });
   if (error?.code === '23505') {
-    await supabase.from('monthly_closings')
+    const { data, error: updateError } = await supabase.from('monthly_closings')
       .update({ is_open: false, opened_at: null, opened_by_user_id: null })
-      .eq('month', monthStr);
+      .eq('month', monthStr).select('id');
+    if (updateError) throw updateError;
+    if (!data?.length) throw new Error('لم يتم تحديث الإقفال؛ حدّث البيانات وراجع صلاحياتك ثم أعد المحاولة.');
   } else if (error) {
     throw error;
   }

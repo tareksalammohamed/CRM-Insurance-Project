@@ -13,6 +13,7 @@ import { isOnline } from '../../lib/networkManager';
 // كل الجداول اللي بتتاخد منها نسخة احتياطية، وترتيبها في ملف الإكسيل
 const BACKUP_TABLES: { table: string; sheetName: string }[] = [
   { table: 'customers', sheetName: 'العملاء' },
+  { table: 'customer_followups', sheetName: 'متابعات ووعود السداد' },
   { table: 'policies', sheetName: 'الوثائق' },
   { table: 'installments', sheetName: 'الأقساط' },
   { table: 'payments', sheetName: 'المدفوعات' },
@@ -34,6 +35,8 @@ export async function runDatabaseBackup(
     throw new Error('لا يوجد اتصال بالإنترنت. النسخة الاحتياطية تحتاج اتصال فعلي لتصدير أحدث بيانات قاعدة البيانات كاملة.');
   }
 
+  const startedAt = new Date().toISOString();
+  const manifest: (string | number)[][] = [['الجدول', 'ورقة البيانات', 'عدد السجلات المصدّرة']];
   const workbook = XLSX.utils.book_new();
   let totalRows = 0;
 
@@ -57,6 +60,7 @@ export async function runDatabaseBackup(
       if (!data || data.length < pageSize) break;
     }
     totalRows += rows.length;
+    manifest.push([table, sheetName, rows.length]);
 
     const sheet = rows.length
       ? XLSX.utils.json_to_sheet(rows)
@@ -64,6 +68,13 @@ export async function runDatabaseBackup(
 
     XLSX.utils.book_append_sheet(workbook, sheet, sheetName);
   }
+
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+    ['نطاق التصدير', 'الجداول المحددة حسب صلاحيات الحساب الحالي، وليس نسخة استعادة كاملة للنظام'],
+    ['بداية التصدير', startedAt], ['نهاية التصدير', new Date().toISOString()],
+    ['تنبيه', 'تُقرأ الجداول بالتتابع؛ الملف ليس لقطة ذرية واحدة لقاعدة البيانات'],
+    ...manifest,
+  ]), 'دليل التصدير');
 
   onProgress?.({ table: '', done: BACKUP_TABLES.length, total: BACKUP_TABLES.length });
 
