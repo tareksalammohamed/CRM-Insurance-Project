@@ -40,3 +40,12 @@ it('does not publish an older month response over the latest selection', async (
   expect(screen.getByText('مفتوح — قيد المراجعة')).toBeTruthy();
   expect(mocks.payments).toHaveBeenCalledTimes(2);
 });
+it('starts monthly payments before the independent closing-record read completes', async () => {
+  let finish!: (value: null) => void;
+  mocks.record.mockReturnValueOnce(new Promise<null>(resolve => { finish = resolve; }));
+  render(<MonthlyClosing />);
+  await waitFor(() => expect(mocks.payments).toHaveBeenCalledOnce());
+  expect(screen.queryByTestId('print-report')).toBeNull();
+  await act(async () => finish(null));
+  await screen.findByTestId('print-report');
+});

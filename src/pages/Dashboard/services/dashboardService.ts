@@ -47,11 +47,13 @@ export async function fetchDashboardRawData(userIds: string[], monthStartStr: st
         fetchAllRows((from, to) => supabase.from('policies').select('id, status, owner_id', { count: 'exact' }).in('owner_id', userIds).order('id').range(from, to)),
         fetchAllRows((from, to) => supabase
           .from('installments')
-          .select('id, amount, due_date, status, is_first, policy:policy_id(owner_id)', { count: 'exact' })
+          .select('id, amount, due_date, status, is_first, policy:policy_id!inner(owner_id)', { count: 'exact' })
+          .in('policy.owner_id', userIds)
           .in('status', ['pending', 'overdue']).order('id').range(from, to)),
         fetchAllRows((from, to) => supabase
           .from('payments')
-          .select('id, amount, payment_month, is_cancelled, installment:installment_id(is_first, policy:policy_id(owner_id))', { count: 'exact' })
+          .select('id, amount, payment_month, is_cancelled, installment:installment_id!inner(is_first, policy:policy_id!inner(owner_id))', { count: 'exact' })
+          .in('installment.policy.owner_id', userIds)
           .eq('payment_month', monthStartStr)
           .eq('is_cancelled', false).order('id').range(from, to)),
       ]);

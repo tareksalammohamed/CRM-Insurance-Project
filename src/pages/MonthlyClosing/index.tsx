@@ -105,32 +105,24 @@ export function MonthlyClosing() {
     try {
       const monthStr = format(selectedMonth, 'yyyy-MM-dd');
 
-      // 1. حالة التقفيل
-      const closingData = await fetchClosingRecord(monthStr);
-
-
-      // 2. كل المستخدمين تحت المستخدم الحالي — فى سياق الفرع الحالي
-      // (currentBranchId من BranchProvider العام)، عبر user_branch_roles
-      // بدل الاعتماد المباشر على users.manager_id.
-      const ids = await fetchUserSubtreeIds(user!.id, currentBranchId);
-      const usersData = await fetchUsersByIds(ids);
-      const branchRoles = await fetchBranchRoleMap(currentBranchId, ids);
-
-      // فروع مودال الطباعة: مقصورة على الفروع التابعة للنطاق الحالي (ids)
-      // بس، مش كل فروع التطبيق.
-      const branches = await fetchBranchesForUserIds(ids);
-
-      // 3. كل المدفوعات الفعلية للشهر (غير ملغاة)
-      const paymentsRaw = await fetchMonthPayments(monthStr);
+      // Independent reads start together; all results still require freshness.
+      const [closingData, ids, paymentsRaw] = await Promise.all([
+        fetchClosingRecord(monthStr),
+        fetchUserSubtreeIds(user!.id, currentBranchId),
+        fetchMonthPayments(monthStr),
+      ]);
+      if (!current()) return;
       const payments = filterPaymentsByOwnerIds(paymentsRaw, ids);
-
-      // مستخدم جديد للتشكيل = أول حركة شغل فعلية له في شهر التقفيل،
-      // حتى لو كان الحساب أُنشئ قبل ذلك. نُبقي التشكيل مستقلًا عن التقفيل
-      // في التاريخ، وسيظهر عليه يوم 1 من الشهر.
       const paymentOwnerIds = Array.from(new Set(
         payments.map((p) => p.installment?.policy?.owner_id).filter(Boolean),
       ));
-      const firstWorkMonthByOwner = await fetchFirstWorkMonthByOwnerIds(paymentOwnerIds);
+      const [usersData, branchRoles, branches, firstWorkMonthByOwner] = await Promise.all([
+        fetchUsersByIds(ids),
+        fetchBranchRoleMap(currentBranchId, ids),
+        fetchBranchesForUserIds(ids),
+        fetchFirstWorkMonthByOwnerIds(paymentOwnerIds),
+      ]);
+      if (!current()) return;
       const usersById = new Map(usersData.map((u) => [u.id, u]));
       const formationUsers = usersData
         .filter((u) => firstWorkMonthByOwner.get(u.id) === monthStr)
