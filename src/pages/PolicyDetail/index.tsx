@@ -1,3 +1,4 @@
+import { FirstYearSummary } from '../../features/installments/FirstYearSummary';
 import { friendlyError } from '../../lib/errorMessages';
 import { useNotify } from '../../lib/notify';
 import { useState, useEffect, useCallback } from 'react';
@@ -311,7 +312,7 @@ export function PolicyDetail() {
 
         <div className="detail-summary-metrics">
           <div className="detail-summary-metric">
-            <span>قيمة القسط الصافي</span>
+            <span>القسط الصافي لكل دفعة</span>
             <strong>{formatCurrency(policy.premium_amount)}</strong>
           </div>
           <div className="detail-summary-metric">
@@ -369,20 +370,7 @@ export function PolicyDetail() {
         </div>
       </div>
 
-      {/* ===== إحصائيات الأقساط ===== */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: 'إجمالي الأقساط', value: stats.total,   accent: 'border-r-secondary-400', color: '' },
-          { label: 'مسدد',            value: stats.paid,    accent: 'border-r-success-500',   color: 'text-success-600' },
-          { label: 'غير مسدد',        value: stats.pending, accent: 'border-r-warning-500',   color: 'text-warning-600' },
-          { label: 'متأخر',           value: stats.overdue, accent: 'border-r-error-500',     color: 'text-error-600' },
-        ].map((s) => (
-          <div key={s.label} className={clsx('kpi-card border-r-4', s.accent)}>
-            <p className="metric-label">{s.label}</p>
-            <p className={clsx('text-figure', s.color)}>{s.value}</p>
-          </div>
-        ))}
-      </div>
+      <FirstYearSummary installments={installments} loading={loadingInstallments} />
 
       {/* ===== بيانات تفصيلية — مطويّة افتراضيًا (Progressive disclosure) ===== */}
       <div className="card !p-0">
@@ -427,7 +415,7 @@ export function PolicyDetail() {
               </div>
               <div className="detail-field">
                 <span className="detail-field-label flex items-center gap-1">
-                  <DollarSign className="w-3 h-3" /> قيمة القسط الصافي
+                  <DollarSign className="w-3 h-3" /> القسط الصافي لكل دفعة
                 </span>
                 <span className="detail-field-value">{formatCurrency(policy.premium_amount)}</span>
               </div>
@@ -455,9 +443,9 @@ export function PolicyDetail() {
         <div className="card-section-head">
           <h3>
             <CreditCard className="w-4 h-4 text-primary-600" />
-            جدول الأقساط
+            جدول أقساط السنة الأولى
           </h3>
-          <span className="card-section-meta">{stats.paid} / {stats.total} مسدد</span>
+          <span className="card-section-meta">{stats.paid} من {stats.total} قسط سنة أولى مسدد</span>
         </div>
 
         <InstallmentsTable

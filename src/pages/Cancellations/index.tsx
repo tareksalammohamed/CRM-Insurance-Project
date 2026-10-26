@@ -158,13 +158,13 @@ export function Cancellations() {
               </p>
             </div>
             <div className="kpi-card kpi-card--summary border-r-4 border-r-error-500">
-              <p className="text-sm text-secondary-500">قيمة الإلغاءات</p>
+              <p className="text-sm text-secondary-500">المسدد لوثائق الإلغاء المحتسبة (أولى ولاحقة)</p>
               <p className="text-2xl font-bold text-error-600 mt-1">
                 {formatCurrency(summary?.cancelledValue || 0)}
               </p>
             </div>
             <div className="kpi-card kpi-card--summary">
-              <p className="text-sm text-secondary-500">إجمالي الأقساط المسددة هذا العام</p>
+              <p className="text-sm text-secondary-500">التحصيل المحتسب هذا العام (أولى ولاحقة)</p>
               <p className="text-2xl font-bold text-secondary-900 mt-1">
                 {formatCurrency(summary?.totalCollected || 0)}
               </p>

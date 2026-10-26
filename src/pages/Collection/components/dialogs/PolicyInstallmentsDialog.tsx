@@ -1,3 +1,4 @@
+import { FirstYearSummary } from '../../../../features/installments/FirstYearSummary';
 import { X } from 'lucide-react';
 import type { Policy, Installment } from '../../../../lib/supabase';
 import { InstallmentsTable } from '../../../../features/installments/InstallmentsTable';
@@ -34,13 +35,14 @@ export function PolicyInstallmentsDialog({
           aria-modal="true" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-between p-6 border-b border-secondary-200 sticky top-0 bg-white z-10">
             <h3 className="text-lg font-semibold text-secondary-900">
-              جميع أقساط الوثيقة: {policy.policy_number}
+              أقساط السنة الأولى للوثيقة: {policy.policy_number}
             </h3>
             <button onClick={onClose} className="p-2 rounded-lg hover:bg-secondary-100">
               <X className="w-5 h-5 text-secondary-600" />
             </button>
           </div>
-          <div className="p-6">
+          <div className="p-6 space-y-4">
+            <FirstYearSummary installments={installments} loading={loading} />
             <InstallmentsTable
               installments={installments}
               loading={loading}

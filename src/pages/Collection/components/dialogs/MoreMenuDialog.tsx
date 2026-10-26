@@ -48,7 +48,7 @@ export function MoreMenuDialog({
       </button>
       <button onClick={onOpenPolicyHistory} className="dropdown-item w-full">
         <HistoryIcon className="w-4 h-4" />
-        <span>سجل التحصيل (كل أقساط الوثيقة)</span>
+        <span>سجل أقساط السنة الأولى للوثيقة</span>
       </button>
       {installment.status !== 'paid' && installment.policy.status === 'active' && <button onClick={onOpenPromise} className="dropdown-item w-full"><CalendarClock className="w-4 h-4" /><span>وعد بالسداد / متابعة الوعد</span></button>}
       {installment.status === 'paid' ? (

@@ -1,3 +1,4 @@
+import { FirstYearSummary } from '../../../../features/installments/FirstYearSummary';
 import { useState } from 'react';
 import { AppDialog } from '../../../../components/ui/AppDialog';
 import clsx from 'clsx';
@@ -75,11 +76,11 @@ export function PolicyDetailsDialog({
                       </p>
                     </div>
                     <div>
-                      <p className="text-secondary-400 text-xs mb-1">قيمة القسط الصافي</p>
+                      <p className="text-secondary-400 text-xs mb-1">القسط الصافي لكل دفعة</p>
                       <p className="font-medium text-secondary-900">{formatCurrency(policyDetail.premium_amount)}</p>
                     </div>
                     <div>
-                      <p className="text-secondary-400 text-xs mb-1">تاريخ الإصدار</p>
+                      <p className="text-secondary-400 text-xs mb-1">تاريخ بداية الوثيقة</p>
                       <p className="font-medium text-secondary-900">
                         {format(new Date(policyDetail.start_date), 'dd/MM/yyyy')}
                       </p>
@@ -93,12 +94,15 @@ export function PolicyDetailsDialog({
                   </div>
                 )}
 
+                <FirstYearSummary installments={policyInstallments} />
+
                 {/* ===== جدول الأقساط الموحّد — نفس المكوّن المستخدم فى صفحة التحصيل والسداد وصفحة تفاصيل الوثيقة ===== */}
                 <div>
-                  <h4 className="text-sm font-semibold text-secondary-900 mb-3">جدول الأقساط</h4>
-                  <label className="block space-y-1"><span className="input-label">أقساط هذه الوثيقة فقط</span>
+                  <h4 className="text-sm font-semibold text-secondary-900 mb-3">جدول أقساط السنة الأولى</h4>
+                  <p className="text-xs text-secondary-500 mb-2">الملخص يشمل كل أقساط السنة الأولى المحمّلة؛ التصفية تخص الجدول فقط.</p>
+                  <label className="block space-y-1"><span className="input-label">تصفية أقساط السنة الأولى لهذه الوثيقة</span>
                   <select className="input-field" value={filter} onChange={event => setFilter(event.target.value as typeof filter)}>
-                    <option value="all">كل الأقساط</option><option value="paid">المسددة</option><option value="pending">المستحقة</option><option value="overdue">المتأخرة</option>
+                    <option value="all">كل أقساط السنة الأولى</option><option value="paid">المسددة</option><option value="pending">غير المسددة دون المتأخرة</option><option value="overdue">المتأخرة</option>
                   </select>
                 </label>
                 <InstallmentsTable

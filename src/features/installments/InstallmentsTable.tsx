@@ -131,7 +131,7 @@ export function InstallmentsTable({
             <div className="stack-row-head">
               <span className="stack-row-title">
                 <Hash className="w-3.5 h-3.5 text-secondary-400 shrink-0" />
-                <span className="truncate">القسط {inst.installment_number}</span>
+                <span className="truncate">قسط السنة الأولى رقم {inst.installment_number}</span>
                 {inst.is_first && <span className="badge badge-primary text-[10px] shrink-0">إنتاج جديد</span>}
               </span>
               <span className="flex items-center gap-1.5 shrink-0">
@@ -144,7 +144,7 @@ export function InstallmentsTable({
 
             <div className="stack-row-grid">
               <div className="stack-row-cell">
-                <span>المبلغ</span>
+                <span>قيمة القسط الصافي (جنيه)</span>
                 <span>{formatCurrency(inst.amount)}</span>
               </div>
               <div className="stack-row-cell">
@@ -174,9 +174,9 @@ export function InstallmentsTable({
         <table>
           <thead>
             <tr>
-              <th scope="col">رقم القسط</th>
+              <th scope="col">رقم قسط السنة الأولى</th>
               <th scope="col">تاريخ الاستحقاق</th>
-              <th scope="col">المبلغ</th>
+              <th scope="col">قيمة القسط الصافي (جنيه)</th>
               <th scope="col">الحالة</th>
               <th scope="col">تاريخ السداد</th>
               <th scope="col">إجراء</th>

@@ -14,7 +14,7 @@ it('opens installments for the selected policy and exact status instead of a gen
   const open = vi.fn();
   render(<CustomerDetailsDialog customer={{ id: 'customer-a', name: 'عميل', phone: '', policies: [policy] } as CustomerWithRelations} showExtraInfo={false} onToggleExtraInfo={vi.fn()} policySummaries={{ 'policy-a': { paid: 2, pending: 3, overdue: 1 } }} onClose={vi.fn()} onEdit={vi.fn()} onPrint={vi.fn()} onIssueNewPolicy={vi.fn()} onOpenPolicyDetails={open} />);
   fireEvent.click(screen.getByRole('button', { name: 'الوثائق والأقساط (1)' }));
-  fireEvent.click(screen.getByRole('button', { name: 'عرض الأقساط المتأخرة (1)' }));
+  fireEvent.click(screen.getByRole('button', { name: 'عرض أقساط السنة الأولى المتأخرة (1)' }));
   expect(open).toHaveBeenCalledWith(policy, 'overdue');
 });
 it('explains a birth date discrepancy without rewriting the input or treating invalid encoded dates as facts', () => {
@@ -31,7 +31,7 @@ it('keeps policy details scoped while allowing the user to clear the status filt
   ] as Installment[];
   render(<PolicyDetailsDialog openPolicySummary={policy} policyDetail={null} policyInstallments={installments} initialFilter="overdue" loadingPolicyDetail={false} onClose={vi.fn()} onPay={vi.fn()} onCancel={vi.fn()} />);
   expect(screen.queryByRole('button', { name: 'إلغاء سداد القسط رقم 1' })).toBeNull();
-  fireEvent.change(screen.getByLabelText('أقساط هذه الوثيقة فقط'), { target: { value: 'all' } });
+  fireEvent.change(screen.getByLabelText('تصفية أقساط السنة الأولى لهذه الوثيقة'), { target: { value: 'all' } });
   expect(screen.getAllByRole('button', { name: 'إلغاء سداد القسط رقم 1' }).length).toBeGreaterThan(0);
 });
 it('organizes customer information separately from policy rendering', () => {

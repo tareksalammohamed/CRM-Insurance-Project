@@ -325,7 +325,7 @@ export function Reports() {
     { id: 'customers', label: 'طلبات التأمين', icon: Users },
     { id: 'policies', label: 'تقرير الوثائق', icon: FileText },
     { id: 'production', label: 'الإنتاج الجديد', icon: TrendingUp },
-    { id: 'collection', label: 'التحصيل الدوري', icon: Wallet },
+    { id: 'collection', label: 'التحصيل الدوري — سنة أولى', icon: Wallet },
     { id: 'production_collection', label: 'إجمالي الإنتاج والتحصيل', icon: Layers },
     { id: 'overdue', label: 'الأقساط المتأخرة', icon: AlertTriangle },
   ];
@@ -684,11 +684,11 @@ export function Reports() {
                         onClick={() => navigate('/cancellations')}
                         className="text-right p-4 bg-error-50 rounded-lg hover:bg-error-100 transition-colors print:bg-white print:border print:p-2"
                       >
-                        <p className="text-sm text-secondary-600">قيمة الإلغاءات</p>
+                        <p className="text-sm text-secondary-600">المسدد لوثائق الإلغاء المحتسبة (أولى ولاحقة)</p>
                         <p className="text-2xl font-bold text-error-700 mt-1">{formatCurrency(data.cancelledValue)}</p>
                       </button>
                       <div className="p-4 bg-secondary-50 rounded-lg print:bg-white print:border print:p-2">
-                        <p className="text-sm text-secondary-600">إجمالي الأقساط المسددة هذا العام</p>
+                        <p className="text-sm text-secondary-600">التحصيل المحتسب هذا العام (أولى ولاحقة)</p>
                         <p className="text-lg font-semibold text-secondary-800 mt-1">{formatCurrency(data.totalCollected)}</p>
                         <p className="text-sm text-secondary-500 mt-1">{data.count} وثيقة داخلة في الحساب</p>
                       </div>

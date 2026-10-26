@@ -20,7 +20,7 @@ export function ProfileAchievements({ user, stats, statsLoading, monthlyAchievem
         </div>
         <div>
           <h3 className="text-sm font-bold text-secondary-900">نسبة تحقيق الشهر الحالي</h3>
-          <p className="text-xs text-secondary-500">إجمالي الأقساط المسددة هذا الشهر (أنت وفريقك) مقابل الهدف الشهري</p>
+          <p className="text-xs text-secondary-500">قيمة أقساط السنة الأولى المسددة هذا الشهر (أنت وفريقك) مقابل الهدف الشهري</p>
         </div>
       </div>
 
