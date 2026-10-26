@@ -31,6 +31,8 @@ export function usePolicies(user: User | null | undefined, page: number, searchQ
       setTotalPages(result.totalPages);
       setTotalCount(result.totalCount);
       setLoadMessage(result.loadMessage ?? null);
+      // The list is ready; deletion eligibility remains pessimistic until its separate check finishes.
+      setLoading(false);
       try {
         const ids = await computeDeletablePolicyIds(result.policies);
         if (listGuard.isCurrent(request)) setDeletableIds(ids);

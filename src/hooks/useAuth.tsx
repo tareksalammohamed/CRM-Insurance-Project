@@ -1,3 +1,4 @@
+import { stableProfile } from '../lib/stableProfile';
 import { confirmQueuedSignOut } from '../lib/confirmQueuedSignOut';
 import { useNotify } from '../lib/notify';
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
@@ -72,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const profile = await fetchUserProfile(userId);
       if (revision !== authRevision.current || currentUserIdRef.current !== userId) return;
-      setUser(profile);
+      setUser(previous => stableProfile(previous, profile));
       setAuthError(profile ? null : 'تعذر تحميل بيانات حسابك. تحقق من الاتصال ثم أعد المحاولة.');
     } catch {
       if (revision === authRevision.current) setAuthError('تعذر تحميل بيانات حسابك. أعد المحاولة.');
@@ -103,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!next?.user) return;
         const profile = await fetchUserProfile(next.user.id);
         if (!active || revision !== authRevision.current) return;
-        setUser(profile);
+        setUser(previous => stableProfile(previous, profile));
         setAuthError(profile ? null : 'تعذر تحميل بيانات حسابك. تحقق من الاتصال ثم أعد المحاولة.');
         if (profile && lastLoginUpdatedFor !== next.user.id) {
           lastLoginUpdatedFor = next.user.id;
