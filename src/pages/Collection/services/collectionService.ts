@@ -315,7 +315,7 @@ export async function fetchCollectionQuickStats(branchId: string | null = null):
 // المستخدمة فى صفحة تفاصيل الوثيقة وصفحة العملاء (بدون تكرار الاستعلام)
 // ===================================
 export async function fetchPolicyInstallments(policyId: string) {
-  return fetchInstallmentsByPolicyId(policyId);
+  return fetchInstallmentsByPolicyId(policyId, true);
 }
 
 // ===================================

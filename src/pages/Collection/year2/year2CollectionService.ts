@@ -1,3 +1,4 @@
+import { fetchAllRows } from '../../../lib/fetchAllRows';
 import { friendlyError } from '../../../lib/errorMessages';
 import { supabase } from '../../../lib/supabase';
 import {
@@ -6,7 +7,7 @@ import {
   startOfQuarter, endOfQuarter, startOfYear, endOfYear,
 } from 'date-fns';
 import type { Year2Payment, Year2EligiblePolicy, Year2ReportRow, PrintPeriodType, Year2QuickFilter, Year2CollectionStatus } from './types';
-import { dalRead } from '../../../lib/dataAccessLayer';
+import { dalRead, readStatusMessage } from '../../../lib/dataAccessLayer';
 
 const PAGE_SIZE = 10;
 
@@ -35,6 +36,7 @@ export interface FetchYear2PoliciesResult {
   policies: Year2EligiblePolicy[];
   totalCount: number;
   totalPages: number;
+  loadMessage?: string | null;
 }
 
 const EMPTY_YEAR2_POLICIES: FetchYear2PoliciesResult = { policies: [], totalCount: 0, totalPages: 1 };
@@ -89,18 +91,22 @@ export async function fetchYear2EligiblePolicies(
       // `{ count: 'exact' }` لازم يتحدد على الـselect الأساسي نفسه — استدعاء
       // select تانى على البيلدر الناتج بيقبل الأعمدة فقط وبيتجاهل خيار العدد
       // بصمت (وهو سبب رجوع count فاضي فى المسار بدون فلتر سريع).
-      let baseQuery = supabase
-        .from('policies')
-        .select('*, customer:customer_id(name), owner:owner_id(name)', { count: 'exact' })
-        .eq('status', 'active')
-        .lte('start_date', oneYearAgoStr);
+      const baseQuery = () => {
+        let query = supabase
+          .from('policies')
+          .select('*, customer:customer_id(name), owner:owner_id(name)', { count: 'exact' })
+          .eq('status', 'active')
+          .lte('start_date', oneYearAgoStr);
 
-      if (branchId) {
-        baseQuery = baseQuery.eq('branch_id', branchId);
-      }
-      if (searchQuery.trim()) {
-        baseQuery = baseQuery.ilike('policy_number', `%${searchQuery.trim()}%`);
-      }
+        if (branchId) {
+          query = query.eq('branch_id', branchId);
+        }
+        if (searchQuery.trim()) {
+          query = query.ilike('policy_number', `%${searchQuery.trim()}%`);
+        }
+
+        return query;
+      };
 
       let policies: Year2EligiblePolicy[];
       let totalCount: number;
@@ -110,7 +116,7 @@ export async function fetchYear2EligiblePolicies(
         // البيانات) — أسرع لأنه معتمد على قاعدة البيانات للـ pagination
         const from = (page - 1) * PAGE_SIZE;
         const to = from + PAGE_SIZE - 1;
-        const { data, error, count } = await baseQuery
+        const { data, error, count } = await baseQuery()
           .order('start_date', { ascending: false })
           .range(from, to);
 
@@ -123,10 +129,8 @@ export async function fetchYear2EligiblePolicies(
         // والبحث أولاً (بدون range db-level)، نصنّفها، ثم نفلتر ونقسّم
         // الصفحات يدوياً — بنفس أسلوب fetchCollectionQuickStats بالسنة
         // الأولى (فلترة فى الجافاسكريبت بعد الجلب)
-        const { data: allMatching, error: allError } = await baseQuery
-          .order('start_date', { ascending: false });
-
-        if (allError) throw allError;
+        const allMatching = await fetchAllRows((from, to) => baseQuery()
+          .order('start_date', { ascending: false }).order('id').range(from, to));
         const candidates = (allMatching || []) as Year2EligiblePolicy[];
 
         if (candidates.length === 0) {
@@ -134,14 +138,12 @@ export async function fetchYear2EligiblePolicies(
           totalCount = 0;
         } else {
           const ids = candidates.map((p) => p.id);
-          const { data: paymentsData, error: paymentsError } = await supabase
+          const paymentsData = await fetchAllRows((from, to) => supabase
             .from('year2_payments')
-            .select('policy_id, payment_month')
+            .select('policy_id, payment_month', { count: 'exact' })
             .in('policy_id', ids)
             .eq('is_cancelled', false)
-            .order('payment_month', { ascending: false });
-
-          if (paymentsError) throw paymentsError;
+            .order('payment_month', { ascending: false }).order('id').range(from, to));
 
           const lastPaidMonthByPolicy = new Map<string, string>();
           for (const p of paymentsData || []) {
@@ -167,13 +169,11 @@ export async function fetchYear2EligiblePolicies(
       // الوثائق المعروضة بالصفحة الحالية فقط
       if (policies.length > 0) {
         const ids = policies.map((p) => p.id);
-        const { data: paymentsData, error: paymentsError } = await supabase
+        const paymentsData = await fetchAllRows((from, to) => supabase
           .from('year2_payments')
-          .select('policy_id, amount, payment_month')
+          .select('policy_id, amount, payment_month', { count: 'exact' })
           .in('policy_id', ids)
-          .eq('is_cancelled', false);
-
-        if (paymentsError) throw paymentsError;
+          .eq('is_cancelled', false).order('id').range(from, to));
 
         const totals = new Map<string, number>();
         const year2Counts = new Map<string, number>();
@@ -190,13 +190,11 @@ export async function fetchYear2EligiblePolicies(
         // عدد أقساط السنة الأولى المسددة لنفس الوثائق — عشان "كام قسط
         // مسدد من أول بداية التأمين" يبقى رقم شامل (سنة أولى + سنة ثانية
         // وما بعدها) مش بس تحصيلات هذا الجدول
-        const { data: year1PaidRows, error: year1Error } = await supabase
+        const year1PaidRows = await fetchAllRows((from, to) => supabase
           .from('installments')
-          .select('policy_id')
+          .select('policy_id', { count: 'exact' })
           .in('policy_id', ids)
-          .eq('status', 'paid');
-
-        if (year1Error) throw year1Error;
+          .eq('status', 'paid').order('id').range(from, to));
 
         const year1Counts = new Map<string, number>();
         for (const row of (year1PaidRows as { policy_id: string }[]) || []) {
@@ -225,7 +223,7 @@ export async function fetchYear2EligiblePolicies(
     },
     { emptyValue: EMPTY_YEAR2_POLICIES },
   );
-  return result.data;
+  return { ...result.data, loadMessage: readStatusMessage(result) };
 }
 
 // سجل تحصيلات السنة الثانية لوثيقة معينة

@@ -58,7 +58,7 @@ export function InstallmentsTable({
 
   if (loading) {
     return (
-      <div className="stack-list" role="status" aria-live="polite">
+      <div className="stack-list min-w-0 grid-cols-1" role="status" aria-live="polite">
         <span className="sr-only">جارٍ تحميل الأقساط…</span>
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="stack-row">
@@ -121,7 +121,7 @@ export function InstallmentsTable({
   return (
     <>
       {/* ===== الموبايل: كل قسط فى بطاقة مستقلة (نفس البيانات بالحرف) ===== */}
-      <div className="stack-list md:hidden">
+      <div className="stack-list min-w-0 grid-cols-1 md:hidden">
         {installments.map((inst) => (
           <div
             key={inst.id}

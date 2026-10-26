@@ -1,6 +1,7 @@
+import { fetchAllRows } from '../../../lib/fetchAllRows';
 import { supabase } from '../../../lib/supabase';
 import { format } from 'date-fns';
-import { dalRead } from '../../../lib/dataAccessLayer';
+import { freshDalRead as dalRead } from '../../../lib/dataAccessLayer';
 import type { ActivityTargets } from '../business/performanceScoreCalculator';
 import { DEFAULT_ACTIVITY_TARGETS } from '../business/performanceScoreCalculator';
 import type { DailyAgentStatRow } from '../../DailyReports/types';
@@ -69,13 +70,12 @@ export async function fetchDailyStatsForUsers(
   const result = await dalRead(
     `reports:dailyStatsForUsers:${userIds.slice().sort().join(',')}:${format(start, 'yyyy-MM-dd')}:${format(end, 'yyyy-MM-dd')}`,
     async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from('daily_agent_stats')
-        .select('*')
+        .select('*', { count: 'exact' })
         .in('agent_id', userIds)
         .gte('report_date', format(start, 'yyyy-MM-dd'))
-        .lte('report_date', format(end, 'yyyy-MM-dd'));
-      if (error) throw error;
+        .lte('report_date', format(end, 'yyyy-MM-dd')).order('id').range(from, to));
       return (data || []) as DailyAgentStatRow[];
     },
     { emptyValue: [] as DailyAgentStatRow[] },

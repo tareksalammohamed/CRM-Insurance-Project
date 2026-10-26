@@ -1,3 +1,5 @@
+import { useRequestGuard } from '../../hooks/useRequestGuard';
+import { LoadNotice } from '../../components/feedback/LoadNotice';
 import { PerformanceTrend } from './components/PerformanceTrend';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -67,6 +69,9 @@ export function Reports() {
   // فلتر السنة: يختارها المستخدم بحرية بدل تثبيتها على السنة الحالية دائماً
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [loading, setLoading] = useState(false);
+  const reportGuard = useRequestGuard();
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadedKey, setLoadedKey] = useState('');
   const [data, setData] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
   // فلتر الحالة (مسدد/غير مسدد) لتقرير التحصيل الدوري وإجمالي الإنتاج
@@ -80,10 +85,11 @@ export function Reports() {
   const [selectableUsers, setSelectableUsers] = useState<{ id: string; name: string; role: string }[]>([]);
   // الأهداف اليومية المستخدمة لحساب "التقييم الشامل" (درجة النشاط) — تُحمّل
   // مرة واحدة، وتُستخدم فى تبويبات أداء الوكلاء/رؤساء المجموعات/المراقبين
+  const [targetsError, setTargetsError] = useState<string | null>(null);
   const [activityTargets, setActivityTargets] = useState<(ActivityTargets & { id: string | null }) | null>(null);
-  // أول تحميل فقط (لسه مفيش بيانات لأي تقرير) يستحق شاشة تحميل كاملة —
-  // تبديل نوع التقرير أو الفلتر بعد كده يحافظ على آخر تقرير ظاهر مع
-  // مؤشر تحديث بسيط بدل ما تختفي الشاشة بالكامل فى كل مرة
+  const contextKey = JSON.stringify([user?.id, currentBranchId, reportType, dateRange, selectedMonth, selectedQuarter, quarterYear, selectedYear, selectedUserId, customerRequestFilter, activityTargets]);
+  const requiresActivity = ['agents', 'group_leaders', 'supervisors', 'supervisory_performance'].includes(reportType);
+  // Never show a previous result under newly selected report filters.
   const isInitialLoading = loading && data === null;
 
   // نمط "latest ref": الـ effect يعيد التحميل عند تغير بيانات الفلاتر فقط (نفس
@@ -100,27 +106,29 @@ export function Reports() {
     if (user) {
       loadReportRef.current();
     }
-  }, [user, reportType, dateRange, selectedMonth, selectedQuarter, quarterYear, selectedYear, selectedUserId, currentBranchId, activityTargets, customerRequestFilter]);
+    return () => reportGuard.invalidate();
+  }, [reportGuard, user, reportType, dateRange, selectedMonth, selectedQuarter, quarterYear, selectedYear, selectedUserId, currentBranchId, activityTargets, customerRequestFilter]);
 
   useReconnectRefetch(() => { if (user) loadReport(); });
 
-  // قائمة المستخدمين القابلين للاختيار فى فلتر "مستخدم معين" — كل اللي تحت
-  // نطاق المستخدم الحالي فى الهيكل الوظيفي (بما فيهم هو نفسه)، تُحمّل مرة
-  // واحدة لما المستخدم يفتح الصفحة
   useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const baseIds = await fetchUserSubtreeIds(user.id, currentBranchId);
-      const list = await fetchUsersInSubtree(baseIds);
-      setSelectableUsers(list);
+    let current = true;
+    setSelectableUsers([]);
+    if (user) void (async () => {
+      try {
+        const baseIds = await fetchUserSubtreeIds(user.id, currentBranchId);
+        const list = await fetchUsersInSubtree(baseIds);
+        if (current) setSelectableUsers(list);
+      } catch (error) { console.error('Error loading report users:', error); }
     })();
+    return () => { current = false; };
   }, [user, currentBranchId]);
 
   useEffect(() => {
-    (async () => {
-      const targets = await fetchActivityTargets();
-      setActivityTargets(targets);
-    })();
+    let current = true;
+    void fetchActivityTargets().then(targets => { if (current) setActivityTargets(targets); })
+      .catch(error => { if (current) setTargetsError('تعذر تحميل أهداف النشاط؛ أعد المحاولة.'); console.error(error); });
+    return () => { current = false; };
   }, []);
 
   const getDateRange = () => {
@@ -148,61 +156,71 @@ export function Reports() {
   };
 
   const loadReport = async () => {
-    if (reportType === 'trend') return;
+    const request = reportGuard.start();
+    if (reportType === 'trend' || !user) return;
+    if (requiresActivity && !activityTargets) { setLoading(false); return; }
     setLoading(true);
+    setLoadError(null);
+    setData(null);
+    setChartData([]);
+    let result: { data: typeof data; chartData: typeof chartData } | undefined;
     try {
       const { start, end } = getDateRange();
 
       // تقرير "نسبة الإلغاءات" لا يحتاج مطلقًا شجرة المستخدمين الفرعية (يعتمد
       // فقط على loadCancellationSummary) — تفادي استعلام RPC غير مستخدم له
       if (reportType === 'cancellations') {
-        await loadCancellationsReport();
-        return;
+        result = await loadCancellationsReport();
+      } else {
+
+        const baseUserIds = await fetchUserSubtreeIds(user!.id, currentBranchId);
+        // لو محدد مستخدم معين فى الفلتر: النطاق يبقى هو وكل اللي تحته بس
+        // (مقصور دايماً على نطاق المستخدم الحالي الأصلي كحماية إضافية)
+        const userIds = selectedUserId
+          ? (await fetchUserSubtreeIds(selectedUserId, currentBranchId)).filter((id) => baseUserIds.includes(id))
+          : baseUserIds;
+
+        switch (reportType) {
+          case 'customers':
+            result = await loadCustomersReport(userIds, start, end, customerRequestFilter);
+            break;
+          case 'policies':
+            result = await loadPoliciesReport(userIds);
+            break;
+          case 'production':
+            result = await loadProductionReport(userIds, start, end);
+            break;
+          case 'collection':
+            result = await loadCollectionReport(userIds, start, end);
+            break;
+          case 'production_collection':
+            result = await loadProductionAndCollectionReport(userIds, start, end);
+            break;
+          case 'overdue':
+            result = await loadOverdueReport(userIds);
+            break;
+          case 'agents':
+            result = await loadAgentsReport(userIds, start, end);
+            break;
+          case 'group_leaders':
+            result = await loadGroupLeadersReport(userIds, start, end);
+            break;
+          case 'supervisors':
+            result = await loadSupervisorsReport(userIds, start, end);
+            break;
+          case 'supervisory_performance':
+            result = await loadSupervisoryPerformanceReport(userIds, start, end);
+            break;
+        }
       }
-
-      const baseUserIds = await fetchUserSubtreeIds(user!.id, currentBranchId);
-      // لو محدد مستخدم معين فى الفلتر: النطاق يبقى هو وكل اللي تحته بس
-      // (مقصور دايماً على نطاق المستخدم الحالي الأصلي كحماية إضافية)
-      const userIds = selectedUserId
-        ? (await fetchUserSubtreeIds(selectedUserId, currentBranchId)).filter((id) => baseUserIds.includes(id))
-        : baseUserIds;
-
-      switch (reportType) {
-        case 'customers':
-          await loadCustomersReport(userIds, start, end, customerRequestFilter);
-          break;
-        case 'policies':
-          await loadPoliciesReport(userIds);
-          break;
-        case 'production':
-          await loadProductionReport(userIds, start, end);
-          break;
-        case 'collection':
-          await loadCollectionReport(userIds, start, end);
-          break;
-        case 'production_collection':
-          await loadProductionAndCollectionReport(userIds, start, end);
-          break;
-        case 'overdue':
-          await loadOverdueReport(userIds);
-          break;
-        case 'agents':
-          await loadAgentsReport(userIds, start, end);
-          break;
-        case 'group_leaders':
-          await loadGroupLeadersReport(userIds, start, end);
-          break;
-        case 'supervisors':
-          await loadSupervisorsReport(userIds, start, end);
-          break;
-        case 'supervisory_performance':
-          await loadSupervisoryPerformanceReport(userIds, start, end);
-          break;
+      if (reportGuard.isCurrent(request) && result) {
+        setData(result.data); setChartData(result.chartData); setLoadedKey(contextKey);
       }
     } catch (error) {
+      if (reportGuard.isCurrent(request)) setLoadError('تعذر تحميل التقرير كاملًا؛ أعد المحاولة.');
       console.error('Error loading report:', error);
     } finally {
-      setLoading(false);
+      if (reportGuard.isCurrent(request)) setLoading(false);
     }
   };
 
@@ -214,22 +232,19 @@ export function Reports() {
   ) => {
     const customers = await fetchCustomerRequestsReport(userIds, start, end, filter);
     const { data: reportData, chartData: chart } = computeCustomersReport(customers);
-    setData(reportData);
-    setChartData(chart);
+    return { data: reportData, chartData: chart };
   };
 
   const loadPoliciesReport = async (userIds: string[]) => {
     const policies = await fetchPoliciesForOwners(userIds);
     const { data: reportData, chartData: chart } = computePoliciesReport(policies);
-    setData(reportData);
-    setChartData(chart);
+    return { data: reportData, chartData: chart };
   };
 
   const loadProductionReport = async (userIds: string[], start: Date, end: Date) => {
     const payments = await fetchPaymentsInRange(start, end);
     const { data: reportData, chartData: chart } = computeProductionReport(payments, userIds);
-    setData(reportData);
-    setChartData(chart);
+    return { data: reportData, chartData: chart };
   };
 
   const loadCollectionReport = async (userIds: string[], start: Date, end: Date) => {
@@ -238,8 +253,7 @@ export function Reports() {
       fetchInstallmentsDueInRange(userIds, start, end),
     ]);
     const { data: reportData, chartData: chart } = computeCollectionReport(payments, installmentsDue, userIds);
-    setData(reportData);
-    setChartData(chart);
+    return { data: reportData, chartData: chart };
   };
 
   const loadProductionAndCollectionReport = async (userIds: string[], start: Date, end: Date) => {
@@ -250,15 +264,13 @@ export function Reports() {
     // includeFirstInstallments=true: مستحق ومسدد واحد مجمّع (إنتاج جديد +
     // تحصيل دوري معاً) بدل تقسيمهما لبندين منفصلين
     const { data: reportData, chartData: chart } = computeCollectionReport(payments, installmentsDue, userIds, true);
-    setData(reportData);
-    setChartData(chart);
+    return { data: reportData, chartData: chart };
   };
 
   const loadOverdueReport = async (userIds: string[]) => {
     const installments = await fetchAllInstallmentsWithPolicy();
     const { data: reportData, chartData: chart } = computeOverdueReport(installments, userIds);
-    setData(reportData);
-    setChartData(chart);
+    return { data: reportData, chartData: chart };
   };
 
   const loadAgentsReport = async (userIds: string[], start: Date, end: Date) => {
@@ -277,8 +289,7 @@ export function Reports() {
     const { data: reportData, chartData: chart } = computeAgentsReport(
       agents, payments, dailyStatsByAgent, activityTargets ?? undefined,
     );
-    setData(reportData);
-    setChartData(chart);
+    return { data: reportData, chartData: chart };
   };
 
   const loadGroupLeadersReport = async (userIds: string[], start: Date, end: Date) => {
@@ -286,18 +297,16 @@ export function Reports() {
     const performance = await fetchLeadersPerformance(leaders, start, end, currentBranchId, activityTargets ?? undefined);
     const { details } = computeTeamPerformanceReport(performance, 'رئيس المجموعة');
 
-    setData({ leaders: performance, details });
-    setChartData(performance.map((p) => ({ name: p.name, value: p.finalScore })));
+    return { data: { leaders: performance, details }, chartData: performance.map((p) => ({ name: p.name, value: p.finalScore })) };
   };
 
   // تقرير "نسبة الإلغاءات" له فترة حساب ثابتة دائماً (أول يناير حتى نهاية
   // الشهر الحالي)، مستقلة عن فلاتر الفترة الخاصة بباقي التقارير
   const loadCancellationsReport = async () => {
     if (!user) return;
-    const summary = await loadCancellationSummary({ id: user.id, name: user.name, role: user.role });
+    const summary = await loadCancellationSummary({ id: user.id, name: user.name, role: user.role }, currentBranchId);
     const { data: reportData, chartData: chart } = computeCancellationsReport(summary);
-    setData(reportData);
-    setChartData(chart);
+    return { data: reportData, chartData: chart };
   };
 
   const loadSupervisoryPerformanceReport = async (userIds: string[], start: Date, end: Date) => {
@@ -307,8 +316,7 @@ export function Reports() {
       fetchDailyStatsForUsers(userIds, start, end),
     ]);
     const result = computeSupervisoryPerformanceReport(users, payments, dailyStats, activityTargets ?? undefined);
-    setData(result.data);
-    setChartData(result.chartData);
+    return { data: result.data, chartData: result.chartData };
   };
 
   const loadSupervisorsReport = async (userIds: string[], start: Date, end: Date) => {
@@ -316,8 +324,7 @@ export function Reports() {
     const performance = await fetchLeadersPerformance(supervisors, start, end, currentBranchId, activityTargets ?? undefined);
     const { details } = computeTeamPerformanceReport(performance, 'المراقب');
 
-    setData({ supervisors: performance, details });
-    setChartData(performance.map((p) => ({ name: p.name, value: p.finalScore })));
+    return { data: { supervisors: performance, details }, chartData: performance.map((p) => ({ name: p.name, value: p.finalScore })) };
   };
 
   const mainReportButtons: { id: ReportType; label: string; icon: typeof Users }[] = [
@@ -352,6 +359,7 @@ export function Reports() {
     : reportType === 'supervisory_performance'
       ? 'أداء المراقبة'
       : reportButtons.find((r) => r.id === reportType)?.label;
+  const reportReady = !loading && !loadError && (!requiresActivity || !!activityTargets) && loadedKey === contextKey && !!data;
   const detailsColumns = data?.details && data.details.length > 0 ? Object.keys(data.details[0]) : [];
 
   // اسم ملف موحّد للطباعة/حفظ PDF وللصورة — بياخد اسم التقرير المختار
@@ -367,6 +375,12 @@ export function Reports() {
 
   return (
     <div ref={printReportRef} className="workspace-page workspace-page-reports print-report space-y-6 animate-fadeIn print:space-y-3">
+      <LoadNotice message={loadError ?? (requiresActivity ? targetsError : null)} loading={loading} onRetry={() => {
+        if (requiresActivity && !activityTargets) {
+          setTargetsError(null);
+          void fetchActivityTargets().then(setActivityTargets).catch(() => setTargetsError('تعذر تحميل أهداف النشاط؛ أعد المحاولة.'));
+        } else void loadReport();
+      }} />
       {/* رأس خاص بالطباعة فقط - لا يظهر أثناء الاستخدام العادى */}
       <div className="hidden print:block text-center mb-4">
         <h2 className="text-xl font-bold">{currentReportLabel}</h2>
@@ -388,7 +402,8 @@ export function Reports() {
           action={
             <div className="flex items-center gap-2">
               <button
-                onClick={() => printWithTitle(printFileName)}
+                disabled={!reportReady}
+                onClick={() => { if (reportReady) printWithTitle(printFileName); }}
                 className="btn btn-secondary"
                 title="طباعة التقرير"
               >
@@ -402,7 +417,7 @@ export function Reports() {
                 targetRef={printReportRef}
                 fileName={printFileName}
                 className="btn btn-primary"
-                disabled={loading || !data}
+                disabled={!reportReady}
               />
             </div>
           }
@@ -584,11 +599,11 @@ export function Reports() {
         </div>
       )}
 
-      {isInitialLoading ? (
+      {isInitialLoading || (requiresActivity && !activityTargets && !targetsError) ? (
         <div className="flex items-center justify-center h-48 print:hidden">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
-      ) : (
+      ) : reportReady ? (
         <>
           {reportType === 'customers' && data && (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 print:hidden">
@@ -649,7 +664,7 @@ export function Reports() {
 
             <div className="card print:shadow-none print:border print:break-inside-avoid">
               <h3 className="type-h3 mb-4">ملخص التقرير</h3>
-              {data && (
+              {reportReady && data && (
                 <div className="space-y-4">
                   {data.supervisoryPerformance && (
                     <div className="space-y-2">
@@ -873,7 +888,7 @@ export function Reports() {
             </div>
           )}
         </>
-      )}
+      ) : null}
     </div>
   );
 }

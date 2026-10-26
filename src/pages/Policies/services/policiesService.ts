@@ -1,3 +1,4 @@
+import { fetchAllRows } from '../../../lib/fetchAllRows';
 import { supabase, type Policy, type Customer } from '../../../lib/supabase';
 import { format } from 'date-fns';
 import type { PolicyFormData } from '../types';
@@ -91,8 +92,7 @@ export async function fetchPoliciesPage({
 
       // نحمّل النتائج المطابقة كاملة قبل التقسيم حتى لا تتوزع وثائق المجموعة
       // بين صفحتين وتظهر كوثائق منفصلة.
-      const { data, error } = await query.limit(10000);
-      if (error) throw error;
+      const data = await fetchAllRows((from, to) => query.order('id').range(from, to));
 
       const entries = groupPoliciesForDisplay((data || []) as Policy[]);
       const from = (page - 1) * PAGE_SIZE;

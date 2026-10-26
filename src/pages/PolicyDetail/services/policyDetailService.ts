@@ -1,7 +1,7 @@
 import { supabase } from '../../../lib/supabase';
 import type { PolicyWithRelations } from '../types';
 import { changePolicyStatus, deletePolicySafe } from '../../Policies/services/policiesService';
-import { dalRead } from '../../../lib/dataAccessLayer';
+import { freshDalRead as dalRead } from '../../../lib/dataAccessLayer';
 
 // ملحوظة: تحميل/سداد/إلغاء سداد الأقساط أصبح مركزياً بالكامل فى
 // src/features/installments/installmentsService.ts (مصدر واحد يُستخدم هنا

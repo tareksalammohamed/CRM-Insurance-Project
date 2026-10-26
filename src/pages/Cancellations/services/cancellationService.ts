@@ -1,32 +1,27 @@
+import { fetchAllRows } from '../../../lib/fetchAllRows';
 import { supabase } from '../../../lib/supabase';
 import { format } from 'date-fns';
 import type { RawCancelledPolicy, BasicHierarchyUser } from '../types';
 import { buildCancellationSummary } from '../business/cancellationCalculator';
-import { dalRead } from '../../../lib/dataAccessLayer';
+import { freshDalRead as dalRead } from '../../../lib/dataAccessLayer';
 import { fetchUserSubtreeIdsBranchAware, fetchBranchRoleMap } from '../../../lib/branchHierarchy';
 
-// ===================================
-// كل دوال القراءة هنا بقت تمر من dalRead (طبقة الوصول الموحدة للبيانات):
-// أونلاين بترجع بيانات حقيقية وتحفظها فى الكاش، وأوفلاين (أو عند فشل
-// الشبكة/تعليقها) بترجع آخر نسخة محفوظة أو شكل فاضٍ متوافق مع النوع بدل
-// ما تعلّق الصفحة فى Loading أو تنهار. راجع lib/dataAccessLayer.ts.
-// ===================================
+// Verified, complete reads: a failed source must not become a partial financial summary.
 
 // نطاق المستخدم (نفسه + كل من تحته)، فى سياق فرع معيّن (المرحلة 3) لو
 // اتمرر branchId، وإلا نفس السلوك القديم العابر للفروع بالظبط.
 export async function fetchUserSubtreeIds(userId: string, branchId?: string | null): Promise<string[]> {
-  return fetchUserSubtreeIdsBranchAware('cancellations', userId, branchId);
+  return fetchUserSubtreeIdsBranchAware('cancellations', userId, branchId, true);
 }
 
 export async function fetchSubtreeUsers(userIds: string[]): Promise<BasicHierarchyUser[]> {
   const result = await dalRead(
     `cancellations:subtreeUsers:${userIds.slice().sort().join(',')}`,
     async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from('users')
-        .select('id, name, role, manager_id')
-        .in('id', userIds);
-      if (error) throw error;
+        .select('id, name, role, manager_id', { count: 'exact' })
+        .in('id', userIds).order('id').range(from, to));
       return data || [];
     },
     { emptyValue: [] as BasicHierarchyUser[] },
@@ -45,15 +40,14 @@ export async function fetchCancelledPoliciesInYear(
   const result = await dalRead(
     `cancellations:cancelledInYear:${userIds.slice().sort().join(',')}:${yearStart.toISOString()}:${periodEnd.toISOString()}`,
     async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from('policies')
-        .select('id, policy_number, customer_id, owner_id, policy_type, start_date, premium_amount, cancelled_at, customer:customer_id(name)')
+        .select('id, policy_number, customer_id, owner_id, policy_type, start_date, premium_amount, cancelled_at, customer:customer_id(name)', { count: 'exact' })
         .in('owner_id', userIds)
         .eq('status', 'cancelled')
         .not('cancelled_at', 'is', null)
         .gte('cancelled_at', yearStart.toISOString())
-        .lte('cancelled_at', periodEnd.toISOString());
-      if (error) throw error;
+        .lte('cancelled_at', periodEnd.toISOString()).order('id').range(from, to));
       return (data as unknown as RawCancelledPolicy[]) || [];
     },
     { emptyValue: [] as RawCancelledPolicy[] },
@@ -71,26 +65,23 @@ export async function fetchAllCollectedInPeriod(yearStartStr: string, periodEndS
     `cancellations:allCollected:${yearStartStr}:${periodEndStr}`,
     async () => {
       const [year1Res, year2Res] = await Promise.all([
-        supabase
+        fetchAllRows((from, to) => supabase
           .from('payments')
-          .select('amount, installment:installment_id(policy:policy_id(owner_id))')
+          .select('amount, installment:installment_id(policy:policy_id(owner_id))', { count: 'exact' })
           .eq('is_cancelled', false)
           .gte('payment_month', yearStartStr)
-          .lte('payment_month', periodEndStr),
-        supabase
+          .lte('payment_month', periodEndStr).order('id').range(from, to)),
+        fetchAllRows((from, to) => supabase
           .from('year2_payments')
-          .select('amount, policy:policy_id(owner_id)')
+          .select('amount, policy:policy_id(owner_id)', { count: 'exact' })
           .eq('is_cancelled', false)
           .gte('payment_month', yearStartStr)
-          .lte('payment_month', periodEndStr),
+          .lte('payment_month', periodEndStr).order('id').range(from, to)),
       ]);
 
-      if (year1Res.error) throw year1Res.error;
-      if (year2Res.error) throw year2Res.error;
-
       return {
-        year1Payments: year1Res.data || [],
-        year2Payments: year2Res.data || [],
+        year1Payments: year1Res || [],
+        year2Payments: year2Res || [],
       };
     },
     { emptyValue: EMPTY_COLLECTED_IN_PERIOD },
@@ -114,31 +105,27 @@ export async function fetchPaidAmountsForPolicies(policyIds: string[]) {
     `cancellations:paidAmounts:${policyIds.slice().sort().join(',')}`,
     async () => {
       const [installmentsRes, year2Res] = await Promise.all([
-        supabase
+        fetchAllRows((from, to) => supabase
           .from('installments')
-          .select('id, policy_id')
-          .in('policy_id', policyIds),
-        supabase
+          .select('id, policy_id', { count: 'exact' })
+          .in('policy_id', policyIds).order('id').range(from, to)),
+        fetchAllRows((from, to) => supabase
           .from('year2_payments')
-          .select('amount, policy_id')
+          .select('amount, policy_id', { count: 'exact' })
           .eq('is_cancelled', false)
-          .in('policy_id', policyIds),
+          .in('policy_id', policyIds).order('id').range(from, to)),
       ]);
 
-      if (installmentsRes.error) throw installmentsRes.error;
-      if (year2Res.error) throw year2Res.error;
-
-      const installments = installmentsRes.data || [];
+      const installments = installmentsRes || [];
       const installmentIds = installments.map((i) => i.id);
 
       let year1Payments: { amount: number; installment_id: string }[] = [];
       if (installmentIds.length > 0) {
-        const { data, error } = await supabase
+        const data = await fetchAllRows((from, to) => supabase
           .from('payments')
-          .select('amount, installment_id')
+          .select('amount, installment_id', { count: 'exact' })
           .eq('is_cancelled', false)
-          .in('installment_id', installmentIds);
-        if (error) throw error;
+          .in('installment_id', installmentIds).order('id').range(from, to));
         year1Payments = data || [];
       }
 
@@ -148,7 +135,7 @@ export async function fetchPaidAmountsForPolicies(policyIds: string[]) {
         .map((p) => ({ amount: Number(p.amount), policy_id: instToPolicy.get(p.installment_id) || '' }))
         .filter((p) => p.policy_id);
 
-      const year2WithPolicy = (year2Res.data || []).map((p) => ({ amount: Number(p.amount), policy_id: p.policy_id }));
+      const year2WithPolicy = (year2Res || []).map((p) => ({ amount: Number(p.amount), policy_id: p.policy_id }));
 
       return { year1Payments: year1WithPolicy, year2Payments: year2WithPolicy };
     },
@@ -181,7 +168,7 @@ export async function loadCancellationSummary(
       fetchCancelledPoliciesInYear(userIds, yearStart, periodEnd),
       fetchSubtreeUsers(userIds),
       fetchAllCollectedInPeriod(yearStartStr, periodEndStr),
-      fetchBranchRoleMap(branchId, userIds),
+      fetchBranchRoleMap(branchId, userIds, true),
     ]);
 
   const eligiblePolicyIds = cancelledPolicies

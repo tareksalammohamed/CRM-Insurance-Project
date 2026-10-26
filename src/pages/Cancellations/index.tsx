@@ -1,3 +1,5 @@
+import { useRequestGuard } from '../../hooks/useRequestGuard';
+import { LoadNotice } from '../../components/feedback/LoadNotice';
 import { SearchInput } from '../../components/forms/SearchInput';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -29,6 +31,8 @@ export function Cancellations() {
   const { currentBranchId } = useBranchContext();
   const navigate = useNavigate();
 
+  const guard = useRequestGuard();
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [summary, setSummary] = useState<CancellationSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -42,22 +46,27 @@ export function Cancellations() {
   // بقت deps للـuseCallback — مرة التحميل وتوقيتها متطابقين تمامًا.
   const loadData = useCallback(async () => {
     if (!user) return;
+    const request = guard.start();
     setLoading(true);
+    setSummary(null);
+    setLoadError(null);
     try {
       const result = await loadCancellationSummary({ id: user.id, name: user.name, role: user.role }, currentBranchId);
-      setSummary(result);
+      if (guard.isCurrent(request)) setSummary(result);
     } catch (error) {
+      if (guard.isCurrent(request)) setLoadError('تعذر تحميل بيانات الإلغاءات كاملة؛ أعد المحاولة.');
       console.error('Error loading cancellations summary:', error);
     } finally {
-      setLoading(false);
+      if (guard.isCurrent(request)) setLoading(false);
     }
-  }, [user, currentBranchId]);
+  }, [user, currentBranchId, guard]);
 
   useEffect(() => {
     if (user) {
       loadData();
     }
-  }, [user, loadData]);
+    return () => guard.invalidate();
+  }, [user, loadData, guard]);
 
   useReconnectRefetch(() => { if (user) loadData(); });
 
@@ -144,11 +153,12 @@ export function Cancellations() {
         </div>
       </div>
 
+      <LoadNotice message={loadError} loading={loading} onRetry={() => void loadData()} />
       {loading ? (
         <div className="flex items-center justify-center h-48">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
-      ) : (
+      ) : summary && !loadError ? (
         <>
           <div className="cancellation-summary-grid grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
             <div className="kpi-card kpi-card--summary border-r-4 border-r-error-500">
@@ -304,7 +314,7 @@ export function Cancellations() {
             )}
           </div>
         </>
-      )}
+      ) : null}
     </div>
   );
 }

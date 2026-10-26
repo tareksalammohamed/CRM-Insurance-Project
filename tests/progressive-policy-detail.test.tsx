@@ -1,0 +1,31 @@
+vi.hoisted(() => { vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co'); vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'test'); });
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { afterEach, expect, it, vi } from 'vitest';
+const mocks = vi.hoisted(() => ({ policy: vi.fn(), installments: vi.fn(), deletable: vi.fn(), user: { id: 'u' } }));
+vi.mock('../src/hooks/useAuth', () => ({ useAuth: () => ({ user: mocks.user }) }));
+vi.mock('../src/lib/notify', () => ({ useNotify: () => ({ error: vi.fn() }) }));
+vi.mock('../src/hooks/useReconnectRefetch', () => ({ useReconnectRefetch: vi.fn() }));
+vi.mock('../src/pages/PolicyDetail/services/policyDetailService', () => ({ fetchPolicyById: mocks.policy, checkPolicyDeletable: mocks.deletable, changePolicyStatus: vi.fn(), deletePolicySafe: vi.fn() }));
+vi.mock('../src/features/installments/installmentsService', () => ({ fetchInstallmentsByPolicyId: mocks.installments, payInstallment: vi.fn(), cancelInstallmentPayment: vi.fn() }));
+import { PolicyDetail } from '../src/pages/PolicyDetail';
+const original = Object.getOwnPropertyDescriptor(navigator, 'connection');
+const policy = { id: 'p', policy_number: 'POLICY-123', status: 'active', policy_type: 'protection_investment', payment_method: 'monthly', start_date: '2026-01-01', premium_amount: 100, sum_assured: 5000, customer: { id: 'c', name: 'Customer' }, owner: { name: 'Agent' } };
+const show = () => render(<MemoryRouter initialEntries={['/policies/p']}><Routes><Route path="/policies/:id" element={<PolicyDetail />} /></Routes></MemoryRouter>);
+afterEach(() => { cleanup(); vi.resetAllMocks(); if (original) Object.defineProperty(navigator, 'connection', original); else Reflect.deleteProperty(navigator, 'connection'); });
+it('shows the document before its schedule and delete lookup on a slow connection', async () => {
+  Object.defineProperty(navigator, 'connection', { configurable: true, value: { effectiveType: '2g' } });
+  mocks.policy.mockResolvedValue(policy); let finish!: (data: unknown[]) => void;
+  mocks.installments.mockReturnValue(new Promise(resolve => { finish = resolve; })); mocks.deletable.mockResolvedValue(false);
+  show(); await screen.findByText('POLICY-123');
+  expect(mocks.deletable).not.toHaveBeenCalled();
+  expect(mocks.installments).toHaveBeenCalledWith('p', true);
+  await act(async () => finish([]));
+  await waitFor(() => expect(mocks.deletable).toHaveBeenCalledOnce());
+});
+it('keeps the document visible with a retryable schedule failure', async () => {
+  mocks.policy.mockResolvedValue(policy); mocks.installments.mockRejectedValue(new Error('offline')); mocks.deletable.mockResolvedValue(false);
+  show(); await screen.findByText('POLICY-123');
+  await screen.findByText('تعذر تحميل أقساط السنة الأولى؛ أعد المحاولة.');
+  expect(screen.queryByText('لا توجد أقساط')).toBeNull();
+});

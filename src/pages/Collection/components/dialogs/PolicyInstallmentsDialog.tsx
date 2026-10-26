@@ -1,3 +1,4 @@
+import { LoadNotice } from '../../../../components/feedback/LoadNotice';
 import { FirstYearSummary } from '../../../../features/installments/FirstYearSummary';
 import { X } from 'lucide-react';
 import type { Policy, Installment } from '../../../../lib/supabase';
@@ -9,6 +10,8 @@ interface PolicyInstallmentsDialogProps {
   policy: Policy;
   installments: Installment[];
   loading: boolean;
+  loadError?: string | null;
+  onRetry: () => void;
   onClose: () => void;
   onPay: (installment: Installment) => void;
   onCancel: (installment: Installment) => void;
@@ -19,6 +22,8 @@ export function PolicyInstallmentsDialog({
   policy,
   installments,
   loading,
+  loadError,
+  onRetry,
   onClose,
   onPay,
   onCancel,
@@ -42,6 +47,8 @@ export function PolicyInstallmentsDialog({
             </button>
           </div>
           <div className="p-6 space-y-4">
+            <LoadNotice message={loadError ?? null} loading={loading} onRetry={onRetry} />
+            {!loadError && <>
             <FirstYearSummary installments={installments} loading={loading} />
             <InstallmentsTable
               installments={installments}
@@ -49,6 +56,7 @@ export function PolicyInstallmentsDialog({
               onPay={onPay}
               onCancel={onCancel}
             />
+            </>}
           </div>
           <div className="flex justify-end gap-3 p-6 border-t border-secondary-200">
             <button onClick={onClose} className="btn btn-secondary">
