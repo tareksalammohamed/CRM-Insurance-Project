@@ -226,3 +226,10 @@ export async function dalRead<T>(key: string, fetcher: () => Promise<T>, options
   if (identity === getDataCacheIdentity()) recordClientRead(key, performance.now() - started, result.status);
   return result;
 }
+
+/** Financial closing must not mistake cached/empty fallback data for a fresh read. */
+export async function freshDalRead<T>(key: string, fetcher: () => Promise<T>, options: DalOptions<T>): Promise<DalResult<T>> {
+  const result = await dalRead(key, fetcher, options);
+  if (result.status !== 'online') throw new Error('تعذر التحقق من أحدث البيانات. اتصل بالإنترنت وأعد التحميل قبل الطباعة أو اعتماد الإقفال.');
+  return result;
+}

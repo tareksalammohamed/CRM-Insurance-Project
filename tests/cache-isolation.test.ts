@@ -4,7 +4,7 @@ vi.mock('../src/lib/offlineDb', () => ({ DATA_CACHE_STORE: 'data', idbGet: async
   idbPut: async (_store: string, entry: { key: string }) => { mocks.values.set(entry.key, entry); }, idbDelete: vi.fn(), idbClearStore: async () => mocks.values.clear() }));
 vi.mock('../src/lib/networkManager', () => ({ isOnline: () => mocks.online }));
 vi.mock('../src/lib/offlineEvents', () => ({ emitOfflineEvent: vi.fn() }));
-import { dalRead, readStatusMessage } from '../src/lib/dataAccessLayer';
+import { dalRead, freshDalRead, readStatusMessage } from '../src/lib/dataAccessLayer';
 import { setDataCacheIdentity } from '../src/lib/dataCache';
 beforeEach(() => { mocks.values.clear(); mocks.online = true; setDataCacheIdentity('a'); });
 it('cannot show one account cached results to another', async () => {
@@ -39,4 +39,11 @@ it('times out once within the total deadline without duplicating a stalled query
   const pending = dalRead('slow', fetcher, { emptyValue: [], timeoutMs: 100 });
   await vi.advanceTimersByTimeAsync(100);
   expect((await pending).status).toBe('offline-empty'); expect(fetcher).toHaveBeenCalledOnce(); vi.useRealTimers();
+});
+
+it('requires fresh financial reads while preserving ordinary offline cache support', async () => {
+  expect((await freshDalRead('closing', async () => [], { emptyValue: [] })).data).toEqual([]);
+  mocks.online = false;
+  expect((await dalRead('closing', async () => [], { emptyValue: [] })).status).toBe('offline-cache');
+  await expect(freshDalRead('closing', async () => [], { emptyValue: [] })).rejects.toThrow();
 });

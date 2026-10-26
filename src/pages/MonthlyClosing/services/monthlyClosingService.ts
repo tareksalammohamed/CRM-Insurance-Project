@@ -1,7 +1,8 @@
+import { fetchAllRows } from '../../../lib/fetchAllRows';
 import { supabase } from '../../../lib/supabase';
 import type { BasicUser, PaymentRow } from '../types';
-import { dalRead } from '../../../lib/dataAccessLayer';
-import { fetchUserSubtreeIdsBranchAware, fetchBranchRoleMap } from '../../../lib/branchHierarchy';
+import { freshDalRead as dalRead } from '../../../lib/dataAccessLayer';
+import { fetchUserSubtreeIdsBranchAware, fetchBranchRoleMap as readBranchRoleMap } from '../../../lib/branchHierarchy';
 import type { Branch } from '../../../features/branches/types';
 
 // ─── data access layer: كل استعلامات Supabase الخاصة بصفحة تقفيل الشهر ───
@@ -29,12 +30,12 @@ export async function fetchClosingRecord(monthStr: string) {
 // user_branch_roles الخاصة بيه بس (عبر get_user_subtree_branch_aware)؛
 // من غيره بترجع لنفس سلوك get_user_subtree الأصلي العابر للفروع.
 export async function fetchUserSubtreeIds(userId: string, branchId?: string | null): Promise<string[]> {
-  return fetchUserSubtreeIdsBranchAware('monthlyClosing', userId, branchId);
+  return fetchUserSubtreeIdsBranchAware('monthlyClosing', userId, branchId, true);
 }
 
 // خريطة role/manager_id الخاصة بنفس الفرع لكل مستخدم فى النطاق — تُستخدم
 // فى بناء الهرم داخل monthlyClosingCalculator بدل users.manager_id العام.
-export { fetchBranchRoleMap };
+export const fetchBranchRoleMap = (branchId: string | null | undefined, ids: string[]) => readBranchRoleMap(branchId, ids, true);
 
 // فروع نطاق الطباعة: بدل عرض كل فروع التطبيق (fetchBranches الخاصة بشاشة
 // إدارة الفروع)، بترجع بس الفروع الفعلية اللي أعضاء النطاق الحالي (ids —
@@ -45,11 +46,10 @@ export async function fetchBranchesForUserIds(ids: string[]): Promise<Branch[]> 
   const result = await dalRead(
     `monthlyClosing:printBranches:${ids.slice().sort().join(',')}`,
     async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from('user_branch_roles')
-        .select('branch:branch_id(id, name, is_active, created_at, is_headquarters)')
-        .in('user_id', ids);
-      if (error) throw error;
+        .select('branch:branch_id(id, name, is_active, created_at, is_headquarters)', { count: 'exact' })
+        .in('user_id', ids).order('id').range(from, to));
       const rows = (data || []) as unknown as { branch: Branch | null }[];
       const map = new Map<string, Branch>();
       rows.forEach((r) => {
@@ -66,11 +66,10 @@ export async function fetchUsersByIds(ids: string[]): Promise<BasicUser[]> {
   const result = await dalRead(
     `monthlyClosing:usersByIds:${ids.slice().sort().join(',')}`,
     async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from('users')
-        .select('id, name, role, manager_id, target, is_active, deleted_at, created_at')
-        .in('id', ids);
-      if (error) throw error;
+        .select('id, name, role, manager_id, target, is_active, deleted_at, created_at', { count: 'exact' })
+        .in('id', ids).order('id').range(from, to));
       return (data || []) as BasicUser[];
     },
     { emptyValue: [] as BasicUser[] },
@@ -82,7 +81,7 @@ export async function fetchMonthPayments(monthStr: string): Promise<any[]> {
   const result = await dalRead(
     `monthlyClosing:monthPayments:${monthStr}`,
     async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from('payments')
         .select(`
           id, amount, paid_at,
@@ -93,10 +92,9 @@ export async function fetchMonthPayments(monthStr: string): Promise<any[]> {
               customer:customer_id ( name )
             )
           )
-        `)
+        `, { count: 'exact' })
         .eq('payment_month', monthStr)
-        .eq('is_cancelled', false);
-      if (error) throw error;
+        .eq('is_cancelled', false).order('id').range(from, to));
       return data || [];
     },
     { emptyValue: [] as any[] },
@@ -120,19 +118,17 @@ export async function fetchFirstWorkMonthByOwnerIds(ownerIds: string[]): Promise
   const dataResult = await dalRead(
     `monthlyClosing:firstWorkMonth:${ownerIds.slice().sort().join(',')}`,
     async () => {
-      const [year1Res, renewalRes] = await Promise.all([
-        supabase
+      const [year1, renewal] = await Promise.all([
+        fetchAllRows((from, to) => supabase
           .from('payments')
-          .select('payment_month, installment:installment_id(policy:policy_id(owner_id))')
-          .eq('is_cancelled', false),
-        supabase
+          .select('payment_month, installment:installment_id(policy:policy_id(owner_id))', { count: 'exact' })
+          .eq('is_cancelled', false).order('id').range(from, to)),
+        fetchAllRows((from, to) => supabase
           .from('year2_payments')
-          .select('payment_month, policy:policy_id(owner_id)')
-          .eq('is_cancelled', false),
+          .select('payment_month, policy:policy_id(owner_id)', { count: 'exact' })
+          .eq('is_cancelled', false).order('id').range(from, to)),
       ]);
-      if (year1Res.error) throw year1Res.error;
-      if (renewalRes.error) throw renewalRes.error;
-      return { year1: year1Res.data || [], renewal: renewalRes.data || [] };
+      return { year1, renewal };
     },
     { emptyValue: { year1: [] as any[], renewal: [] as any[] } },
   );

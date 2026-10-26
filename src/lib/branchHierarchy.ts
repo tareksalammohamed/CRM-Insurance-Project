@@ -1,5 +1,6 @@
+import { fetchAllRows } from './fetchAllRows';
 import { supabase } from './supabase';
-import { dalRead } from './dataAccessLayer';
+import { dalRead, freshDalRead } from './dataAccessLayer';
 import type { UserRole } from './supabase';
 
 // ===================================
@@ -28,8 +29,9 @@ export async function fetchUserSubtreeIdsBranchAware(
   cacheKeyPrefix: string,
   userId: string,
   branchId?: string | null,
+  requireFresh = false,
 ): Promise<string[]> {
-  const result = await dalRead(
+  const result = await (requireFresh ? freshDalRead : dalRead)(
     `${cacheKeyPrefix}:subtree:${userId}:${branchId ?? 'none'}`,
     async () => {
       const { data, error } = branchId
@@ -61,18 +63,18 @@ export async function fetchUserSubtreeIdsBranchAware(
 export async function fetchBranchRoleMap(
   branchId: string | null | undefined,
   userIds: string[],
+  requireFresh = false,
 ): Promise<Map<string, BranchRoleInfo>> {
   if (!branchId || userIds.length === 0) return new Map();
 
-  const result = await dalRead(
+  const result = await (requireFresh ? freshDalRead : dalRead)(
     `branchRoleMap:${branchId}:${userIds.slice().sort().join(',')}`,
     async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from('user_branch_roles')
-        .select('user_id, role, manager_id')
+        .select('user_id, role, manager_id', { count: 'exact' })
         .eq('branch_id', branchId)
-        .in('user_id', userIds);
-      if (error) throw error;
+        .in('user_id', userIds).order('id').range(from, to));
       return (data || []) as { user_id: string; role: UserRole; manager_id: string | null }[];
     },
     { emptyValue: [] as { user_id: string; role: UserRole; manager_id: string | null }[] },
