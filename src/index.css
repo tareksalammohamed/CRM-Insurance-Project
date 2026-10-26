@@ -3601,6 +3601,19 @@ body {
    (Sidebar / Header / الأزرار / الودجت العائم)، حتى لو نسينا وسم
    print:hidden على عنصر جديد مستقبلاً. */
 @media print {
+  /* Switching from screen to print removes premiumPageReveal and restarts
+     pageEnter on .app-content at opacity: 0. Chromium can snapshot that first
+     frame as a completely blank PDF, even after the screen animation ended.
+     Printed documents must never depend on an animation's current frame. */
+  body, body *, body *::before, body *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  body :has(.print-report), .print-report {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
   html, body {
     background: #fff !important;
     margin: 0;
