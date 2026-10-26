@@ -1,3 +1,7 @@
+import { useAdaptiveReads } from '../../hooks/useAdaptiveReads';
+import { useRequestGuard } from '../../hooks/useRequestGuard';
+import { LoadNotice } from '../../components/feedback/LoadNotice';
+import { isAbortedRead } from '../../lib/adaptiveReads';
 import { FirstYearSummary } from '../../features/installments/FirstYearSummary';
 import { friendlyError } from '../../lib/errorMessages';
 import { useNotify } from '../../lib/notify';
@@ -50,6 +54,11 @@ export function PolicyDetail() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const notify = useNotify();
+  const read = useAdaptiveReads(`${user?.id}:${id}`);
+  const guard = useRequestGuard();
+  const installmentsGuard = useRequestGuard();
+  const [policyError, setPolicyError] = useState<string | null>(null);
+  const [installmentsError, setInstallmentsError] = useState<string | null>(null);
 
   // ===================================
   // حالات المكون
@@ -81,55 +90,53 @@ export function PolicyDetail() {
   // ===================================
   // تحميل بيانات الوثيقة
   // ===================================
-  // loadPolicy بقى useCallback بيعتمد على `id` و`navigate` فقط (الاتنين هما
-  // كل اللي بيتقرا جوّاه) — الـeffect تحته بيحافظ على نفس شرط (id && user)
-  // بالظبط، فمفيش أي طلب إضافي ولا تغيير فى ترتيب التنفيذ.
-  const loadPolicy = useCallback(async () => {
-    setLoading(true);
+  const loadInstallments = useCallback(async () => {
+    if (!id || !user) return;
+    const request = installmentsGuard.start();
+    setLoadingInstallments(true);
+    setInstallmentsError(null);
+    setInstallments([]);
     try {
-      if (!id) return;
-      // الثلاث استعلامات مستقلة تمامًا عن بعضها (كلها تعتمد فقط على id)،
-      // فبيتنفذوا بالتوازي بدل التسلسل — نفس النتائج بالظبط بزمن أقل
-      setLoadingInstallments(true);
-      const [data, installmentsData, deletable] = await Promise.all([
-        fetchPolicyById(id),
-        fetchInstallmentsByPolicyId(id),
-        checkPolicyDeletable(id),
-      ]);
-      setPolicy(data);
-      setInstallments(installmentsData);
-      setIsDeletable(deletable);
+      const rows = await read(() => fetchInstallmentsByPolicyId(id, true), 1, () => installmentsGuard.isCurrent(request));
+      if (installmentsGuard.isCurrent(request)) setInstallments(rows);
     } catch (error) {
-      console.error('Error loading policy:', error);
-      navigate('/policies');
+      if (installmentsGuard.isCurrent(request) && !isAbortedRead(error)) setInstallmentsError('تعذر تحميل أقساط السنة الأولى؛ أعد المحاولة.');
     } finally {
-      setLoading(false);
-      setLoadingInstallments(false);
+      if (installmentsGuard.isCurrent(request)) setLoadingInstallments(false);
     }
-  }, [id, navigate]);
+  }, [id, user, read, installmentsGuard]);
+
+  const loadPolicy = useCallback(async () => {
+    if (!id || !user) return;
+    const request = guard.start();
+    setLoading(true);
+    setPolicyError(null);
+    setIsDeletable(false);
+    const valid = () => guard.isCurrent(request);
+    // Each section publishes independently; deletion eligibility never delays the document.
+    const primary = read(() => fetchPolicyById(id), 0, valid).then(data => {
+      if (valid()) setPolicy(data);
+    }).catch(error => {
+      if (valid() && !isAbortedRead(error)) setPolicyError('تعذر تحميل بيانات الوثيقة؛ أعد المحاولة.');
+    }).finally(() => { if (valid()) setLoading(false); });
+    const schedule = loadInstallments();
+    const eligibility = read(() => checkPolicyDeletable(id), 2, valid).then(value => {
+      if (valid()) setIsDeletable(value);
+    }).catch(() => { /* Keep deletion disabled until eligibility is verified. */ });
+    await Promise.all([primary, schedule, eligibility]);
+  }, [id, user, guard, read, loadInstallments]);
 
   useEffect(() => {
-    if (id && user) {
-      loadPolicy();
-    }
-  }, [id, user, loadPolicy]);
+    void loadPolicy();
+    return () => { guard.invalidate(); installmentsGuard.invalidate(); };
+  }, [loadPolicy, guard, installmentsGuard]);
 
-  useReconnectRefetch(() => { if (id && user) loadPolicy(); });
+  useReconnectRefetch(() => { void loadPolicy(); });
 
-  // ===================================
-  // تحميل الأقساط
-  // ===================================
-  const loadInstallments = async () => {
-    if (!id) return;
-    setLoadingInstallments(true);
-    try {
-      setInstallments(await fetchInstallmentsByPolicyId(id));
-    } catch (error) {
-      console.error('Error loading installments:', error);
-    } finally {
-      setLoadingInstallments(false);
-    }
-  };
+  useEffect(() => {
+    setShowPayModal(false); setShowCancelModal(false); setSelectedInstallment(null);
+    setShowDeleteConfirm(false);
+  }, [id, user?.id]);
 
   // ===================================
   // فتح مودال السداد
@@ -243,7 +250,9 @@ export function PolicyDetail() {
   // ===================================
   // شاشة التحميل
   // ===================================
-  if (loading) {
+  if (policyError) return <LoadNotice message={policyError} loading={loading} onRetry={() => void loadPolicy()} />;
+
+  if (loading || policy?.id !== id) {
     return (
       <div className="space-y-6 animate-fadeIn" role="status" aria-live="polite">
         <span className="sr-only">جارٍ تحميل بيانات الوثيقة…</span>
@@ -370,7 +379,8 @@ export function PolicyDetail() {
         </div>
       </div>
 
-      <FirstYearSummary installments={installments} loading={loadingInstallments} />
+      <LoadNotice message={installmentsError} loading={loadingInstallments} onRetry={() => void loadInstallments()} />
+      {!installmentsError && <FirstYearSummary installments={installments} loading={loadingInstallments} />}
 
       {/* ===== بيانات تفصيلية — مطويّة افتراضيًا (Progressive disclosure) ===== */}
       <div className="card !p-0">
@@ -445,17 +455,17 @@ export function PolicyDetail() {
             <CreditCard className="w-4 h-4 text-primary-600" />
             جدول أقساط السنة الأولى
           </h3>
-          <span className="card-section-meta">{stats.paid} من {stats.total} قسط سنة أولى مسدد</span>
+          <span className="card-section-meta">{loadingInstallments ? 'جارٍ تحميل الأقساط…' : installmentsError ? 'الأقساط غير متاحة' : `${stats.paid} من ${stats.total} قسط سنة أولى مسدد`}</span>
         </div>
 
-        <InstallmentsTable
+        {!installmentsError && <InstallmentsTable
           installments={installments}
           loading={loadingInstallments}
           policyStatus={policy.status}
           onPay={handleOpenPayModal}
           onCancel={handleOpenCancelModal}
           highlightId={highlightInstallmentId}
-        />
+        />}
       </div>
 
       {/* ===== مودال تأكيد السداد (موحّد) ===== */}

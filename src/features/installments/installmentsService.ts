@@ -2,7 +2,7 @@ import { friendlyError } from '../../lib/errorMessages';
 import { supabase, type Installment } from '../../lib/supabase';
 import { format, startOfMonth } from 'date-fns';
 import { withOfflineQueue } from '../../lib/offlineQueue';
-import { dalRead } from '../../lib/dataAccessLayer';
+import { dalRead, freshDalRead } from '../../lib/dataAccessLayer';
 
 // ===================================
 // مصدر واحد لكل عمليات الأقساط الخاصة بوثيقة واحدة (تحميل / سداد / إلغاء
@@ -15,8 +15,8 @@ import { dalRead } from '../../lib/dataAccessLayer';
 // تحميل أقساط وثيقة واحدة فقط (Lazy Loading) — لا يجلب أي بيانات وثيقة/عميل
 // مرتبطة لأن هذه الدالة تُستدعى دائماً من داخل سياق وثيقة محددة بالفعل
 // ===================================
-export async function fetchInstallmentsByPolicyId(policyId: string): Promise<Installment[]> {
-  const result = await dalRead(
+export async function fetchInstallmentsByPolicyId(policyId: string, requireFresh = false): Promise<Installment[]> {
+  const result = await (requireFresh ? freshDalRead : dalRead)(
     `installments:byPolicy:${policyId}`,
     async () => {
       const { data, error } = await supabase

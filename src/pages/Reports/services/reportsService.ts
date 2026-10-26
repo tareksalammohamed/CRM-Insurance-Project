@@ -1,38 +1,33 @@
+import { fetchAllRows } from '../../../lib/fetchAllRows';
 import { customerRequestStatus } from '../../../lib/customerRequestStatus';
 import { supabase } from '../../../lib/supabase';
 import { format } from 'date-fns';
-import { dalRead } from '../../../lib/dataAccessLayer';
+import { freshDalRead as dalRead } from '../../../lib/dataAccessLayer';
 import { fetchUserSubtreeIdsBranchAware, fetchBranchRoleMap } from '../../../lib/branchHierarchy';
 import { fetchDailyStatsForUsers } from './activityTargetsService';
 import { aggregateEntries } from '../../DailyReports/services/dailyStatsService';
 import { computeActivityScore, computeFinalScore, type ActivityTargets, type ActivityScoreResult } from '../business/performanceScoreCalculator';
 
-// ===================================
-// كل دوال القراءة هنا بقت تمر من dalRead (طبقة الوصول الموحدة للبيانات):
-// أونلاين بترجع بيانات حقيقية وتحفظها فى الكاش، وأوفلاين (أو عند فشل
-// الشبكة/تعليقها) بترجع آخر نسخة محفوظة أو شكل فاضٍ متوافق مع النوع بدل
-// ما تعلّق الصفحة فى Loading أو تنهار. راجع lib/dataAccessLayer.ts.
-// ===================================
+// Verified, complete reads: a failed source must not become a partial financial summary.
 
 // نطاق المستخدم (هو + كل من تحته)، فى نطاق الفرع الحالي المختار لو موجود
 // (BranchProvider العام) — بترجع لنفس السلوك القديم (عابر للفروع) لو
 // branchId فاضي، راجع lib/branchHierarchy.ts لتفاصيل التوافق مع الخلف.
 export async function fetchUserSubtreeIds(userId: string, branchId: string | null = null): Promise<string[]> {
-  return fetchUserSubtreeIdsBranchAware('reports', userId, branchId);
+  return fetchUserSubtreeIdsBranchAware('reports', userId, branchId, true);
 }
 
 export async function fetchCustomersInRange(userIds: string[], start: Date, end: Date) {
   const result = await dalRead(
     `reports:customersInRange:${userIds.slice().sort().join(',')}:${start.toISOString()}:${end.toISOString()}`,
     async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from('customers')
-        .select('id, name, created_at, request_manually_expired, insurance_amount, owner:owner_id(id, name), policies(id, policy_number, premium_amount, sum_assured, status, created_at)')
+        .select('id, name, created_at, request_manually_expired, insurance_amount, owner:owner_id(id, name), policies(id, policy_number, premium_amount, sum_assured, status, created_at)', { count: 'exact' })
         .in('owner_id', userIds)
         .gte('created_at', start.toISOString())
         .lte('created_at', end.toISOString())
-        .order('created_at', { ascending: false });
-      if (error) throw error;
+        .order('created_at', { ascending: false }).order('id').range(from, to));
       return data || [];
     },
     { emptyValue: [] as any[] },
@@ -54,19 +49,10 @@ export async function fetchCustomerRequestsReport(
   const result = await dalRead(
     `reports:customerRequests:v3:${userIds.slice().sort().join(',')}:${start.toISOString()}:${end.toISOString()}:${filter}`,
     async () => {
-      const rows: { created_at: string; policies: unknown[] }[] = [];
-      for (let offset = 0; ; offset += 500) {
-        const { data, error } = await supabase
-          .from('customers')
-          .select('id, name, created_at, request_manually_expired, insurance_amount, owner:owner_id(id, name), policies(id, policy_number, premium_amount, sum_assured, status, created_at)')
-          .in('owner_id', userIds)
-          .gte('created_at', start.toISOString()).lte('created_at', end.toISOString())
-          .order('created_at', { ascending: false }).order('id').range(offset, offset + 499);
-        if (error) throw error;
-        rows.push(...(data || []));
-        if (!data || data.length < 500) break;
-      }
-      return rows;
+      return fetchAllRows((from, to) => supabase.from('customers')
+        .select('id, name, created_at, request_manually_expired, insurance_amount, owner:owner_id(id, name), policies(id, policy_number, premium_amount, sum_assured, status, created_at)', { count: 'exact' })
+        .in('owner_id', userIds).gte('created_at', start.toISOString()).lte('created_at', end.toISOString())
+        .order('created_at', { ascending: false }).order('id').range(from, to));
     },
     { emptyValue: [] as any[] },
   );
@@ -78,12 +64,11 @@ export async function fetchPoliciesForOwners(userIds: string[]) {
   const result = await dalRead(
     `reports:policiesForOwners:${userIds.slice().sort().join(',')}`,
     async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from('policies')
-        .select('id, policy_number, status, policy_type, start_date, customer:customer_id(name), owner:owner_id(name)')
+        .select('id, policy_number, status, policy_type, start_date, customer:customer_id(name), owner:owner_id(name)', { count: 'exact' })
         .in('owner_id', userIds)
-        .order('start_date', { ascending: false });
-      if (error) throw error;
+        .order('start_date', { ascending: false }).order('id').range(from, to));
       return data || [];
     },
     { emptyValue: [] as any[] },
@@ -95,15 +80,14 @@ export async function fetchPaymentsInRange(start: Date, end: Date) {
   const result = await dalRead(
     `reports:paymentsInRange:${format(start, 'yyyy-MM-dd')}:${format(end, 'yyyy-MM-dd')}`,
     async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from('payments')
         .select(
           'amount, payment_month, installment:installment_id(is_first, policy:policy_id(owner_id, policy_number, customer:customer_id(name), owner:owner_id(name)))'
-        )
+        , { count: 'exact' })
         .gte('payment_month', format(start, 'yyyy-MM-dd'))
         .lte('payment_month', format(end, 'yyyy-MM-dd'))
-        .eq('is_cancelled', false);
-      if (error) throw error;
+        .eq('is_cancelled', false).order('id').range(from, to));
       return data || [];
     },
     { emptyValue: [] as any[] },
@@ -115,10 +99,9 @@ export async function fetchAllInstallmentsWithPolicy() {
   const result = await dalRead(
     `reports:allInstallmentsWithPolicy`,
     async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from('installments')
-        .select('id, amount, due_date, status, policy:policy_id(owner_id, policy_number, customer:customer_id(name))');
-      if (error) throw error;
+        .select('id, amount, due_date, status, policy:policy_id(owner_id, policy_number, customer:customer_id(name))', { count: 'exact' }).order('id').range(from, to));
       return data || [];
     },
     { emptyValue: [] as any[] },
@@ -136,14 +119,13 @@ export async function fetchInstallmentsDueInRange(userIds: string[], start: Date
   const result = await dalRead(
     `reports:installmentsDueInRange:${includeFirst ? 'all' : 'recurring'}:${userIds.slice().sort().join(',')}:${format(start, 'yyyy-MM-dd')}:${format(end, 'yyyy-MM-dd')}`,
     async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from('installments')
         .select(
           'id, amount, due_date, is_first, status, policy:policy_id(owner_id, policy_number, customer:customer_id(name), owner:owner_id(name))'
-        )
+        , { count: 'exact' })
         .gte('due_date', format(start, 'yyyy-MM-dd'))
-        .lte('due_date', format(end, 'yyyy-MM-dd'));
-      if (error) throw error;
+        .lte('due_date', format(end, 'yyyy-MM-dd')).order('id').range(from, to));
       return (data || []).filter((i: any) => userIds.includes(i.policy?.owner_id) && (includeFirst || !i.is_first));
     },
     { emptyValue: [] as any[] },
@@ -155,14 +137,13 @@ export async function fetchAgentsForReport(userIds: string[]) {
   const result = await dalRead(
     `reports:agentsForReport:v2:${userIds.slice().sort().join(',')}`,
     async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from('users')
-        .select('id, name, target')
+        .select('id, name, target', { count: 'exact' })
         .in('id', userIds)
         .in('role', ['agent', 'premium_agent'])
         .eq('is_active', true)
-        .is('deleted_at', null);
-      if (error) throw error;
+        .is('deleted_at', null).order('id').range(from, to));
       return data || [];
     },
     { emptyValue: [] as any[] },
@@ -174,13 +155,12 @@ export async function fetchSimplePaymentsInRange(start: Date, end: Date) {
   const result = await dalRead(
     `reports:simplePaymentsInRange:${format(start, 'yyyy-MM-dd')}:${format(end, 'yyyy-MM-dd')}`,
     async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from('payments')
-        .select('amount, installment:installment_id(policy:policy_id(owner_id))')
+        .select('amount, installment:installment_id(policy:policy_id(owner_id))', { count: 'exact' })
         .gte('payment_month', format(start, 'yyyy-MM-dd'))
         .lte('payment_month', format(end, 'yyyy-MM-dd'))
-        .eq('is_cancelled', false);
-      if (error) throw error;
+        .eq('is_cancelled', false).order('id').range(from, to));
       return data || [];
     },
     { emptyValue: [] as any[] },
@@ -195,14 +175,13 @@ export async function fetchUsersInSubtree(userIds: string[]) {
   const result = await dalRead(
     `reports:usersInSubtree:v2:${userIds.slice().sort().join(',')}`,
     async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from('users')
-        .select('id, name, role')
+        .select('id, name, role', { count: 'exact' })
         .in('id', userIds)
         .eq('is_active', true)
         .is('deleted_at', null)
-        .order('name');
-      if (error) throw error;
+        .order('name').order('id').range(from, to));
       return data || [];
     },
     { emptyValue: [] as any[] },
@@ -214,13 +193,12 @@ export async function fetchSupervisoryPerformanceUsers(userIds: string[], branch
   const result = await dalRead(
     `reports:supervisoryPerformanceUsers:v1:${userIds.slice().sort().join(',')}:${branchId || 'all'}`,
     async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from('users')
-        .select('id, name, role, manager_id, target, is_active, deleted_at')
-        .in('id', userIds);
-      if (error) throw error;
+        .select('id, name, role, manager_id, target, is_active, deleted_at', { count: 'exact' })
+        .in('id', userIds).order('id').range(from, to));
 
-      const branchRoles = await fetchBranchRoleMap(branchId, userIds);
+      const branchRoles = await fetchBranchRoleMap(branchId, userIds, true);
       return (data || []).map((user: any) => {
         const branchRole = branchRoles.get(user.id);
         return branchRole
@@ -237,14 +215,13 @@ export async function fetchUsersByRole(userIds: string[], roles: string[]) {
   const result = await dalRead(
     `reports:usersByRole:v2:${userIds.slice().sort().join(',')}:${roles.slice().sort().join(',')}`,
     async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from('users')
-        .select('id, name, target')
+        .select('id, name, target', { count: 'exact' })
         .in('id', userIds)
         .in('role', roles)
         .eq('is_active', true)
-        .is('deleted_at', null);
-      if (error) throw error;
+        .is('deleted_at', null).order('id').range(from, to));
       return data || [];
     },
     { emptyValue: [] as any[] },

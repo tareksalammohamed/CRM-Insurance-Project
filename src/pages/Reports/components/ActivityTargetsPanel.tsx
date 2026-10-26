@@ -18,6 +18,7 @@ export function ActivityTargetsPanel({
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState({ calls: '', appointments: '', newClients: '' });
 
@@ -39,6 +40,7 @@ export function ActivityTargetsPanel({
     if (!targets.id || !user) return;
     setSaving(true);
     setSaved(false);
+    setSaveError(null);
     try {
       const input: ActivityTargets = {
         callsDailyTarget: Math.max(1, Number(form.calls) || 1),
@@ -50,6 +52,9 @@ export function ActivityTargetsPanel({
       onSaved(refreshed);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+    } catch (error) {
+      console.error('Error saving activity targets:', error);
+      setSaveError('تعذر تأكيد حفظ أهداف النشاط؛ أعد المحاولة.');
     } finally {
       setSaving(false);
     }
@@ -66,6 +71,7 @@ export function ActivityTargetsPanel({
         إعدادات أهداف النشاط (لحساب درجة النشاط فى التقييم الشامل)
       </button>
 
+      {saveError && <p role="alert" className="text-sm text-error-600 mt-2">{saveError}</p>}
       {open && (
         <div className="mt-4 space-y-3">
           <p className="text-xs text-secondary-500">

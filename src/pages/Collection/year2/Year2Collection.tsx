@@ -1,3 +1,4 @@
+import { LoadNotice } from '../../../components/feedback/LoadNotice';
 import { directRead, isAbortedRead, type AdaptiveRead } from '../../../lib/adaptiveReads';
 import { useRequestGuard } from '../../../hooks/useRequestGuard';
 import { friendlyError } from '../../../lib/errorMessages';
@@ -47,6 +48,7 @@ interface Year2CollectionProps {
 export function Year2Collection({ branchId = null, onDataChanged, read = directRead, ensureMaintenance }: Year2CollectionProps) {
   const { user } = useAuth();
   const notify = useNotify();
+  const [loadMessage, setLoadMessage] = useState<string | null>(null);
   const [policies, setPolicies] = useState<Year2EligiblePolicy[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -90,17 +92,19 @@ export function Year2Collection({ branchId = null, onDataChanged, read = directR
     const request = listGuard.start();
     setLoading(true);
     try {
-      const { policies: results, totalCount: count, totalPages: pages } =
+      const { policies: results, totalCount: count, totalPages: pages, loadMessage: message } =
         await read(async () => {
           await ensureMaintenance?.();
           if (!listGuard.isCurrent(request)) throw Object.assign(new Error('قراءة قديمة'), { name: 'AbortError' });
           return fetchYear2EligiblePolicies({ page, searchQuery, branchId, quickFilter });
         }, 0, () => listGuard.isCurrent(request));
       if (!listGuard.isCurrent(request)) return;
+      setLoadMessage(message ?? null);
       setPolicies(results);
       setTotalCount(count);
       setTotalPages(pages);
     } catch (error) {
+      if (listGuard.isCurrent(request) && !isAbortedRead(error)) { setLoadMessage('تعذر تحميل الوثائق؛ أعد المحاولة.'); setPolicies([]); }
       if (!isAbortedRead(error)) console.error('Error loading year2 policies:', error);
     } finally {
       if (listGuard.isCurrent(request)) setLoading(false);
@@ -270,6 +274,7 @@ export function Year2Collection({ branchId = null, onDataChanged, read = directR
           </div>
         </div>
 
+        <LoadNotice message={loadMessage} loading={loading} onRetry={() => void loadPolicies()} />
         {loading ? (
           <div className="flex items-center justify-center h-48">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />

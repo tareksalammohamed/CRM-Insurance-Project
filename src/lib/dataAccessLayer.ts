@@ -227,9 +227,9 @@ export async function dalRead<T>(key: string, fetcher: () => Promise<T>, options
   return result;
 }
 
-/** Financial closing must not mistake cached/empty fallback data for a fresh read. */
+/** Verified views must not mistake fallback data for a successful fresh read. */
 export async function freshDalRead<T>(key: string, fetcher: () => Promise<T>, options: DalOptions<T>): Promise<DalResult<T>> {
   const result = await dalRead(key, fetcher, options);
-  if (result.status !== 'online') throw new Error('تعذر التحقق من أحدث البيانات. اتصل بالإنترنت وأعد التحميل قبل الطباعة أو اعتماد الإقفال.');
+  if (result.status !== 'online') throw new Error('تعذر التحقق من أحدث البيانات. اتصل بالإنترنت وأعد المحاولة.');
   return result;
 }

@@ -115,6 +115,7 @@ export function Collection() {
     setShowPolicyModal,
     selectedPolicy,
     policyInstallments,
+    loadError: policyInstallmentsError,
     loadingPolicyInstallments,
     loadPolicyInstallments,
     handleOpenPolicyDetails,
@@ -345,6 +346,8 @@ export function Collection() {
         <PolicyInstallmentsDialog
           policy={selectedPolicy}
           installments={policyInstallments}
+          loadError={policyInstallmentsError}
+          onRetry={() => void loadPolicyInstallments(selectedPolicy.id)}
           loading={loadingPolicyInstallments}
           onClose={() => setShowPolicyModal(false)}
           onPay={(inst) => { handleOpenPayment(inst); setShowPolicyModal(false); }}
