@@ -134,6 +134,7 @@ export function Policies() {
 
       {/* ===== قائمة الوثائق ===== */}
       <PoliciesList
+        onChanged={() => { void loadPolicies(); void loadStats(); }}
         isInitialLoading={isInitialLoading}
         policies={policies}
         hasActiveFilters={hasActiveFilters}

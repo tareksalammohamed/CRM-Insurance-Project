@@ -318,3 +318,8 @@
   .customer-workspace .modal-actions { gap: .6rem; margin-inline: 0 !important; padding-inline: 1rem; }
   .customer-workspace .modal-actions > button { min-width: 0; flex: 1 1 0; padding-inline: .65rem; }
 }
+
+@media screen {
+  .policy-group-workspace .kpi-card > p.text-sm { font-size: .875rem !important; line-height: 1.5 !important; margin-top: .35rem; }
+  .policy-group-workspace dd { overflow-wrap: anywhere; }
+}
