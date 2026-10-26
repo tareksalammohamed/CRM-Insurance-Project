@@ -42,5 +42,11 @@ jobs:
       - name: TypeScript
         run: npm run typecheck
 
+      - name: Install print-test browser
+        run: npx playwright install --with-deps chromium
+
+      - name: PDF print regression
+        run: npm run check:print
+
       - name: Production build
         run: npm run build
