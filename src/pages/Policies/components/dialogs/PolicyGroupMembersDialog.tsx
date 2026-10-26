@@ -1,5 +1,6 @@
 import { X, FileText, ExternalLink } from 'lucide-react';
 import clsx from 'clsx';
+import { format } from 'date-fns';
 import { POLICY_STATUS_LABELS, type Policy } from '../../../../lib/supabase';
 import { STATUS_BADGE_CLASS, STATUS_DOT_CLASS } from '../../constants';
 import { formatCurrency } from '../../utils/formatCurrency';
@@ -83,7 +84,11 @@ export function PolicyGroupMembersDialog({ members, onClose, onOpenDetails }: Po
                 </div>
               </button>
             ))}
-
+            {sorted[0] && (
+              <p className="text-[11px] text-secondary-400 pt-1">
+                أقدم تاريخ بداية بالمجموعة: {format(new Date(sorted[0].start_date), 'dd/MM/yyyy')}
+              </p>
+            )}
           </div>
 
           <div className="modal-actions flex justify-end gap-2.5 p-4 md:p-5 border-t border-secondary-200">
