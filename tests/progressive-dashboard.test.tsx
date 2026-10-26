@@ -1,0 +1,46 @@
+vi.hoisted(() => { vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co'); vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'test'); });
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+const mocks = vi.hoisted(() => ({ raw: vi.fn(), team: vi.fn(), cancellations: vi.fn(), user: { id: 'u', role: 'agent', name: 'Test', target: 10000 } }));
+vi.mock('../src/hooks/useAuth', () => ({ useAuth: () => ({ user: mocks.user }) }));
+vi.mock('../src/lib/branchContext', () => ({ useBranchContext: () => ({ currentBranchId: null }) }));
+vi.mock('../src/hooks/useReconnectRefetch', () => ({ useReconnectRefetch: vi.fn() }));
+vi.mock('../src/pages/Dashboard/services/dashboardService', () => ({ fetchUserSubtreeIds: async () => ['u'], fetchDashboardRawData: mocks.raw, fetchTeamUsers: mocks.team, fetchBranchRoleMap: async () => new Map() }));
+vi.mock('../src/pages/Cancellations/services/cancellationService', () => ({ loadCancellationSummary: mocks.cancellations }));
+import { useDashboard } from '../src/pages/Dashboard/hooks/useDashboard';
+const original = Object.getOwnPropertyDescriptor(navigator, 'connection');
+const raw = { customersRes: { data: [], count: 0 }, policiesRes: { data: [] }, installmentsRes: { data: [] }, paymentsRes: { data: [] } };
+beforeEach(() => { vi.resetAllMocks(); mocks.cancellations.mockResolvedValue({ cancellationRate: 0, cancelledValue: 0 }); });
+afterEach(() => { cleanup(); if (original) Object.defineProperty(navigator, 'connection', original); else Reflect.deleteProperty(navigator, 'connection'); });
+it('publishes the main dashboard without waiting for team details on slow connections', async () => {
+  Object.defineProperty(navigator, 'connection', { configurable: true, value: { effectiveType: '2g' } });
+  let rawDone!: (value: typeof raw) => void; let teamDone!: (value: unknown[]) => void;
+  mocks.raw.mockReturnValue(new Promise(done => { rawDone = done; })); mocks.team.mockReturnValue(new Promise(done => { teamDone = done; }));
+  const { result } = renderHook(useDashboard);
+  await waitFor(() => expect(mocks.raw).toHaveBeenCalledOnce()); expect(mocks.team).not.toHaveBeenCalled(); expect(mocks.cancellations).not.toHaveBeenCalled();
+  await act(async () => rawDone(raw));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(result.current.stats).not.toBeNull(); expect(result.current.teamLoading).toBe(true);
+  expect(result.current.cancellationLoading).toBe(true); expect(result.current.cancellationSummary).toBeNull();
+  await act(async () => teamDone([]));
+  await waitFor(() => expect(result.current.teamLoading).toBe(false));
+  await waitFor(() => expect(result.current.cancellationLoading).toBe(false));
+  expect(result.current.cancellationSummary?.cancellationRate).toBe(0);
+});
+it('starts team details before the main read finishes when the connection is fast', async () => {
+  Object.defineProperty(navigator, 'connection', { configurable: true, value: { effectiveType: '4g', rtt: 30, downlink: 20 } });
+  let rawDone!: (value: typeof raw) => void;
+  mocks.raw.mockReturnValue(new Promise(done => { rawDone = done; })); mocks.team.mockResolvedValue([]);
+  const { result } = renderHook(useDashboard);
+  await waitFor(() => expect(mocks.team).toHaveBeenCalledOnce());
+  expect(result.current.loading).toBe(true);
+  await act(async () => rawDone(raw)); await waitFor(() => expect(result.current.teamLoading).toBe(false));
+  expect(result.current.stats).not.toBeNull();
+});
+it('keeps the main dashboard usable if a later team read fails', async () => {
+  Object.defineProperty(navigator, 'connection', { configurable: true, value: { effectiveType: '2g' } });
+  mocks.raw.mockResolvedValue(raw); mocks.team.mockRejectedValue(new Error('team failed'));
+  const { result } = renderHook(useDashboard);
+  await waitFor(() => expect(result.current.teamError).toContain('تعذر تحميل تفاصيل الفريق'));
+  expect(result.current.stats).not.toBeNull(); expect(result.current.dashboardError).toBeNull(); expect(result.current.loading).toBe(false);
+});

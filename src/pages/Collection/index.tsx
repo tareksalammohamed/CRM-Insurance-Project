@@ -1,3 +1,4 @@
+import { useAdaptiveReads } from '../../hooks/useAdaptiveReads';
 import { PromiseDialog, FollowupWorkspaceButton } from '../../features/customerFollowup/FollowupPanel';
 import { AppliedFilters } from '../../components/forms/AppliedFilters';
 import { useSearchParams } from 'react-router-dom';
@@ -39,6 +40,7 @@ type YearMode = 'year1' | 'year2';
 export function Collection() {
   const { user } = useAuth();
   const { currentBranchId } = useBranchContext();
+  const read = useAdaptiveReads(`${user?.id}:${currentBranchId}`);
   const ensureMaintenance = useCollectionMaintenance(user?.id);
 
   const { initialSubType, initialQuickFilter, initialOwnerFilter, initialMonth, initialSearch, highlightInstallmentId, hasUrlNavigation } =
@@ -84,7 +86,7 @@ export function Collection() {
     localSearch,
     setLocalSearch,
     loadInstallments,
-  } = useCollectionInstallments({ user, ensureMaintenance, yearMode, quickFilter, subType, ownerFilter, branchId: currentBranchId, monthStart: initialMonth, initialSearch });
+  } = useCollectionInstallments({ user, ensureMaintenance, yearMode, quickFilter, subType, ownerFilter, branchId: currentBranchId, monthStart: initialMonth, initialSearch, read });
 
   // المستخدم وصل للصفحة من نقرة على بطاقة/رقم بفلتر جاهز فى الرابط —
   // لازم يشوف دليل واضح إن القائمة مفلترة بالفعل مع مخرج للرجوع للكل.
@@ -105,8 +107,8 @@ export function Collection() {
 
   const hasActiveFilters = activeFilterCount > 0 || !!searchQuery;
 
-  const teamMembers = useTeamMembers(user, currentBranchId);
-  const { quickStats, quickStatsLoading, loadQuickStats } = useCollectionQuickStats(user, currentBranchId, ensureMaintenance);
+  const teamMembers = useTeamMembers(user, currentBranchId, read);
+  const { quickStats, quickStatsLoading, loadQuickStats } = useCollectionQuickStats(user, currentBranchId, ensureMaintenance, read);
 
   const {
     showPolicyModal,
@@ -194,7 +196,7 @@ export function Collection() {
       )}
 
       {yearMode === 'year2' ? (
-        <Year2Collection branchId={currentBranchId} onDataChanged={loadQuickStats} />
+        <Year2Collection ensureMaintenance={ensureMaintenance} read={read} branchId={currentBranchId} onDataChanged={loadQuickStats} />
       ) : (
         <>
           {/* ===== البحث والفلاتر ===== */}

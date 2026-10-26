@@ -1,3 +1,5 @@
+import { isAbortedRead } from '../../../lib/adaptiveReads';
+import { useAdaptiveReads } from '../../../hooks/useAdaptiveReads';
 import { useCallback, useEffect, useState } from 'react';
 import type { Policy, User } from '../../../lib/supabase';
 import { fetchPoliciesPage, computeDeletablePolicyIds, fetchPolicyStats, type PolicyStats } from '../services/policiesService';
@@ -15,6 +17,7 @@ export function usePolicies(user: User | null | undefined, page: number, searchQ
   const [statsLoading, setStatsLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
   const [deletableIds, setDeletableIds] = useState<Set<string>>(new Set());
+  const read = useAdaptiveReads(`${user?.id}:${branchId}`);
   const listGuard = useRequestGuard();
   const statsGuard = useRequestGuard();
   const userId = user?.id;
@@ -25,7 +28,7 @@ export function usePolicies(user: User | null | undefined, page: number, searchQ
     setLoading(true);
     setDeletableIds(new Set());
     try {
-      const result = await fetchPoliciesPage({ page, searchQuery, statusFilter, typeFilter, monthFilter, branchId });
+      const result = await read(() => fetchPoliciesPage({ page, searchQuery, statusFilter, typeFilter, monthFilter, branchId }), 0, () => listGuard.isCurrent(request));
       if (!listGuard.isCurrent(request)) return;
       setPolicies(result.policies);
       setTotalPages(result.totalPages);
@@ -34,28 +37,31 @@ export function usePolicies(user: User | null | undefined, page: number, searchQ
       // The list is ready; deletion eligibility remains pessimistic until its separate check finishes.
       setLoading(false);
       try {
-        const ids = await computeDeletablePolicyIds(result.policies);
+        const ids = await read(() => computeDeletablePolicyIds(result.policies), 2, () => listGuard.isCurrent(request));
         if (listGuard.isCurrent(request)) setDeletableIds(ids);
       } catch (error) {
+      if (isAbortedRead(error)) return;
         console.error('Error checking deletable policies:', error);
       }
     } catch (error) {
+      if (isAbortedRead(error)) return;
       if (listGuard.isCurrent(request)) setLoadMessage(friendlyError(error, 'تعذر تحميل الوثائق، أعد المحاولة'));
     } finally {
       if (listGuard.isCurrent(request)) setLoading(false);
     }
-  }, [userId, page, searchQuery, statusFilter, typeFilter, monthFilter, branchId, listGuard]);
+  }, [userId, page, searchQuery, statusFilter, typeFilter, monthFilter, branchId, listGuard, read]);
 
   const loadStats = useCallback(async () => {
     if (!userId) return;
     const request = statsGuard.start();
     setStatsLoading(true);
     try {
-      const result = await fetchPolicyStats(branchId);
+      const result = await read(() => fetchPolicyStats(branchId), 1, () => statsGuard.isCurrent(request));
       if (statsGuard.isCurrent(request)) setStats(result);
-    } catch (error) { console.error('Error loading policy stats:', error); }
+    } catch (error) {
+      if (isAbortedRead(error)) return; console.error('Error loading policy stats:', error); }
     finally { if (statsGuard.isCurrent(request)) setStatsLoading(false); }
-  }, [userId, branchId, statsGuard]);
+  }, [userId, branchId, statsGuard, read]);
 
   useEffect(() => { setPolicies([]); setTotalCount(0); setTotalPages(1); setStats(null); }, [userId, branchId]);
   useEffect(() => { void loadPolicies(); return listGuard.invalidate; }, [loadPolicies, listGuard]);

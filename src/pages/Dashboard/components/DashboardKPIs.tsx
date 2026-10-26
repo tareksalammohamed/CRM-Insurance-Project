@@ -8,6 +8,7 @@ import { buildCollectionDrillDownUrl, formatCurrency } from '../utils';
 interface DashboardKPIsProps {
   stats: DashboardStats | null;
   cancellationSummary: CancellationSummary | null;
+  cancellationLoading?: boolean;
   selectedMonth: Date;
 }
 
@@ -78,7 +79,7 @@ function KpiTile({
   );
 }
 
-export function DashboardKPIs({ stats, cancellationSummary, selectedMonth }: DashboardKPIsProps) {
+export function DashboardKPIs({ stats, cancellationSummary, selectedMonth, cancellationLoading = false }: DashboardKPIsProps) {
   const navigate = useNavigate();
   const openCollection = (quickFilter: 'month' | 'overdue' | 'paid') => {
     navigate(buildCollectionDrillDownUrl({ quickFilter, month: selectedMonth }));
@@ -144,7 +145,8 @@ export function DashboardKPIs({ stats, cancellationSummary, selectedMonth }: Das
       <div className="dashboard-kpis-secondary grid grid-cols-2 gap-3 md:gap-4">
         <KpiTile
           label="نسبة الإلغاءات"
-          value={`${cancellationSummary?.cancellationRate ?? 0}%`}
+          value={cancellationSummary ? `${cancellationSummary.cancellationRate}%` : '—'}
+          note={cancellationLoading ? 'جاري تحميل الإلغاءات...' : cancellationSummary ? undefined : 'لم تكتمل بيانات الإلغاءات'}
           icon={Percent}
           accentBorder="border-r-error-500"
           tone="danger"
@@ -156,7 +158,8 @@ export function DashboardKPIs({ stats, cancellationSummary, selectedMonth }: Das
 
         <KpiTile
           label="قيمة الإلغاءات"
-          value={formatCurrency(cancellationSummary?.cancelledValue || 0)}
+          value={cancellationSummary ? formatCurrency(cancellationSummary.cancelledValue) : '—'}
+          note={cancellationLoading ? 'جاري تحميل الإلغاءات...' : cancellationSummary ? undefined : 'لم تكتمل بيانات الإلغاءات'}
           icon={XCircle}
           accentBorder="border-r-error-500"
           tone="danger"
