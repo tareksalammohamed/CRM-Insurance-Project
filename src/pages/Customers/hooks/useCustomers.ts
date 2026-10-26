@@ -42,6 +42,8 @@ export function useCustomers(user: User | null | undefined, page: number, search
       setTotalPages(result.totalPages);
       setTotalCount(result.totalCount);
       setLoadMessage(result.loadMessage ?? null);
+      // The list is ready; deletion eligibility remains pessimistic until its separate check finishes.
+      setLoading(false);
       try {
         const ids = await computeDeletableCustomerIds(result.customers);
         if (listGuard.isCurrent(request)) setDeletableIds(ids);

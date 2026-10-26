@@ -1,3 +1,4 @@
+import { pendingRead } from './pendingRead';
 import { fetchAllRows } from './fetchAllRows';
 import { supabase } from './supabase';
 import { dalRead, freshDalRead } from './dataAccessLayer';
@@ -34,16 +35,19 @@ export async function fetchUserSubtreeIdsBranchAware(
   const result = await (requireFresh ? freshDalRead : dalRead)(
     `${cacheKeyPrefix}:subtree:${userId}:${branchId ?? 'none'}`,
     async () => {
-      const { data, error } = branchId
-        ? await supabase.rpc('get_user_subtree_branch_aware', {
-            user_id: userId,
-            branch_id: branchId,
-          })
-        : await supabase.rpc('get_user_subtree', {
-            user_id: userId,
-          });
-      if (error) throw error;
-      return (data as string[]) || [userId];
+      const fetchScope = async () => {
+        const { data, error } = branchId
+          ? await supabase.rpc('get_user_subtree_branch_aware', {
+              user_id: userId,
+              branch_id: branchId,
+            })
+          : await supabase.rpc('get_user_subtree', {
+              user_id: userId,
+            });
+        if (error) throw error;
+        return (data as string[]) || [userId];
+      };
+      return requireFresh ? fetchScope() : pendingRead(`hierarchy:${userId}:${branchId ?? 'none'}`, fetchScope);
     },
     { emptyValue: [userId] },
   );

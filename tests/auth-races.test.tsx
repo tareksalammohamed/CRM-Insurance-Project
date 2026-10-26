@@ -80,3 +80,19 @@ it('clears the session and local queue only after explicit discard confirmation'
   expect(mocks.signOut).toHaveBeenCalledOnce();
   expect(logoutGuard.clear).toHaveBeenCalledOnce();
 });
+it('does not restart dependent page loads when repeated sign-in returns an unchanged profile', async () => {
+  const profile = { id: 'a', role: 'agent', name: 'Name' };
+  mocks.getSession.mockResolvedValue({ data: { session: session('a') } });
+  mocks.profile.mockImplementation(async () => ({ data: [{ ...profile }], error: null }));
+  const { result } = renderHook(useAuth, { wrapper });
+  await waitFor(() => expect(result.current.user?.id).toBe('a'));
+  const before = result.current.user; mocks.profile.mockClear();
+  act(() => mocks.handler!('SIGNED_IN', session('a')));
+  await waitFor(() => expect(mocks.profile).toHaveBeenCalledOnce());
+  await act(async () => { await Promise.resolve(); });
+  expect(result.current.user).toBe(before);
+  mocks.profile.mockResolvedValue({ data: [{ ...profile, role: 'supervisor' }], error: null });
+  act(() => mocks.handler!('USER_UPDATED', session('a')));
+  await waitFor(() => expect(result.current.user?.role).toBe('supervisor'));
+  expect(result.current.user).not.toBe(before);
+});
