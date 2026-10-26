@@ -1,3 +1,5 @@
+import { useRequestGuard } from '../../hooks/useRequestGuard';
+import { LoadNotice } from '../../components/feedback/LoadNotice';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReconnectRefetch } from '../../hooks/useReconnectRefetch';
@@ -45,7 +47,14 @@ export function MonthlyClosing() {
   // شاشة تحميل كاملة) و"تغيير الشهر" بعد كده (يحافظ على آخر تقرير ظاهر
   // مع مؤشر تحديث بسيط بدل ما تختفي الشاشة بالكامل فى كل مرة)
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-  const isInitialLoading = loading && !hasLoadedOnce;
+  const contextKey = `${user?.id}:${currentBranchId}:${format(selectedMonth, 'yyyy-MM-dd')}`;
+  const contextRef = useRef(contextKey);
+  contextRef.current = contextKey;
+  const requestGuard = useRequestGuard();
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const ready = !loading && !loadError && loadedKey === contextKey;
+  const isInitialLoading = (loading && !hasLoadedOnce) || loadedKey !== contextKey;
   const [processing, setProcessing]       = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'close' | 'open'>('close');
@@ -89,14 +98,16 @@ export function MonthlyClosing() {
   // إنه بقى useCallback بنفس الـdeps اللي كانت معلنة يدويًا على الـeffect
   // (user / selectedMonth / currentBranchId).
   const loadData = useCallback(async () => {
+    const request = requestGuard.start();
+    const current = () => requestGuard.isCurrent(request) && contextRef.current === contextKey;
     setLoading(true);
+    setLoadError(null);
     try {
       const monthStr = format(selectedMonth, 'yyyy-MM-dd');
 
       // 1. حالة التقفيل
       const closingData = await fetchClosingRecord(monthStr);
-      setIsClosed(!!closingData && !closingData.is_open);
-      setClosingRecord(closingData);
+
 
       // 2. كل المستخدمين تحت المستخدم الحالي — فى سياق الفرع الحالي
       // (currentBranchId من BranchProvider العام)، عبر user_branch_roles
@@ -107,7 +118,7 @@ export function MonthlyClosing() {
 
       // فروع مودال الطباعة: مقصورة على الفروع التابعة للنطاق الحالي (ids)
       // بس، مش كل فروع التطبيق.
-      fetchBranchesForUserIds(ids).then(setPrintBranches).catch((err) => console.error('Error loading print branches:', err));
+      const branches = await fetchBranchesForUserIds(ids);
 
       // 3. كل المدفوعات الفعلية للشهر (غير ملغاة)
       const paymentsRaw = await fetchMonthPayments(monthStr);
@@ -211,6 +222,11 @@ export function MonthlyClosing() {
         branchRoles,
       );
 
+      if (!current()) return;
+      setIsClosed(!!closingData && !closingData.is_open);
+      setClosingRecord(closingData);
+      setPrintBranches(branches);
+      setLoadedKey(contextKey);
       setGrandProduction(screenSummary.grandProduction);
       setGrandCollection(screenSummary.grandCollection);
       setSupervisors(screenSummary.supervisors);
@@ -226,13 +242,13 @@ export function MonthlyClosing() {
 
     } catch (err) {
       console.error('Error loading monthly closing data:', err);
+      if (current()) setLoadError('تعذر التحقق من اكتمال بيانات الإقفال. أعد التحميل قبل الطباعة أو الاعتماد.');
     } finally {
-      setLoading(false);
-      setHasLoadedOnce(true);
+      if (current()) { setLoading(false); setHasLoadedOnce(true); }
     }
-  }, [user, selectedMonth, currentBranchId]);
+  }, [user, selectedMonth, currentBranchId, contextKey, requestGuard]);
 
-  useEffect(() => { if (user && canView) loadData(); }, [user, canView, loadData]);
+  useEffect(() => { if (user && canView) void loadData(); return requestGuard.invalidate; }, [user, canView, loadData, requestGuard]);
 
   useReconnectRefetch(() => { if (user && canView) loadData(); });
 
@@ -245,7 +261,7 @@ export function MonthlyClosing() {
     setExpandedAgents(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const handleConfirmAction = async () => {
-    if (!user || !canClose) return;
+    if (!user || !canClose || !ready) return;
     setProcessing(true);
     try {
       const monthStr = format(selectedMonth, 'yyyy-MM-dd');
@@ -265,6 +281,7 @@ export function MonthlyClosing() {
   };
 
   const handlePrintClick = () => {
+    if (!ready) return;
     // نفتح مودال إدخال اسم الفرع وتاريخ التقفيل، ونجهّز تاريخ افتراضي
     // (نفس المنطق القديم: تاريخ التقفيل الفعلي لو الشهر مُقفَّل، وإلا النهاردة)
     const defaultDate = closingRecord?.closed_at
@@ -277,6 +294,7 @@ export function MonthlyClosing() {
   };
 
   const handleConfirmPrint = () => {
+    if (!ready) return;
     // التقرير المطبوع (PrintReport) موجود فعلاً دايمًا فى الصفحة (مخفي إلا
     // وقت الطباعة عبر class="hidden print:block")، وبياخد قيم الفرع/تاريخ
     // التقفيل الحالية مباشرة كـ props. فبنقفل مودال الإعداد بس، ونستدعي
@@ -299,7 +317,7 @@ export function MonthlyClosing() {
    * الأصلية مابتتأثرش خالص. تفاصيل التنفيذ فى src/lib/saveAsImage.ts.
    */
   const handleSaveImage = async () => {
-    if (savingImage) return;
+    if (savingImage || !ready) return;
     setSavingImage(true);
     try {
       const result = await saveElementAsImages(printReportRef.current, {
@@ -341,7 +359,7 @@ export function MonthlyClosing() {
           <h2 className="text-xl font-bold text-secondary-900">إقفال الشهر</h2>
           <p className="text-sm text-secondary-500 mt-1">مراجعة الإنتاج الفعلي المسدّد قبل اعتماد الشهر</p>
         </div>
-        <button onClick={handlePrintClick} className="btn btn-success print:hidden">
+        <button disabled={!ready} onClick={handlePrintClick} className="btn btn-success print:hidden">
           <Printer className="w-4 h-4" />
           <span>طباعة التقرير</span>
         </button>
@@ -361,7 +379,7 @@ export function MonthlyClosing() {
               )}
             </h3>
             <div className="flex items-center justify-center gap-2 mt-1">
-              {isClosed ? (
+              {!ready ? (<span className="badge badge-warning">{loading ? 'جاري التحقق من بيانات الشهر' : 'حالة الشهر غير مؤكدة'}</span>) : isClosed ? (
                 <span className="badge badge-success flex items-center gap-1">
                   <Lock className="w-3 h-3" /> مُقفَّل ومعتمد
                 </span>
@@ -378,9 +396,10 @@ export function MonthlyClosing() {
         </div>
       </div>
 
+      <LoadNotice message={loadError} loading={loading} onRetry={() => void loadData()} />
       {isInitialLoading ? (
         <div className="flex items-center justify-center h-48">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+          {loadError ? <p className="text-secondary-500">لم يتم تحميل تقرير موثوق لهذا الشهر.</p> : <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />}
         </div>
       ) : (
         <>
@@ -576,9 +595,9 @@ export function MonthlyClosing() {
                   <button
                     onClick={() => { setConfirmAction('open'); setShowConfirmModal(true); }}
                     className="btn btn-warning"
-                    disabled={
+                    disabled={!ready || (
                       closingRecord?.closed_by_user_id !== user?.id &&
-                      user?.role !== 'super_admin' && user?.role !== 'development_manager'
+                      user?.role !== 'super_admin' && user?.role !== 'development_manager')
                     }
                   >
                     <Unlock className="w-4 h-4" />
@@ -586,7 +605,7 @@ export function MonthlyClosing() {
                   </button>
                 ) : (
                   <button
-                    onClick={() => { setConfirmAction('close'); setShowConfirmModal(true); }}
+                    onClick={() => { setConfirmAction('close'); setShowConfirmModal(true); }} disabled={!ready}
                     className="btn btn-white"
                   >
                     <Lock className="w-4 h-4" />
@@ -598,7 +617,7 @@ export function MonthlyClosing() {
             </div>
           </div>
           {/* ── Structured Print Report (visible only when printing) ── */}
-          <PrintReport
+          {ready && <PrintReport
             supervisorName={user?.name || ''}
             supervisorRoleLabel={ROLE_LABELS[user?.role ?? 'supervisor']}
             monthLabel={monthLabel}
@@ -612,7 +631,7 @@ export function MonthlyClosing() {
             formationUsers={printFormationUsers}
             formationDate={format(startOfMonth(selectedMonth), 'dd/MM/yyyy')}
             containerRef={printReportRef}
-          />
+          />}
         </>
       )}
 

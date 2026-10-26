@@ -1,3 +1,5 @@
+const logoutGuard = vi.hoisted(() => ({ confirm: vi.fn(), error: vi.fn(), items: vi.fn(), clear: vi.fn() }));
+vi.mock('../src/lib/notify', () => ({ useNotify: () => ({ confirm: logoutGuard.confirm, error: logoutGuard.error }) }));
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { Session, AuthChangeEvent } from '@supabase/supabase-js';
@@ -8,13 +10,13 @@ vi.mock('../src/lib/supabase', () => ({ supabase: {
 }, WEBAUTHN_FUNCTIONS_URL: 'https://example.test' }));
 vi.mock('../src/lib/dataAccessLayer', () => ({ dalRead: async (_key: string, fetcher: () => Promise<unknown>) => ({ data: await fetcher(), status: 'online' }) }));
 vi.mock('../src/lib/dataCache', () => ({ clearAllDataCache: vi.fn(), setDataCacheIdentity: mocks.identity }));
-vi.mock('../src/lib/offlineQueue', () => ({ clearAllQueueItems: vi.fn() }));
+vi.mock('../src/lib/offlineQueue', () => ({ clearAllQueueItems: logoutGuard.clear, getQueueItems: logoutGuard.items }));
 vi.mock('../src/lib/queryClient', () => ({ queryClient: { clear: mocks.clear } }));
 vi.mock('../src/lib/offlineSync', () => ({ stopOfflineSync: mocks.stopSync }));
 import { AuthProvider, useAuth } from '../src/hooks/useAuth';
 const wrapper = ({ children }: { children: React.ReactNode }) => <AuthProvider>{children}</AuthProvider>;
 const session = (id: string) => ({ user: { id }, access_token: 'test' }) as Session;
-beforeEach(() => { vi.clearAllMocks(); mocks.getSession.mockResolvedValue({ data: { session: null } }); mocks.signOut.mockResolvedValue({ error: null }); });
+beforeEach(() => { vi.clearAllMocks(); logoutGuard.items.mockResolvedValue([]); logoutGuard.confirm.mockResolvedValue(false); mocks.getSession.mockResolvedValue({ data: { session: null } }); mocks.signOut.mockResolvedValue({ error: null }); });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 it('does not restore a slow profile after signing out', async () => {
   const { result } = renderHook(useAuth, { wrapper }); await waitFor(() => expect(result.current.loading).toBe(false));
@@ -53,4 +55,28 @@ it('shows a recoverable profile error and clears it on retry', async () => {
   const { result } = renderHook(useAuth, { wrapper }); await waitFor(() => expect(result.current.authError).toContain('تعذر تحميل'));
   expect(result.current.session?.user.id).toBe('a'); await act(async () => result.current.refreshUser());
   expect(result.current.user?.id).toBe('a'); expect(result.current.authError).toBeNull();
+});
+
+it('keeps the session and queued operations when the user cancels sign-out', async () => {
+  mocks.getSession.mockResolvedValue({ data: { session: session('a') } });
+  mocks.profile.mockResolvedValue({ data: [{ id: 'a', role: 'agent' }], error: null });
+  const { result } = renderHook(useAuth, { wrapper });
+  await waitFor(() => expect(result.current.user?.id).toBe('a'));
+  logoutGuard.items.mockResolvedValue([{ userId: 'a' }]);
+  await act(async () => result.current.signOut());
+  expect(result.current.user?.id).toBe('a');
+  expect(mocks.signOut).not.toHaveBeenCalled();
+  expect(logoutGuard.clear).not.toHaveBeenCalled();
+});
+it('clears the session and local queue only after explicit discard confirmation', async () => {
+  mocks.getSession.mockResolvedValue({ data: { session: session('a') } });
+  mocks.profile.mockResolvedValue({ data: [{ id: 'a', role: 'agent' }], error: null });
+  const { result } = renderHook(useAuth, { wrapper });
+  await waitFor(() => expect(result.current.user?.id).toBe('a'));
+  logoutGuard.items.mockResolvedValue([{ userId: 'a' }]);
+  logoutGuard.confirm.mockResolvedValue(true);
+  await act(async () => result.current.signOut());
+  expect(result.current.user).toBeNull();
+  expect(mocks.signOut).toHaveBeenCalledOnce();
+  expect(logoutGuard.clear).toHaveBeenCalledOnce();
 });

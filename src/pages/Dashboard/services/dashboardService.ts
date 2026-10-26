@@ -1,3 +1,4 @@
+import { fetchAllRows } from '../../../lib/fetchAllRows';
 import { supabase } from '../../../lib/supabase';
 import { format, startOfMonth } from 'date-fns';
 import { dalRead } from '../../../lib/dataAccessLayer';
@@ -43,28 +44,25 @@ export async function fetchDashboardRawData(userIds: string[], monthStartStr: st
     async () => {
       const [customersRes, policiesRes, installmentsRes, paymentsRes] = await Promise.all([
         supabase.from('customers').select('id', { count: 'exact', head: true }).in('owner_id', userIds),
-        supabase.from('policies').select('id, status, owner_id').in('owner_id', userIds),
-        supabase
+        fetchAllRows((from, to) => supabase.from('policies').select('id, status, owner_id', { count: 'exact' }).in('owner_id', userIds).order('id').range(from, to)),
+        fetchAllRows((from, to) => supabase
           .from('installments')
-          .select('id, amount, due_date, status, is_first, policy:policy_id(owner_id)')
-          .in('status', ['pending', 'overdue']),
-        supabase
+          .select('id, amount, due_date, status, is_first, policy:policy_id(owner_id)', { count: 'exact' })
+          .in('status', ['pending', 'overdue']).order('id').range(from, to)),
+        fetchAllRows((from, to) => supabase
           .from('payments')
-          .select('id, amount, payment_month, is_cancelled, installment:installment_id(is_first, policy:policy_id(owner_id))')
+          .select('id, amount, payment_month, is_cancelled, installment:installment_id(is_first, policy:policy_id(owner_id))', { count: 'exact' })
           .eq('payment_month', monthStartStr)
-          .eq('is_cancelled', false),
+          .eq('is_cancelled', false).order('id').range(from, to)),
       ]);
 
       if (customersRes.error) throw customersRes.error;
-      if (policiesRes.error) throw policiesRes.error;
-      if (installmentsRes.error) throw installmentsRes.error;
-      if (paymentsRes.error) throw paymentsRes.error;
 
       return {
         customersRes: { data: customersRes.data, count: customersRes.count },
-        policiesRes: { data: policiesRes.data },
-        installmentsRes: { data: installmentsRes.data },
-        paymentsRes: { data: paymentsRes.data },
+        policiesRes: { data: policiesRes },
+        installmentsRes: { data: installmentsRes },
+        paymentsRes: { data: paymentsRes },
       };
     },
     { emptyValue: EMPTY_DASHBOARD_RAW },
@@ -76,11 +74,10 @@ export async function fetchTeamUsers(userIds: string[]) {
   const result = await dalRead(
     `dashboard:teamUsers:v2:${userIds.slice().sort().join(',')}`,
     async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from('users')
-        .select('id, name, role, target, manager_id, is_active, deleted_at')
-        .in('id', userIds);
-      if (error) throw error;
+        .select('id, name, role, target, manager_id, is_active, deleted_at', { count: 'exact' })
+        .in('id', userIds).order('id').range(from, to));
       return data || [];
     },
     { emptyValue: [] as any[] },
@@ -96,12 +93,11 @@ export async function fetchMonthPayments(monthStartStr: string) {
   const result = await dalRead(
     `dashboard:monthPayments:${monthStartStr}`,
     async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from('payments')
-        .select('amount, installment:installment_id(is_first, policy:policy_id(owner_id))')
+        .select('amount, installment:installment_id(is_first, policy:policy_id(owner_id))', { count: 'exact' })
         .eq('payment_month', monthStartStr)
-        .eq('is_cancelled', false);
-      if (error) throw error;
+        .eq('is_cancelled', false).order('id').range(from, to));
       return data || [];
     },
     { emptyValue: [] as any[] },

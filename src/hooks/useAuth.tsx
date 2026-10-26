@@ -1,3 +1,5 @@
+import { confirmQueuedSignOut } from '../lib/confirmQueuedSignOut';
+import { useNotify } from '../lib/notify';
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { Session, User as AuthUser } from '@supabase/supabase-js';
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
@@ -25,6 +27,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const notify = useNotify();
+  const signingOut = useRef(false);
   const [session, setSession] = useState<Session | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -302,6 +306,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    if (signingOut.current) return;
+    signingOut.current = true;
+    const identity = currentUserIdRef.current;
+    try {
+      if (identity && !await confirmQueuedSignOut(identity, notify.confirm)) return;
+      if (identity !== currentUserIdRef.current) return;
+    } catch {
+      notify.error('تعذر فحص العمليات غير المتزامنة؛ أعد المحاولة قبل تسجيل الخروج.');
+      return;
+    } finally {
+      signingOut.current = false;
+    }
+    signingOut.current = true;
     // Invalidate pending profile reads before awaiting network sign-out.
     authRevision.current += 1;
     stopOfflineSync();
@@ -317,7 +334,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signOut();
       if (error) console.error('Error signing out:', error);
     } finally {
-      await Promise.all([clearAllDataCache(), clearAllQueueItems()]);
+      try { await Promise.all([clearAllDataCache(), clearAllQueueItems()]); } finally { signingOut.current = false; }
     }
   };
 
