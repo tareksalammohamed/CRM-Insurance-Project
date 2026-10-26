@@ -103,8 +103,9 @@ export function Customers() {
             <span className="workspace-section-kicker">نظرة سريعة</span>
             <h2>ملخص طلبات التأمين والعملاء</h2>
           </div>
-          {!statsLoading && <span className="workspace-section-meta">{totalCount} عميل</span>}
+          {!statsLoading && <span className="workspace-section-meta">{totalCount} عميل في نتائج البحث</span>}
         </div>
+        <p className="text-xs text-secondary-500 mb-3">الملخص يشمل العملاء المتاحين لك في نطاق الفرع الحالي، ولا يتأثر ببحث القائمة أو فلاترها. العملاء الجدد حسب تاريخ إضافتهم للتطبيق. زر متابعة المتأخر يفتح الوثائق القابلة للتحصيل، وقد يختلف عددها عن عدد العملاء.</p>
         <CustomerStatsCards stats={stats} statsLoading={statsLoading} />
       </section>
 

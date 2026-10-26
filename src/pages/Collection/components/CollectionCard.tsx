@@ -73,7 +73,7 @@ function CollectionCardImpl({ installment, onPay, onCancel, onMore, highlighted 
       {/* ===== المبلغ الحاكم + عدد الأقساط المسددة، جنب بعض فى نفس الشريط ===== */}
       <div className="col-row-amount col-row-amount--split">
         <div className="col-row-amount-primary">
-          <span className="col-row-amount-label">قيمة القسط الصافي</span>
+          <span className="col-row-amount-label">قيمة هذا القسط — سنة أولى</span>
           <span className="col-row-amount-value">{formatCurrency(installment.amount)}</span>
         </div>
 
@@ -83,7 +83,7 @@ function CollectionCardImpl({ installment, onPay, onCancel, onMore, highlighted 
             <div className="col-row-amount-secondary">
               <span className="col-row-amount-secondary-label">
                 <ListChecks aria-hidden="true" />
-                <span>أقساط مسددة</span>
+                <span>المسدد — سنة أولى</span>
               </span>
               <span className="col-row-amount-secondary-value">{installment.paid_installments_count}</span>
             </div>

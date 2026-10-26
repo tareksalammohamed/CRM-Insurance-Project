@@ -1,6 +1,5 @@
 import { X, FileText, ExternalLink } from 'lucide-react';
 import clsx from 'clsx';
-import { format } from 'date-fns';
 import { POLICY_STATUS_LABELS, type Policy } from '../../../../lib/supabase';
 import { STATUS_BADGE_CLASS, STATUS_DOT_CLASS } from '../../constants';
 import { formatCurrency } from '../../utils/formatCurrency';
@@ -72,9 +71,9 @@ export function PolicyGroupMembersDialog({ members, onClose, onOpenDetails }: Po
                 <div className="flex items-center gap-3 shrink-0">
                   <div className="text-left">
                     <p className="text-[12px] font-bold text-secondary-900 font-mono">
-                      {formatCurrency(policy.sum_assured || 0)}
+                      تأمين: {formatCurrency(policy.sum_assured || 0)}
                     </p>
-                    <p className="text-[10px] text-secondary-400">قسط {formatCurrency(policy.premium_amount)}</p>
+                    <p className="text-[10px] text-secondary-400">لكل دفعة: {formatCurrency(policy.premium_amount)}</p>
                   </div>
                   <span className={clsx('badge gap-1', STATUS_BADGE_CLASS[policy.status] || 'badge-secondary')}>
                     <span className={clsx('w-1.5 h-1.5 rounded-full', STATUS_DOT_CLASS[policy.status] || 'bg-secondary-400')} />
@@ -84,11 +83,7 @@ export function PolicyGroupMembersDialog({ members, onClose, onOpenDetails }: Po
                 </div>
               </button>
             ))}
-            {sorted[0] && (
-              <p className="text-[11px] text-secondary-400 pt-1">
-                تاريخ البداية: {format(new Date(sorted[0].start_date), 'dd/MM/yyyy')}
-              </p>
-            )}
+
           </div>
 
           <div className="modal-actions flex justify-end gap-2.5 p-4 md:p-5 border-t border-secondary-200">

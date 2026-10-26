@@ -28,7 +28,7 @@ export function CustomerStatsCards({ stats, statsLoading }: CustomerStatsCardsPr
             iconClassName="w-4 h-4"
           />
           <StatsCard
-            label="العملاء النشطون"
+            label="عملاء لديهم وثائق نشطة"
             value={stats?.active ?? 0}
             icon={UserCheck}
             tone="success"
@@ -38,15 +38,16 @@ export function CustomerStatsCards({ stats, statsLoading }: CustomerStatsCardsPr
           />
           {/* بطاقة مرتبطة بحالة أقساط ⇒ قابلة للنقر وتفتح الأقساط المستحقة مباشرة */}
           <StatsCard
-            label="لديهم أقساط مستحقة"
+            label="عملاء بأقساط متأخرة"
             value={stats?.withDueInstallments ?? 0}
             icon={CalendarClock}
             tone="warning"
             borderClassName="border-r-4 border-r-warning-500"
             iconClassName="w-4 h-4"
             valueClassName="font-bold text-warning-600 mt-1.5"
-            onClick={() => navigate(buildCollectionDrillDownUrl({ quickFilter: 'month' }))}
-            ariaLabel="عرض الأقساط المستحقة"
+            onClick={() => navigate(buildCollectionDrillDownUrl({ quickFilter: 'overdue' }))}
+            ariaLabel="فتح متابعة أقساط السنة الأولى المتأخرة"
+            footer={<p className="kpi-note">عدد عملاء • أقساط السنة الأولى</p>}
           />
           <StatsCard
             label="عملاء جدد هذا الشهر"

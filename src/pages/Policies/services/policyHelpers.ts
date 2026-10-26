@@ -32,7 +32,7 @@ export function buildPolicyPrintHtml(policy: Policy): string {
             <tr><td>نوع الوثيقة</td><td>${escapeHtml(POLICY_TYPE_LABELS[policy.policy_type])}</td></tr>
             <tr><td>تاريخ بداية التأمين</td><td>${escapeHtml(format(new Date(policy.start_date), 'dd/MM/yyyy'))}</td></tr>
             <tr><td>طريقة السداد</td><td>${escapeHtml(PAYMENT_METHOD_LABELS[policy.payment_method])}</td></tr>
-            <tr><td>قيمة القسط الصافي</td><td>${escapeHtml(formatCurrency(policy.premium_amount))}</td></tr>
+            <tr><td>القسط الصافي لكل دفعة</td><td>${escapeHtml(formatCurrency(policy.premium_amount))}</td></tr>
             <tr><td>مبلغ التأمين</td><td>${escapeHtml(policy.sum_assured ? formatCurrency(policy.sum_assured) : '-')}</td></tr>
             <tr><td>حالة الوثيقة</td><td>${escapeHtml(POLICY_STATUS_LABELS[policy.status])}</td></tr>
             <tr><td>اسم الوكيل</td><td>${escapeHtml(ownerName)}</td></tr>

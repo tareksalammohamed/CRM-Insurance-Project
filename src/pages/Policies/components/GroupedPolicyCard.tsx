@@ -58,11 +58,11 @@ function GroupedPolicyCardImpl({ members, onOpenMembers }: GroupedPolicyCardProp
           <p className="text-figure">{formatCurrency(totalSumAssured)}</p>
         </div>
         <div>
-          <p>إجمالي القسط الصافي</p>
+          <p>مجموع قيم الأقساط الصافية</p>
           <p className="text-figure">{formatCurrency(totalPremium)}</p>
         </div>
         <div>
-          <p>تاريخ البداية</p>
+          <p>أقدم تاريخ بداية بالمجموعة</p>
           <p className="text-figure">{format(new Date(first.start_date), 'dd/MM/yyyy')}</p>
         </div>
         <div>
@@ -80,6 +80,7 @@ function GroupedPolicyCardImpl({ members, onOpenMembers }: GroupedPolicyCardProp
         </div>
       </div>
 
+      <p className="text-xs text-secondary-500">المبالغ تشمل كل وثائق المجموعة، بما فيها الملغاة؛ وليست إجمالي أقساط سنة كاملة. راجع طريقة السداد لكل وثيقة عند اختلافها.</p>
       <div className="crm-data-card-actions flex gap-2 pt-1">
         <button
           type="button"
