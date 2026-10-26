@@ -21,7 +21,7 @@ export function ProfileStats({ stats, statsLoading }: ProfileStatsProps) {
         <>
           <div className="kpi-card kpi-card--summary border-r-4 border-r-primary-500">
             <div className="flex items-center justify-between">
-              <p className="text-xs md:text-sm text-secondary-500">إجمالي المحقق هذا العام (أنت وفريقك)</p>
+              <p className="text-xs md:text-sm text-secondary-500">المحقق هذا العام — سنة أولى (أنت وفريقك)</p>
               <TrendingUp className="w-4 h-4 text-primary-500" />
             </div>
             <p className="text-xl md:text-2xl font-bold text-secondary-900 mt-1.5">{formatCurrency(stats?.yearTotalPaid || 0)}</p>

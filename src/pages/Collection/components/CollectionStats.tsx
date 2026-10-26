@@ -50,7 +50,7 @@ export function CollectionStats({ quickStats, quickStatsLoading }: CollectionSta
       ) : (
         <>
           <KpiTile
-            label="المستحق هذا الشهر"
+            label="المستحق هذا الشهر — سنة أولى"
             value={formatCurrency(quickStats?.dueMonthAmount || 0)}
             icon={CalendarClock}
             tone="due"
@@ -72,7 +72,7 @@ export function CollectionStats({ quickStats, quickStatsLoading }: CollectionSta
           />
 
           <KpiTile
-            label="محصَّل اليوم"
+            label="محصَّل اليوم — سنة أولى"
             value={formatCurrency(quickStats?.collectedTodayAmount || 0)}
             icon={BadgeCheck}
             tone="paid"
@@ -90,17 +90,17 @@ export function CollectionStats({ quickStats, quickStatsLoading }: CollectionSta
           />
 
           <KpiTile
-            label="إجمالي المسدد خلال الشهر"
+            label="إجمالي المسدد هذا الشهر — سنة أولى"
             value={formatCurrency(quickStats?.collectedMonthAmount || 0)}
             icon={Banknote}
             tone="brand"
             onClick={() => openFiltered('paid')}
-            ariaLabel="عرض إجمالي الأقساط المسددة خلال الشهر الحالي"
+            ariaLabel="عرض قيمة أقساط السنة الأولى المسددة خلال الشهر الحالي"
             footer={<span>مسدَّد فعليًا هذا الشهر</span>}
           />
 
           <KpiTile
-            label="أقساط محصلة اليوم"
+            label="عدد الأقساط المحصلة اليوم — سنة أولى"
             value={quickStats?.collectedTodayCount ?? 0}
             icon={ListChecks}
             tone="info"

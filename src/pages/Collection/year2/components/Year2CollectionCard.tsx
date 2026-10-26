@@ -77,9 +77,9 @@ function Year2CollectionCardImpl({ policy, formatCurrency, onHistory, onAddPayme
       {/* ===== إجمالي محصل السنوات اللاحقة + عدد مرات التحصيل من أول بداية التأمين ===== */}
       <div className="col-row-amount col-row-amount--split">
         <div className="col-row-amount-primary">
-          <span className="col-row-amount-label">قيمة القسط</span>
+          <span className="col-row-amount-label">القسط الصافي لكل دفعة</span>
           <span className="col-row-amount-value">{formatCurrency(policy.premium_amount || 0)}</span>
-          <span className="col-row-amount-label mt-2">إجمالي المحصل (السنة الثانية وما بعدها)</span>
+          <span className="col-row-amount-label mt-2">المحصل منذ بداية السنة الثانية (كل الفترات)</span>
           <span className="col-row-amount-value">{formatCurrency(policy.year2_total_paid || 0)}</span>
         </div>
 
@@ -89,7 +89,7 @@ function Year2CollectionCardImpl({ policy, formatCurrency, onHistory, onAddPayme
             <div className="col-row-amount-secondary">
               <span className="col-row-amount-secondary-label">
                 <ListChecks aria-hidden="true" />
-                <span>مسدد من البداية</span>
+                <span>مرات السداد منذ البداية (أولى ولاحقة)</span>
               </span>
               <span className="col-row-amount-secondary-value">{policy.total_paid_installments_count}</span>
             </div>

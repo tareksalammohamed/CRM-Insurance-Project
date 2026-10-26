@@ -222,13 +222,13 @@ export function CustomerDetailsDialog({
                             </p>
                           </div>
                           <div className="min-w-0">
-                            <p className="detail-field-label">القسط الصافي</p>
+                            <p className="detail-field-label">القسط الصافي لكل دفعة</p>
                             <p className="detail-field-value text-figure break-words">
                               {formatCurrency(policy.premium_amount)}
                             </p>
                           </div>
                           <div className="min-w-0">
-                            <p className="detail-field-label">تاريخ الإصدار</p>
+                            <p className="detail-field-label">تاريخ بداية الوثيقة</p>
                             <p className="detail-field-value text-figure break-words">
                               {format(new Date(policy.start_date), 'dd/MM/yyyy')}
                             </p>
@@ -241,28 +241,28 @@ export function CustomerDetailsDialog({
                               type="button"
                               onClick={() => onOpenPolicyDetails(policy, 'paid')}
                               className="badge badge-success badge-actionable"
-                              aria-label={`عرض الأقساط المسددة (${summary.paid})`}
+                              aria-label={`عرض أقساط السنة الأولى المسددة (${summary.paid})`}
                             >
                               <BadgeCheck className="w-3 h-3 shrink-0" aria-hidden="true" />
-                              مسدد {summary.paid}
+                              سنة أولى: مسدد {summary.paid}
                             </button>
                             <button
                               type="button"
                               onClick={() => onOpenPolicyDetails(policy, 'pending')}
                               className="badge badge-warning badge-actionable"
-                              aria-label={`عرض الأقساط المستحقة (${summary.pending})`}
+                              aria-label={`عرض أقساط السنة الأولى غير المسددة دون المتأخرة (${summary.pending})`}
                             >
                               <CalendarClock className="w-3 h-3 shrink-0" aria-hidden="true" />
-                              مستحق {summary.pending}
+                              سنة أولى: غير مسدد دون المتأخر {summary.pending}
                             </button>
                             <button
                               type="button"
                               onClick={() => onOpenPolicyDetails(policy, 'overdue')}
                               className="badge badge-error badge-actionable"
-                              aria-label={`عرض الأقساط المتأخرة (${summary.overdue})`}
+                              aria-label={`عرض أقساط السنة الأولى المتأخرة (${summary.overdue})`}
                             >
                               <TimerReset className="w-3 h-3 shrink-0" aria-hidden="true" />
-                              متأخر {summary.overdue}
+                              سنة أولى: متأخر {summary.overdue}
                             </button>
                           </div>
                         )}
