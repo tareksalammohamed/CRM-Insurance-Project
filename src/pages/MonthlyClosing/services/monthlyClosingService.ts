@@ -121,11 +121,13 @@ export async function fetchFirstWorkMonthByOwnerIds(ownerIds: string[]): Promise
       const [year1, renewal] = await Promise.all([
         fetchAllRows((from, to) => supabase
           .from('payments')
-          .select('payment_month, installment:installment_id(policy:policy_id(owner_id))', { count: 'exact' })
+          .select('payment_month, installment:installment_id!inner(policy:policy_id!inner(owner_id))', { count: 'exact' })
+          .in('installment.policy.owner_id', ownerIds)
           .eq('is_cancelled', false).order('id').range(from, to)),
         fetchAllRows((from, to) => supabase
           .from('year2_payments')
-          .select('payment_month, policy:policy_id(owner_id)', { count: 'exact' })
+          .select('payment_month, policy:policy_id!inner(owner_id)', { count: 'exact' })
+          .in('policy.owner_id', ownerIds)
           .eq('is_cancelled', false).order('id').range(from, to)),
       ]);
       return { year1, renewal };
