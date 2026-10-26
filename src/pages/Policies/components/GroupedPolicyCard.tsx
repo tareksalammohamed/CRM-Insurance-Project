@@ -91,7 +91,7 @@ function GroupedPolicyCardImpl({ members, onOpenMembers }: GroupedPolicyCardProp
           className="btn btn-secondary btn-sm flex-1"
         >
           <ListChecks className="w-4 h-4" />
-          <span>عرض كل الوثائق بالترتيب ({members.length})</span>
+          <span>عرض تفاصيل المجموعة وأقساطها ({members.length})</span>
         </button>
       </div>
     </div>

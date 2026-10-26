@@ -20,6 +20,7 @@ interface PoliciesListProps {
   page: number;
   setPage: (updater: (p: number) => number) => void;
   totalPages: number;
+  onChanged?: () => void;
 }
 
 function PoliciesListImpl({
@@ -32,7 +33,7 @@ function PoliciesListImpl({
   onOpenMoreMenu,
   page,
   setPage,
-  totalPages,
+  totalPages, onChanged,
 }: PoliciesListProps) {
   // الوثيقة/الوثائق المعروضة حالياً فى مودال "عرض كل الوثائق" لمجموعة تقسيم
   // تلقائي (وثيقة "حماية واستثمار" بمبلغ تأمين > 50,000) — راجع
@@ -81,6 +82,7 @@ function PoliciesListImpl({
       {openGroupMembers && (
         <PolicyGroupMembersDialog
           members={openGroupMembers}
+          onChanged={onChanged}
           onClose={() => setOpenGroupMembers(null)}
           onOpenDetails={(policy) => {
             setOpenGroupMembers(null);
