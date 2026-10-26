@@ -44,7 +44,7 @@ export function Year2CollectionStats({ quickStats, quickStatsLoading }: Year2Col
         ) : (
           <>
             <KpiTile
-              label="تحتاج تحصيل"
+              label="وثائق تحتاج تحصيل"
               value={quickStats?.year2AttentionPoliciesCount ?? 0}
               icon={BellRing}
               tone="due"
@@ -55,12 +55,12 @@ export function Year2CollectionStats({ quickStats, quickStatsLoading }: Year2Col
               }
             />
             <KpiTile
-              label="متأخر"
+              label="وثائق متأخرة"
               value={quickStats?.year2OverduePoliciesCount ?? 0}
               icon={AlertTriangle}
               tone="overdue"
               valueTone={(quickStats?.year2OverduePoliciesCount ?? 0) > 0 ? 'danger' : undefined}
-              footer={<span>يحتاج متابعة قبل التحصيلات الجديدة</span>}
+              footer={<span>جزء من الوثائق التي تحتاج تحصيل، وليس عددًا إضافيًا</span>}
             />
             <KpiTile
               label="محصل هذا الشهر"
@@ -68,7 +68,7 @@ export function Year2CollectionStats({ quickStats, quickStatsLoading }: Year2Col
               icon={Banknote}
               tone="paid"
               valueTone="success"
-              footer={<span>تحصيل منفصل — لا يدخل في التارجت</span>}
+              footer={<span>حسب شهر التحصيل المسجل، لا تاريخ تسجيل العملية؛ لا يدخل في التارجت</span>}
             />
             <KpiTile
               label="عمليات التحصيل هذا الشهر"

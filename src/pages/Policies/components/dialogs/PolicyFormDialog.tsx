@@ -279,7 +279,7 @@ export function PolicyFormDialog({
 
                 {!showSplitPreview && (
                   <div className="form-group">
-                    <label className="input-label" htmlFor="pf-premium">قيمة القسط الصافي *</label>
+                    <label className="input-label" htmlFor="pf-premium">القسط الصافي لكل دفعة (جنيه) *</label>
                     <div className="relative">
                       <input
                         id="pf-premium"
@@ -414,7 +414,7 @@ export function PolicyFormDialog({
                         </div>
 
                         <div className="form-group">
-                          <label className="input-label" htmlFor={`pf-split-premium-${index}`}>القسط الصافي *</label>
+                          <label className="input-label" htmlFor={`pf-split-premium-${index}`}>القسط الصافي لكل دفعة (جنيه) *</label>
                           <div className="relative">
                             <input
                               id={`pf-split-premium-${index}`}

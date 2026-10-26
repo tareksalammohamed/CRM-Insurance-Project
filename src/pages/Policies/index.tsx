@@ -88,8 +88,9 @@ export function Policies() {
             <span className="workspace-section-kicker">المحفظة التأمينية</span>
             <h2>ملخص الوثائق والحالات</h2>
           </div>
-          {!statsLoading && <span className="workspace-section-meta">{totalCount} وثيقة</span>}
+          {!statsLoading && <span className="workspace-section-meta">{totalCount} وثيقة في نتائج البحث</span>}
         </div>
+        <p className="text-xs text-secondary-500 mb-3">الملخص يشمل الوثائق المتاحة لك في نطاق الفرع الحالي، ولا يتأثر ببحث القائمة أو فلاترها. المضاف هذا الشهر حسب تاريخ التسجيل بالتطبيق، وليس تاريخ بداية التأمين.</p>
         <PoliciesStats stats={stats} statsLoading={statsLoading} />
       </section>
 

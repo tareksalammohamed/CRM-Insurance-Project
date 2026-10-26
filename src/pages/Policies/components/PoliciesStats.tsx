@@ -42,7 +42,7 @@ export function PoliciesStats({ stats, statsLoading }: PoliciesStatsProps) {
             valueClassName="font-bold text-error-600 mt-1.5"
           />
           <StatsCard
-            label="صادرة هذا الشهر"
+            label="مضافة للتطبيق هذا الشهر"
             value={stats?.issuedThisMonth ?? 0}
             icon={FilePlus2}
             tone="info"

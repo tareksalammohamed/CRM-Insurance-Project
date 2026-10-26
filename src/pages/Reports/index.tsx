@@ -698,24 +698,26 @@ export function Reports() {
                   {data.dueTotal !== undefined && (
                     <div className="grid grid-cols-1 gap-3 print:grid-cols-1">
                       <div className="p-4 bg-amber-50 rounded-lg print:bg-white print:border print:p-2">
-                        <p className="text-sm text-secondary-600">المستحق خلال الفترة</p>
+                        <p className="text-sm text-secondary-600">أقساط السنة الأولى المستحقة خلال الفترة</p>
                         <p className="text-2xl font-bold text-amber-700 mt-1">{formatCurrency(data.dueTotal)}</p>
                       </div>
                       <div className="p-4 bg-success-50 rounded-lg print:bg-white print:border print:p-2">
-                        <p className="text-sm text-secondary-600">المسدد فعلياً خلال الفترة</p>
+                        <p className="text-sm text-secondary-600">تحصيل السنة الأولى لشهور الفترة</p>
                         <p className="text-2xl font-bold text-success-700 mt-1">{formatCurrency(data.paidTotal)}</p>
                         {data.count !== undefined && (
                           <p className="text-sm text-secondary-500 mt-1">{data.count} دفعة مسجّلة</p>
                         )}
                       </div>
                       <div className="p-4 bg-primary-50 rounded-lg print:bg-white print:border print:p-2">
-                        <p className="text-sm text-secondary-600">نسبة التحصيل</p>
+                        <p className="text-sm text-secondary-600">المحصل ÷ المستحق خلال الفترة</p>
                         <p className="text-2xl font-bold text-primary-700 mt-1">
                           {data.collectionRatePeriod !== null ? `${data.collectionRatePeriod}%` : '—'}
                         </p>
                       </div>
                     </div>
                   )}
+
+                  {data.dueTotal !== undefined && <p className="text-xs text-secondary-500">المستحق حسب تاريخ استحقاق القسط، والمحصل حسب شهر التحصيل المسجل، وليس تاريخ إدخال العملية. قد يشمل المحصل أقساطًا مستحقة خارج الفترة؛ لذلك قد تتجاوز النسبة 100٪. لا يشمل تحصيل السنوات اللاحقة.</p>}
 
                   {data.total !== undefined && (
                     <div className="p-4 bg-primary-50 rounded-lg print:bg-white print:border print:p-2">

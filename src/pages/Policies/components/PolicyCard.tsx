@@ -2,7 +2,7 @@ import { memo } from 'react';
 import clsx from 'clsx';
 import { format } from 'date-fns';
 import { FileText, User as UserIcon } from 'lucide-react';
-import { POLICY_TYPE_LABELS, POLICY_STATUS_LABELS, type Policy } from '../../../lib/supabase';
+import { POLICY_TYPE_LABELS, PAYMENT_METHOD_LABELS, POLICY_STATUS_LABELS, type Policy } from '../../../lib/supabase';
 import { STATUS_BADGE_CLASS, STATUS_DOT_CLASS } from '../constants';
 import { formatCurrency } from '../utils/formatCurrency';
 import { PolicyActions } from './PolicyActions';
@@ -53,8 +53,9 @@ function PolicyCardImpl({ policy, onOpenDetails, onOpenMoreMenu }: PolicyCardPro
           <p className="text-figure">{policy.sum_assured ? formatCurrency(policy.sum_assured) : '-'}</p>
         </div>
         <div>
-          <p>قيمة القسط الصافي</p>
+          <p>القسط الصافي لكل دفعة</p>
           <p className="text-figure">{formatCurrency(policy.premium_amount)}</p>
+          <p className="text-xs text-secondary-500">سداد {PAYMENT_METHOD_LABELS[policy.payment_method]}</p>
         </div>
         <div>
           <p>تاريخ البداية</p>

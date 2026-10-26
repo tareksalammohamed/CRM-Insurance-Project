@@ -72,7 +72,7 @@ function CollectionGroupCardImpl({ members, onPayGroup, onCancelGroup }: Collect
       <div className="col-row-amount col-row-amount--split">
         <div className="col-row-amount-primary">
           <span className="col-row-amount-label">
-            {allPaid ? 'إجمالي القسط الصافي (مسدد بالكامل)' : `إجمالي القسط الصافي المستحق (${unpaidMembers.length} من ${members.length})`}
+            {allPaid ? 'المسدد لهذا الاستحقاق — سنة أولى' : `غير المسدد لهذا الاستحقاق (${unpaidMembers.length} من ${members.length} وثيقة)`}
           </span>
           <span className="col-row-amount-value">{formatCurrency(allPaid ? totalAmount : unpaidAmount)}</span>
         </div>
@@ -83,7 +83,7 @@ function CollectionGroupCardImpl({ members, onPayGroup, onCancelGroup }: Collect
             <div className="col-row-amount-secondary">
               <span className="col-row-amount-secondary-label">
                 <ListChecks aria-hidden="true" />
-                <span>أقساط مسددة</span>
+                <span>المسدد لكل المجموعة — سنة أولى</span>
               </span>
               <span className="col-row-amount-secondary-value">{totalPaidCount}</span>
             </div>
@@ -106,7 +106,7 @@ function CollectionGroupCardImpl({ members, onPayGroup, onCancelGroup }: Collect
             <span>الحالة</span>
           </p>
           <p className={clsx('col-cell-value', allPaid ? 'col-cell-value--success' : isOverdue && 'col-cell-value--danger')}>
-            {allPaid ? 'تم السداد بالكامل' : dayLabel}
+            {allPaid ? 'تم السداد بالكامل' : unpaidMembers.length < members.length ? `مسدد جزئيًا — ${unpaidMembers.length} وثيقة غير مسددة` : dayLabel}
           </p>
         </div>
 
@@ -132,6 +132,7 @@ function CollectionGroupCardImpl({ members, onPayGroup, onCancelGroup }: Collect
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
         className="btn btn-secondary btn-sm w-full justify-between"
       >
         <span>عرض تفاصيل الوثائق ({members.length})</span>
