@@ -1,3 +1,4 @@
+import { LoadNotice } from '../../components/feedback/LoadNotice';
 import { useDashboard } from './hooks/useDashboard';
 import { DashboardLoading } from './components/DashboardLoading';
 import { DashboardHeader } from './components/DashboardHeader';
@@ -14,6 +15,9 @@ function OperationalDashboard() {
   const {
     stats,
     loading,
+    teamLoading,
+    teamError,
+    dashboardError,
     lastUpdated,
     refreshing,
     refresh,
@@ -24,6 +28,7 @@ function OperationalDashboard() {
     goToCurrentMonth,
     chartData,
     cancellationSummary,
+    cancellationLoading,
     policyStatusData,
     teamPerformanceSections,
     sheetStack,
@@ -38,6 +43,8 @@ function OperationalDashboard() {
   if (loading) {
     return <DashboardLoading />;
   }
+
+  if (dashboardError) return <div className="dashboard-page"><LoadNotice message={dashboardError} loading={refreshing} onRetry={() => void refresh()} /></div>;
 
   return (
     <div className="dashboard-page space-y-6 animate-fadeIn">
@@ -73,7 +80,7 @@ function OperationalDashboard() {
       </section>
 
       <section className="dashboard-section-block" aria-label="إحصائيات الفريق">
-        <DashboardPerformance
+        {teamLoading ? <p role="status" className="text-sm text-secondary-500 py-4">جاري تحميل تفاصيل أداء الفريق...</p> : teamError ? <p role="status" className="text-sm text-error-600 py-4">{teamError}</p> : <DashboardPerformance
           teamPerformanceSections={teamPerformanceSections}
           sheetStack={sheetStack}
           getChildrenDetails={getChildrenDetails}
@@ -82,7 +89,7 @@ function OperationalDashboard() {
           handleSheetBack={handleSheetBack}
           handleSheetClose={handleSheetClose}
           selectedMonth={selectedMonth}
-        />
+        />}
       </section>
 
       <section className="dashboard-section-block" aria-labelledby="dashboard-collection-title">
@@ -93,7 +100,7 @@ function OperationalDashboard() {
           </div>
           <span className="dashboard-section-note">اختصارات للمراجعة</span>
         </div>
-        <DashboardKPIs stats={stats} cancellationSummary={cancellationSummary} selectedMonth={selectedMonth} />
+        <DashboardKPIs stats={stats} cancellationSummary={cancellationSummary} cancellationLoading={cancellationLoading} selectedMonth={selectedMonth} />
       </section>
 
       <section className="dashboard-section-block dashboard-charts-block" aria-label="الرسوم البيانية">

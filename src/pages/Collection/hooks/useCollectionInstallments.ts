@@ -1,3 +1,5 @@
+import { isAbortedRead } from '../../../lib/adaptiveReads';
+import { directRead, type AdaptiveRead } from '../../../lib/adaptiveReads';
 import { friendlyError } from '../../../lib/errorMessages';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { User } from '../../../lib/supabase';
@@ -6,6 +8,7 @@ import { fetchInstallments } from '../services/collectionService';
 import { useReconnectRefetch } from '../../../hooks/useReconnectRefetch';
 
 interface UseCollectionInstallmentsArgs {
+  read?: AdaptiveRead;
   user: User | null | undefined;
   ensureMaintenance: () => Promise<void>;
   yearMode: 'year1' | 'year2' | null;
@@ -17,7 +20,7 @@ interface UseCollectionInstallmentsArgs {
   initialSearch?: string | null;
 }
 
-export function useCollectionInstallments({ user, ensureMaintenance, yearMode, quickFilter, subType, ownerFilter, branchId = null, monthStart = null, initialSearch = null }: UseCollectionInstallmentsArgs) {
+export function useCollectionInstallments({ user, ensureMaintenance, yearMode, quickFilter, subType, ownerFilter, branchId = null, monthStart = null, initialSearch = null, read = directRead }: UseCollectionInstallmentsArgs) {
   const [installments, setInstallments] = useState<InstallmentWithRelations[]>([]);
   const [loading, setLoading]           = useState(true);
   // أول تحميل فقط (لسه مفيش أي بيانات) هو اللي يستحق Skeleton كامل —
@@ -40,11 +43,12 @@ export function useCollectionInstallments({ user, ensureMaintenance, yearMode, q
     const currentRequest = ++requestId.current;
     setLoading(true);
     try {
-      await ensureMaintenance();
-      if (currentRequest !== requestId.current) return;
-
       const { installments: results, totalCount: count, totalPages: pages, loadMessage: message } =
-        await fetchInstallments({ quickFilter, subType, ownerFilter, page, searchQuery, branchId, monthStart });
+        await read(async () => {
+          await ensureMaintenance();
+          if (currentRequest !== requestId.current) throw Object.assign(new Error('قراءة قديمة'), { name: 'AbortError' });
+          return fetchInstallments({ quickFilter, subType, ownerFilter, page, searchQuery, branchId, monthStart });
+        }, 0, () => currentRequest === requestId.current);
 
       if (currentRequest !== requestId.current) return;
       setInstallments(results);
@@ -52,12 +56,13 @@ export function useCollectionInstallments({ user, ensureMaintenance, yearMode, q
       setTotalCount(count);
       setTotalPages(pages);
     } catch (error) {
+      if (isAbortedRead(error)) return;
       console.error('Error loading installments:', error);
       if (currentRequest === requestId.current) setLoadMessage(friendlyError(error, 'تعذر تحميل التحصيلات، أعد المحاولة'));
     } finally {
       if (currentRequest === requestId.current) setLoading(false);
     }
-  }, [ensureMaintenance, quickFilter, subType, ownerFilter, page, searchQuery, branchId, monthStart]);
+  }, [ensureMaintenance, quickFilter, subType, ownerFilter, page, searchQuery, branchId, monthStart, read]);
 
   // نفس شروط التحميل بالظبط زي ما كانت: أي تغيير فى الفلاتر/الصفحة/البحث
   // بيغيّر مرجع loadInstallments (useCallback فوق بنفس الـdeps القديمة

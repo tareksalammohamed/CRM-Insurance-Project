@@ -1,3 +1,5 @@
+import { directRead, isAbortedRead, type AdaptiveRead } from '../../../lib/adaptiveReads';
+import { useRequestGuard } from '../../../hooks/useRequestGuard';
 import { friendlyError } from '../../../lib/errorMessages';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
@@ -30,6 +32,8 @@ import { PrintSetupModal } from './components/dialogs/PrintSetupModal';
 import { Year2CollectionCard } from './components/Year2CollectionCard';
 
 interface Year2CollectionProps {
+  read?: AdaptiveRead;
+  ensureMaintenance?: () => Promise<void>;
   // الفرع الحالي المختار (BranchProvider العام، مُمرَّر من صفحة التحصيل
   // الأب) — null يعني بدون فلترة إضافية (كل الفروع). لا يؤثر على أي شيء
   // غير عرض/تحصيل وثائق هذا الفرع تحديداً، وما زالت الشاشة معزولة تماماً
@@ -40,7 +44,7 @@ interface Year2CollectionProps {
   onDataChanged?: () => void | Promise<void>;
 }
 
-export function Year2Collection({ branchId = null, onDataChanged }: Year2CollectionProps) {
+export function Year2Collection({ branchId = null, onDataChanged, read = directRead, ensureMaintenance }: Year2CollectionProps) {
   const { user } = useAuth();
   const notify = useNotify();
   const [policies, setPolicies] = useState<Year2EligiblePolicy[]>([]);
@@ -81,22 +85,29 @@ export function Year2Collection({ branchId = null, onDataChanged }: Year2Collect
   const [printLabel, setPrintLabel] = useState('');
   const [printLoading, setPrintLoading] = useState(false);
 
+  const listGuard = useRequestGuard();
   const loadPolicies = useCallback(async () => {
+    const request = listGuard.start();
     setLoading(true);
     try {
       const { policies: results, totalCount: count, totalPages: pages } =
-        await fetchYear2EligiblePolicies({ page, searchQuery, branchId, quickFilter });
+        await read(async () => {
+          await ensureMaintenance?.();
+          if (!listGuard.isCurrent(request)) throw Object.assign(new Error('قراءة قديمة'), { name: 'AbortError' });
+          return fetchYear2EligiblePolicies({ page, searchQuery, branchId, quickFilter });
+        }, 0, () => listGuard.isCurrent(request));
+      if (!listGuard.isCurrent(request)) return;
       setPolicies(results);
       setTotalCount(count);
       setTotalPages(pages);
     } catch (error) {
-      console.error('Error loading year2 policies:', error);
+      if (!isAbortedRead(error)) console.error('Error loading year2 policies:', error);
     } finally {
-      setLoading(false);
+      if (listGuard.isCurrent(request)) setLoading(false);
     }
-  }, [page, searchQuery, branchId, quickFilter]);
+  }, [page, searchQuery, branchId, quickFilter, read, listGuard, ensureMaintenance]);
 
-  useEffect(() => { loadPolicies(); }, [loadPolicies]);
+  useEffect(() => { void loadPolicies(); return listGuard.invalidate; }, [loadPolicies, listGuard]);
 
   useReconnectRefetch(loadPolicies);
 

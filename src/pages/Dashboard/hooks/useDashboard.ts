@@ -1,3 +1,6 @@
+import { isAbortedRead } from '../../../lib/adaptiveReads';
+import { useRequestGuard } from '../../../hooks/useRequestGuard';
+import { useAdaptiveReads } from '../../../hooks/useAdaptiveReads';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { useBranchContext } from '../../../lib/branchContext';
@@ -18,6 +21,12 @@ import { useReconnectRefetch } from '../../../hooks/useReconnectRefetch';
 export function useDashboard() {
   const { user } = useAuth();
   const { currentBranchId } = useBranchContext();
+  const read = useAdaptiveReads(`${user?.id}:${currentBranchId}`);
+  const cancellationGuard = useRequestGuard();
+  const [cancellationLoading, setCancellationLoading] = useState(true);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const [teamError, setTeamError] = useState<string | null>(null);
+  const [teamLoading, setTeamLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [teamPerformance, setTeamPerformance] = useState<TeamPerformance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,38 +79,39 @@ export function useDashboard() {
   // وعن كل الحسابات الأخرى في الصفحة، فشله لا يؤثر على باقي الإحصائيات
   const loadCancellationStats = useCallback(async () => {
     if (!user) return;
+    const request = cancellationGuard.start();
+    setCancellationLoading(true);
     try {
-      const result = await loadCancellationSummary({ id: user.id, name: user.name, role: user.role }, currentBranchId);
-      setCancellationSummary(result);
+      const result = await read(() => loadCancellationSummary({ id: user.id, name: user.name, role: user.role }, currentBranchId), 2, () => cancellationGuard.isCurrent(request));
+      if (cancellationGuard.isCurrent(request)) setCancellationSummary(result);
     } catch (error) {
+      if (isAbortedRead(error)) return;
       console.error('Error loading cancellation stats:', error);
-    }
-  }, [user, currentBranchId]);
+    } finally { if (cancellationGuard.isCurrent(request)) setCancellationLoading(false); }
+  }, [user, currentBranchId, read, cancellationGuard]);
 
   const loadDashboardData = useCallback(async (silent = false) => {
     const requestId = ++dashboardRequestIdRef.current;
     if (!silent) setLoading(true);
+    setTeamLoading(true);
+    setTeamError(null);
+    let mainLoaded = false;
     try {
       const now = selectedMonth;
       const monthStart = startOfMonth(now);
       const monthEnd = endOfMonth(now);
       const monthStartStr = format(monthStart, 'yyyy-MM-dd');
 
-      const userIds = await fetchUserSubtreeIds(user!.id, currentBranchId);
-
-      // fetchDashboardRawData وfetchTeamUsers مستقلان تمامًا عن بعضهما (كلاهما
-      // يعتمد فقط على userIds بالفعل)، فبيتنفذوا بالتوازي بدل التسلسل — نفس
-      // النتائج بالظبط لكن بزمن أقل. كذلك paymentsRes القادمة من
-      // fetchDashboardRawData تحتوي أصلاً على كل الحقول التي كانت تُجلب سابقًا
-      // مرتين إضافيتين (fetchMonthPayments وfetchMonthPaymentsWithFirstFlag)
-      // لحساب أداء الفريق والرسم البياني — تمت إزالة هذين الاستعلامين
-      // المكررين والاستغناء عنهما بنفس البيانات المحمّلة أصلاً.
-      const [{ customersRes, policiesRes, installmentsRes, paymentsRes }, teamUsers, branchRoles] =
-        await Promise.all([
-          fetchDashboardRawData(userIds, monthStartStr),
-          fetchTeamUsers(userIds),
-          fetchBranchRoleMap(currentBranchId, userIds),
-        ]);
+      const { userIds, raw, team } = await read(async () => {
+        const userIds = await fetchUserSubtreeIds(user!.id, currentBranchId);
+        if (requestId !== dashboardRequestIdRef.current) throw Object.assign(new Error('قراءة قديمة'), { name: 'AbortError' });
+        const team = read(() => Promise.all([
+          fetchTeamUsers(userIds), fetchBranchRoleMap(currentBranchId, userIds),
+        ]), 1, () => requestId === dashboardRequestIdRef.current)
+          .then(data => ({ data }), error => ({ error }));
+        return { userIds, raw: await fetchDashboardRawData(userIds, monthStartStr), team };
+      }, 0, () => requestId === dashboardRequestIdRef.current);
+      const { customersRes, policiesRes, installmentsRes, paymentsRes } = raw;
 
       // لو بدأ طلب أحدث (تغيير حساب/فرع/شهر)، تجاهل نتيجة الطلب القديم
       // بالكامل حتى لا يظهر إجمالي مستخدم آخر في الصفحة الحالية.
@@ -111,6 +121,8 @@ export function useDashboard() {
       const payments = paymentsRes.data || [];
       const installments = installmentsRes.data || [];
 
+      mainLoaded = true;
+      setDashboardError(null);
       setStats(computeDashboardStats({
         customersCount: customersRes.count || 0,
         policies,
@@ -122,6 +134,14 @@ export function useDashboard() {
         target: user?.target || 0,
       }));
 
+      setChartData(computeChartData(payments, userIds));
+      setLastUpdated(new Date());
+      if (!silent) setLoading(false);
+      // The main portfolio is usable while team details continue loading.
+      const teamResult = await team;
+      if ('error' in teamResult) throw teamResult.error;
+      const [teamUsers, branchRoles] = teamResult.data;
+      if (requestId !== dashboardRequestIdRef.current) return;
       setTeamUsersRaw(teamUsers);
       setTeamPaymentsRaw(payments);
       setTeamBranchRoles(branchRoles);
@@ -133,25 +153,32 @@ export function useDashboard() {
       }));
       setTeamPerformance(computeTeamPerformance(teamUsers, payments, user?.role as UserRole | undefined, branchRoles));
 
-      setChartData(computeChartData(payments, userIds));
-      setLastUpdated(new Date());
+
     } catch (error) {
+      if (isAbortedRead(error)) return;
       console.error('Error loading dashboard:', error);
+      if (requestId === dashboardRequestIdRef.current) {
+        if (mainLoaded) setTeamError('تعذر تحميل تفاصيل الفريق؛ أعد التحديث للمحاولة مرة أخرى.');
+        else setDashboardError('تعذر تحميل ملخص الصفحة الرئيسية؛ أعد المحاولة.');
+      }
     } finally {
-      if (!silent && requestId === dashboardRequestIdRef.current) setLoading(false);
+      if (requestId === dashboardRequestIdRef.current) { if (!silent) setLoading(false); setTeamLoading(false); }
     }
-  }, [user, currentBranchId, selectedMonth]);
+  }, [user, currentBranchId, selectedMonth, read]);
 
   useEffect(() => {
     if (user) loadDashboardData();
+    return () => { dashboardRequestIdRef.current += 1; };
   }, [user, loadDashboardData]);
 
   // مؤشر الإلغاءات مش مرتبط بالشهر المختار (بيعرض دايمًا آخر 12 شهر حتى
   // الآن)، فبيتحمّل مرة واحدة بس عند تغيير المستخدم/الفرع، مش عند تغيير
   // selectedMonth — وده محفوظ هنا لأن loadCancellationStats مش بتعتمد عليه.
   useEffect(() => {
+    setCancellationSummary(null);
     if (user) loadCancellationStats();
-  }, [user, loadCancellationStats]);
+    return cancellationGuard.invalidate;
+  }, [user, loadCancellationStats, cancellationGuard]);
 
   const policyStatusData = stats
     ? [
@@ -235,6 +262,9 @@ export function useDashboard() {
     user,
     stats,
     loading,
+    teamLoading,
+    teamError,
+    dashboardError,
     lastUpdated,
     refreshing,
     refresh,
@@ -245,6 +275,7 @@ export function useDashboard() {
     goToCurrentMonth,
     chartData,
     cancellationSummary,
+    cancellationLoading,
     policyStatusData,
     teamPerformanceSections,
     achievementDetails,

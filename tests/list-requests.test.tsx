@@ -10,7 +10,7 @@ import { usePolicies } from '../src/pages/Policies/hooks/usePolicies';
 const user = { id: 'u1', role: 'supervisor' } as User;
 const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>((done) => { resolve = done; }); return { promise, resolve }; };
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   mocks.agents.mockResolvedValue([]); mocks.customerStats.mockResolvedValue({ total: 2 }); mocks.policyStats.mockResolvedValue({ total: 2 });
   mocks.customerIds.mockResolvedValue(new Set()); mocks.policyIds.mockResolvedValue(new Set());
 });
@@ -20,6 +20,7 @@ describe('latest list results and independent lookups', () => {
     const first = deferred<unknown>(); const second = deferred<unknown>();
     mocks.customers.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
     const { result, rerender } = renderHook(({ search }) => useCustomers(user, 1, search, 'all', 'all', 'all'), { initialProps: { search: 'old' } });
+    await waitFor(() => expect(mocks.customers).toHaveBeenCalledTimes(1));
     rerender({ search: 'new' });
     await act(async () => second.resolve({ customers: [{ id: 'new' }], totalCount: 1, totalPages: 1 }));
     await act(async () => first.resolve({ customers: [{ id: 'old' }], totalCount: 99, totalPages: 10 }));
@@ -30,6 +31,7 @@ describe('latest list results and independent lookups', () => {
     const first = deferred<unknown>(); const second = deferred<unknown>();
     mocks.policies.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
     const { result, rerender } = renderHook(({ branch }) => usePolicies(user, 1, '', 'all', 'all', 'all', branch), { initialProps: { branch: 'a' } });
+    await waitFor(() => expect(mocks.policies).toHaveBeenCalledTimes(1));
     rerender({ branch: 'b' });
     await act(async () => second.resolve({ policies: [{ id: 'b' }], totalCount: 1, totalPages: 1 }));
     await act(async () => first.resolve({ policies: [{ id: 'a' }], totalCount: 9, totalPages: 9 }));

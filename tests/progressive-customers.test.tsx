@@ -1,0 +1,36 @@
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import type { User } from '../src/lib/supabase';
+const mocks = vi.hoisted(() => ({ list: vi.fn(), stats: vi.fn(), agents: vi.fn(), deletion: vi.fn() }));
+vi.mock('../src/pages/Customers/services/customersService', () => ({ fetchCustomersPage: mocks.list, fetchCustomerStats: mocks.stats, fetchAgentsForCurrentUser: mocks.agents, computeDeletableCustomerIds: mocks.deletion }));
+vi.mock('../src/hooks/useReconnectRefetch', () => ({ useReconnectRefetch: vi.fn() }));
+import { useCustomers } from '../src/pages/Customers/hooks/useCustomers';
+const user = { id: 'u', role: 'supervisor' } as User;
+const page = { customers: [{ id: 'customer', created_at: '2020-01-01', policies: [] }], totalPages: 1, totalCount: 1 };
+const original = Object.getOwnPropertyDescriptor(navigator, 'connection');
+beforeEach(() => { vi.resetAllMocks(); mocks.agents.mockResolvedValue([]); mocks.deletion.mockResolvedValue(new Set()); });
+afterEach(() => { cleanup(); if (original) Object.defineProperty(navigator, 'connection', original); else Reflect.deleteProperty(navigator, 'connection'); });
+it('shows the customer list while secondary counters are still pending on a slow connection', async () => {
+  Object.defineProperty(navigator, 'connection', { configurable: true, value: { effectiveType: '2g' } });
+  let listDone!: (value: typeof page) => void; let statsDone!: (value: { total: number }) => void;
+  mocks.list.mockReturnValue(new Promise(done => { listDone = done; }));
+  mocks.stats.mockReturnValue(new Promise(done => { statsDone = done; }));
+  const { result } = renderHook(() => useCustomers(user, 1, '', 'all', 'all', 'all'));
+  await waitFor(() => expect(mocks.list).toHaveBeenCalledOnce());
+  expect(mocks.stats).not.toHaveBeenCalled(); expect(mocks.agents).not.toHaveBeenCalled();
+  await act(async () => listDone(page));
+  await waitFor(() => expect(mocks.stats).toHaveBeenCalledOnce());
+  expect(result.current.customers[0].id).toBe('customer'); expect(result.current.loading).toBe(false);
+  expect(result.current.statsLoading).toBe(true); expect(result.current.stats).toBeNull(); expect(mocks.deletion).not.toHaveBeenCalled();
+  await act(async () => statsDone({ total: 1 }));
+  await waitFor(() => expect(result.current.statsLoading).toBe(false)); expect(result.current.stats?.total).toBe(1);
+});
+it('starts independent sections in parallel on a fast connection', async () => {
+  Object.defineProperty(navigator, 'connection', { configurable: true, value: { effectiveType: '4g', rtt: 30, downlink: 20 } });
+  let listDone!: (value: typeof page) => void;
+  mocks.list.mockReturnValue(new Promise(done => { listDone = done; })); mocks.stats.mockResolvedValue({ total: 1 });
+  const { result } = renderHook(() => useCustomers(user, 1, '', 'all', 'all', 'all'));
+  await waitFor(() => expect(mocks.stats).toHaveBeenCalledOnce()); expect(mocks.agents).toHaveBeenCalledOnce();
+  expect(result.current.customers).toEqual([]);
+  await act(async () => listDone(page)); await waitFor(() => expect(result.current.loading).toBe(false));
+});
