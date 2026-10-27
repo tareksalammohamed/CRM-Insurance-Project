@@ -26,7 +26,6 @@ function OperationalDashboard() {
     goToPreviousMonth,
     goToNextMonth,
     goToCurrentMonth,
-    chartData,
     cancellationSummary,
     cancellationLoading,
     policyStatusData,
@@ -105,9 +104,9 @@ function OperationalDashboard() {
 
       <section className="dashboard-section-block dashboard-charts-block" aria-label="الرسوم البيانية">
         <DashboardCharts
-          totalPolicies={stats?.totalPolicies || 0}
+          stats={stats}
+          selectedMonth={selectedMonth}
           policyStatusData={policyStatusData}
-          chartData={chartData}
         />
       </section>
     </div>
