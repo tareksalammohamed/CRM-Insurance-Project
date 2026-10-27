@@ -1,0 +1,43 @@
+import { cleanup, render, screen, within } from '@testing-library/react';
+import { afterEach, expect, it } from 'vitest';
+import { DashboardCharts } from '../src/pages/Dashboard/components/DashboardCharts';
+import type { DashboardStats } from '../src/pages/Dashboard/types';
+import { formatCurrency } from '../src/pages/Dashboard/utils';
+const stats = { totalPolicies: 8, newProduction: 12000, newProductionTotal: 20000, newProductionCount: 3, periodicCollection: 3000, periodicCollectionTotal: 10000, periodicCollectionCount: 4 } as DashboardStats;
+const money = (value: number) => formatCurrency(value).replace(/\s+/g, ' ');
+const month = new Date(2026, 0, 1);
+afterEach(cleanup);
+it('shows total, paid and remaining for each source using the existing dashboard totals', () => {
+  render(<DashboardCharts stats={stats} selectedMonth={month} policyStatusData={[]} />);
+  const production = within(screen.getByRole('region', { name: 'الإنتاج الجديد' }));
+  expect(production.getByText(money(20000))).toBeTruthy();
+  expect(production.getByText(money(12000))).toBeTruthy();
+  expect(production.getByText(money(8000))).toBeTruthy();
+  expect(production.getByText('٦٠٪ مسدد')).toBeTruthy();
+  const collection = within(screen.getByRole('region', { name: 'التحصيل الدوري' }));
+  expect(collection.getByText(money(10000))).toBeTruthy();
+  expect(collection.getByText(money(3000))).toBeTruthy();
+  expect(collection.getByText(money(7000))).toBeTruthy();
+  expect(collection.getByText('٣٠٪ مسدد')).toBeTruthy();
+  expect(screen.getByText(money(15000))).toBeTruthy();
+  expect(screen.getByText(money(30000))).toBeTruthy();
+  expect(screen.getByText('يناير ٢٠٢٦')).toBeTruthy();
+  const sources = within(screen.getByRole('region', { name: 'مصادر المسدد' }));
+  expect(sources.getByText('٨٠٪')).toBeTruthy(); expect(sources.getByText('٢٠٪')).toBeTruthy();
+  expect(sources.getByText('عمليات السداد: ٣')).toBeTruthy(); expect(sources.getByText('عمليات السداد: ٤')).toBeTruthy();
+  expect(screen.getByText(/تحصيلات السنوات اللاحقة خارج هذه المقارنة/)).toBeTruthy();
+});
+it('distinguishes unpaid amounts from an empty month without invalid percentages', () => {
+  const { rerender } = render(<DashboardCharts stats={{ ...stats, newProduction: 0, periodicCollection: 0 }} selectedMonth={month} policyStatusData={[]} />);
+  expect(screen.getByText(/لم يُسجّل سداد/)).toBeTruthy();
+  expect(within(screen.getByRole('region', { name: 'الإنتاج الجديد' })).getAllByText(money(20000))).toHaveLength(2);
+  expect(screen.getAllByText('٠٪ مسدد')).toHaveLength(2);
+  rerender(<DashboardCharts stats={{ ...stats, newProduction: 0, newProductionTotal: 0, periodicCollection: 0, periodicCollectionTotal: 0 }} selectedMonth={month} policyStatusData={[]} />);
+  expect(screen.getAllByText('لا توجد مبالغ')).toHaveLength(2);
+  expect(document.body.innerHTML).not.toMatch(/NaN|Infinity/);
+});
+it('does not replace unready data with zero totals', () => {
+  render(<DashboardCharts stats={null} selectedMonth={month} policyStatusData={[]} />);
+  expect(screen.getByRole('status').textContent).toContain('جارٍ تحميل');
+  expect(screen.queryByText('لا توجد مبالغ')).toBeNull();
+});
