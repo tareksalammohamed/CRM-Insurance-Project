@@ -10,7 +10,7 @@ import { format, startOfMonth, endOfMonth, addMonths, isWithinInterval, isSameMo
 
 import type { DashboardStats, TeamPerformance, TeamMemberDetail } from '../types';
 import {
-  fetchUserSubtreeIds, fetchDashboardRawData, fetchTeamUsers, fetchBranchRoleMap,
+  fetchDashboardScope, fetchDashboardRawData, fetchTeamUsers, fetchDashboardBranchRoles,
 } from '../services/dashboardService';
 import { computeDashboardStats, computeTeamPerformance, computeChartData, computeTeamAchievementDetails, buildBranchAwareChildrenMap } from '../business/dashboardCalculator';
 import type { CancellationSummary } from '../../Cancellations/types';
@@ -33,6 +33,7 @@ export function useDashboard() {
   // وقت آخر تحديث ناجح للبيانات + حالة "جاري التحديث" منفصلة عن loading
   // الأساسية (اللي بتعرض الـ skeleton الكامل أول مرة فقط) — التحديث اليدوي
   // بيستخدم refreshing بس عشان مايمسحش البيانات الظاهرة أثناء إعادة الجلب.
+  const [dashboardNotice, setDashboardNotice] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   // الشهر المعروض حاليًا في اللوحة (افتراضيًا الشهر الحالي). تغييره بيعيد
@@ -102,14 +103,16 @@ export function useDashboard() {
       const monthEnd = endOfMonth(now);
       const monthStartStr = format(monthStart, 'yyyy-MM-dd');
 
-      const { userIds, raw, team } = await read(async () => {
-        const userIds = await fetchUserSubtreeIds(user!.id, currentBranchId);
+      const { userIds, raw, team, scope } = await read(async () => {
+        const scope = await fetchDashboardScope(user!.id, currentBranchId);
+        if (scope.status === 'error' || scope.status === 'offline-empty') throw new Error('تعذر التحقق من نطاق الفريق');
+        const userIds = scope.data;
         if (requestId !== dashboardRequestIdRef.current) throw Object.assign(new Error('قراءة قديمة'), { name: 'AbortError' });
         const team = read(() => Promise.all([
-          fetchTeamUsers(userIds), fetchBranchRoleMap(currentBranchId, userIds),
+          fetchTeamUsers(userIds), fetchDashboardBranchRoles(currentBranchId, userIds),
         ]), 1, () => requestId === dashboardRequestIdRef.current)
           .then(data => ({ data }), error => ({ error }));
-        return { userIds, raw: await fetchDashboardRawData(userIds, monthStartStr), team };
+        return { userIds, raw: await fetchDashboardRawData(userIds, monthStartStr), team, scope };
       }, 0, () => requestId === dashboardRequestIdRef.current);
       const { customersRes, policiesRes, installmentsRes, paymentsRes } = raw;
 
@@ -117,11 +120,13 @@ export function useDashboard() {
       // بالكامل حتى لا يظهر إجمالي مستخدم آخر في الصفحة الحالية.
       if (requestId !== dashboardRequestIdRef.current) return;
 
+      if (raw.readStatus === 'error' || raw.readStatus === 'offline-empty') throw new Error('ملخص غير متاح');
+      const degraded = scope.status !== 'online' || (!!raw.readStatus && raw.readStatus !== 'online');
+      setDashboardNotice(degraded ? raw.loadMessage || 'تعذر تحديث نطاق الفريق؛ الأرقام المعروضة مبنية على نطاق محفوظ. أعد المحاولة للتأكد من أحدث البيانات.' : null);
       const policies = policiesRes.data || [];
       const payments = paymentsRes.data || [];
       const installments = installmentsRes.data || [];
 
-      mainLoaded = true;
       setDashboardError(null);
       setStats(computeDashboardStats({
         customersCount: customersRes.count || 0,
@@ -135,9 +140,12 @@ export function useDashboard() {
       }));
 
       setChartData(computeChartData(payments, userIds));
-      setLastUpdated(new Date());
+      const verifiedTimes = [scope.cachedAt, raw.cachedAt].filter((time): time is number => typeof time === 'number');
+      setLastUpdated(degraded ? (verifiedTimes.length ? new Date(Math.min(...verifiedTimes)) : null) : new Date());
+      mainLoaded = true;
       if (!silent) setLoading(false);
       // The main portfolio is usable while team details continue loading.
+      if (degraded) { setTeamError('تعذر تحديث ملخص الفريق؛ أعد تحديث بيانات الرئيسية لعرض أداء الفريق المؤكد.'); return; }
       const teamResult = await team;
       if ('error' in teamResult) throw teamResult.error;
       const [teamUsers, branchRoles] = teamResult.data;
@@ -265,6 +273,7 @@ export function useDashboard() {
     teamLoading,
     teamError,
     dashboardError,
+    dashboardNotice,
     lastUpdated,
     refreshing,
     refresh,

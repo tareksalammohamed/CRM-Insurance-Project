@@ -1,8 +1,8 @@
 import { fetchAllRows } from '../../../lib/fetchAllRows';
 import { supabase } from '../../../lib/supabase';
 import { format, startOfMonth } from 'date-fns';
-import { dalRead } from '../../../lib/dataAccessLayer';
-import { fetchUserSubtreeIdsBranchAware, fetchBranchRoleMap } from '../../../lib/branchHierarchy';
+import { dalRead, freshDalRead, readStatusMessage, type DalStatus } from '../../../lib/dataAccessLayer';
+import { fetchUserSubtreeIdsBranchAware, fetchUserSubtreeReadBranchAware, fetchBranchRoleMap } from '../../../lib/branchHierarchy';
 
 // ===================================
 // كل دوال القراءة هنا بقت تمر من dalRead (طبقة الوصول الموحدة للبيانات):
@@ -17,14 +17,20 @@ export async function fetchUserSubtreeIds(userId: string, branchId?: string | nu
   return fetchUserSubtreeIdsBranchAware('dashboard', userId, branchId);
 }
 
+/** Preserve whether the hierarchy is live, cached or unavailable. */
+export async function fetchDashboardScope(userId: string, branchId?: string | null) {
+  return fetchUserSubtreeReadBranchAware('dashboard', userId, branchId);
+}
+
 // خريطة role/manager_id الخاصة بنفس الفرع — تُستخدم فى بناء هرم "أداء
 // الفريق" داخل dashboardCalculator بدل users.manager_id/users.role العامين.
-export { fetchBranchRoleMap };
+export const fetchDashboardBranchRoles = (branchId: string | null, userIds: string[]) => fetchBranchRoleMap(branchId, userIds, true);
 
-// نفس شكل النتيجة الأصلي بالظبط (customersRes/policiesRes/installmentsRes/paymentsRes
-// بحقول data/count) حتى لا نحتاج نغيّر أي كود فى Dashboard/index.tsx —
-// الصفحة تستفيد من الحماية تلقائياً دون أي تعديل فيها.
+// Preserve the raw inputs and expose read status so fallback data cannot look freshly verified.
 export interface DashboardRawData {
+  readStatus?: DalStatus;
+  cachedAt?: number | null;
+  loadMessage?: string | null;
   customersRes: { data: any[] | null; count: number | null };
   policiesRes: { data: any[] | null };
   installmentsRes: { data: any[] | null };
@@ -39,7 +45,7 @@ const EMPTY_DASHBOARD_RAW: DashboardRawData = {
 };
 
 export async function fetchDashboardRawData(userIds: string[], monthStartStr: string): Promise<DashboardRawData> {
-  const result = await dalRead(
+  const result = await dalRead<DashboardRawData>(
     `dashboard:raw:${userIds.slice().sort().join(',')}:${monthStartStr}`,
     async () => {
       const [customersRes, policiesRes, installmentsRes, paymentsRes] = await Promise.all([
@@ -67,11 +73,11 @@ export async function fetchDashboardRawData(userIds: string[], monthStartStr: st
     },
     { emptyValue: EMPTY_DASHBOARD_RAW },
   );
-  return result.data;
+  return { ...result.data, readStatus: result.status, cachedAt: result.cachedAt, loadMessage: readStatusMessage(result) };
 }
 
 export async function fetchTeamUsers(userIds: string[]) {
-  const result = await dalRead(
+  const result = await freshDalRead(
     `dashboard:teamUsers:v2:${userIds.slice().sort().join(',')}`,
     async () => {
       const data = await fetchAllRows((from, to) => supabase

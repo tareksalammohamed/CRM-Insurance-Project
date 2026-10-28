@@ -1,3 +1,4 @@
+import { LoadNotice } from '../../../../components/feedback/LoadNotice';
 import { FirstYearSummary } from '../../../../features/installments/FirstYearSummary';
 import { useState } from 'react';
 import { AppDialog } from '../../../../components/ui/AppDialog';
@@ -17,6 +18,8 @@ interface PolicyDetailsDialogProps {
   policyDetail: PolicyWithRelations | null;
   policyInstallments: Installment[];
   loadingPolicyDetail: boolean;
+  loadError?: string | null;
+  onRetry: () => void;
   onClose: () => void;
   onPay: (installment: Installment) => void;
   onCancel: (installment: Installment) => void;
@@ -29,6 +32,8 @@ export function PolicyDetailsDialog({
   policyDetail,
   policyInstallments,
   loadingPolicyDetail,
+  loadError = null,
+  onRetry,
   onClose,
   onPay,
   onCancel,
@@ -55,7 +60,7 @@ export function PolicyDetailsDialog({
               <div className="flex items-center justify-center h-32">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600" />
               </div>
-            ) : (
+            ) : loadError ? <LoadNotice message={loadError} onRetry={onRetry} /> : (
               <>
                 {policyDetail && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm bg-secondary-50 rounded-xl p-4">

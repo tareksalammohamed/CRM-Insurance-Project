@@ -18,6 +18,7 @@ function OperationalDashboard() {
     teamLoading,
     teamError,
     dashboardError,
+    dashboardNotice,
     lastUpdated,
     refreshing,
     refresh,
@@ -47,6 +48,7 @@ function OperationalDashboard() {
 
   return (
     <div className="dashboard-page space-y-6 animate-fadeIn">
+      <LoadNotice message={dashboardNotice} loading={refreshing} onRetry={() => void refresh()} />
       <DashboardHeader
         selectedMonth={selectedMonth}
         isCurrentMonth={isCurrentMonth}

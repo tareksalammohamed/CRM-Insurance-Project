@@ -83,6 +83,8 @@ export function useCustomerActions({
 
   // ===== صفحة/بوتوم شيت تفاصيل الوثيقة المفتوحة من داخل صفحة العميل =====
   const [openPolicySummary, setOpenPolicySummary] = useState<CustomerPolicySummary | null>(null);
+  const openPolicyIdRef = useRef<string | null>(null);
+  const [policyDetailError, setPolicyDetailError] = useState<string | null>(null);
   const [policyDetail, setPolicyDetail] = useState<PolicyWithRelations | null>(null);
   const [policyInstallments, setPolicyInstallments] = useState<Installment[]>([]);
   const [loadingPolicyDetail, setLoadingPolicyDetail] = useState(false);
@@ -293,6 +295,8 @@ export function useCustomerActions({
   // ===================================
   const handleOpenPolicyDetails = async (summary: CustomerPolicySummary, filter: 'all' | 'paid' | 'pending' | 'overdue' = 'all') => {
     const request = detailGuard.start();
+    openPolicyIdRef.current = summary.id;
+    setPolicyDetailError(null);
     setPolicyInstallmentFilter(filter);
     setOpenPolicySummary(summary);
     setLoadingPolicyDetail(true);
@@ -302,12 +306,13 @@ export function useCustomerActions({
     try {
       const [detail, installmentsData] = await Promise.all([
         fetchPolicyById(summary.id),
-        fetchInstallmentsByPolicyId(summary.id),
+        fetchInstallmentsByPolicyId(summary.id, true),
       ]);
       if (!detailGuard.isCurrent(request)) return;
       setPolicyDetail(detail);
       setPolicyInstallments(installmentsData);
     } catch (error) {
+      if (detailGuard.isCurrent(request)) setPolicyDetailError('تعذر تحميل بيانات الوثيقة وأقساطها؛ أعد المحاولة.');
       console.error('Error loading policy details:', error);
     } finally {
       if (detailGuard.isCurrent(request)) setLoadingPolicyDetail(false);
@@ -316,21 +321,33 @@ export function useCustomerActions({
 
   const handleClosePolicyDetails = () => {
     detailGuard.invalidate();
+    openPolicyIdRef.current = null;
+    setPolicyDetailError(null);
     setOpenPolicySummary(null);
     setPolicyDetail(null);
     setPolicyInstallments([]);
   };
 
   const reloadOpenPolicyInstallments = async () => {
-    if (!openPolicySummary) return;
+    const policyId = openPolicySummary?.id;
+    // A completed payment can belong to a dialog the user has already left.
+    if (!policyId || openPolicyIdRef.current !== policyId) return;
+    const request = detailGuard.start();
+    const summaryRequest = summaryGuard.start();
+    setLoadingPolicyDetail(true);
+    setPolicyDetailError(null);
+    setPolicyInstallments([]);
     try {
-      setPolicyInstallments(await fetchInstallmentsByPolicyId(openPolicySummary.id));
-      // تحديث الملخص السريع على البطاقة كمان بعد السداد/إلغاء السداد
-      setPolicySummaries(await fetchInstallmentSummaryByPolicyIds(
-        (detailsCustomer?.policies || []).map((p) => p.id)
-      ));
+      const rows = await fetchInstallmentsByPolicyId(policyId, true);
+      if (!detailGuard.isCurrent(request) || openPolicyIdRef.current !== policyId) return;
+      setPolicyInstallments(rows);
+      const summaries = await fetchInstallmentSummaryByPolicyIds((detailsCustomer?.policies || []).map(p => p.id));
+      if (summaryGuard.isCurrent(summaryRequest)) setPolicySummaries(summaries);
     } catch (error) {
+      if (detailGuard.isCurrent(request)) setPolicyDetailError('تعذر تحديث الأقساط بعد العملية؛ أعد تحميل تفاصيل الوثيقة للتحقق من الحالة.');
       console.error('Error reloading policy installments:', error);
+    } finally {
+      if (detailGuard.isCurrent(request)) setLoadingPolicyDetail(false);
     }
   };
 
@@ -445,6 +462,7 @@ export function useCustomerActions({
     policyDetail,
     policyInstallments,
     loadingPolicyDetail,
+    policyDetailError,
     handleOpenPolicyDetails,
     handleClosePolicyDetails,
 
