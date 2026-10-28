@@ -18,14 +18,14 @@ import { fetchPoliciesPage } from '../src/pages/Policies/services/policiesServic
 import { fetchYear2EligiblePolicies } from '../src/pages/Collection/year2/year2CollectionService';
 beforeEach(() => { mocks.rows = {}; mocks.ranges = []; mocks.failTable = ''; mocks.failFrom = -1; });
 it('completes report policies, payments and installments when the server caps pages below the requested size', async () => {
-  for (const table of ['policies', 'payments', 'installments']) mocks.rows[table] = [1, 2, 3].map(id => ({ id }));
+  for (const table of ['policies', 'closing_payments', 'installments']) mocks.rows[table] = [1, 2, 3].map(id => ({ id }));
   expect(await fetchPoliciesForOwners(['u'])).toHaveLength(3);
   expect(await fetchPaymentsInRange(new Date('2026-01-01'), new Date('2026-12-31'))).toHaveLength(3);
   expect(await fetchAllInstallmentsWithPolicy()).toHaveLength(3);
-  expect(mocks.ranges).toEqual([['policies', 0], ['policies', 2], ['payments', 0], ['payments', 2], ['installments', 0], ['installments', 2]]);
+  expect(mocks.ranges).toEqual([['policies', 0], ['policies', 2], ['closing_payments', 0], ['closing_payments', 2], ['installments', 0], ['installments', 2]]);
 });
 it('never presents a report as complete after a later page fails', async () => {
-  mocks.rows.payments = [1, 2, 3].map(id => ({ id })); mocks.failTable = 'payments'; mocks.failFrom = 2;
+  mocks.rows.closing_payments = [1, 2, 3].map(id => ({ id })); mocks.failTable = 'closing_payments'; mocks.failFrom = 2;
   await expect(fetchPaymentsInRange(new Date('2026-01-01'), new Date('2026-12-31'))).rejects.toThrow('page failed');
 });
 it('completes both cancellation collection sources and the cancelled document list', async () => {

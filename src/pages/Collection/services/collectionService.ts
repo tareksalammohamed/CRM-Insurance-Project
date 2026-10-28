@@ -85,7 +85,7 @@ export async function cancelSeverelyOverduePolicies(): Promise<void> {
 const EMPTY_INSTALLMENTS_RESULT: FetchInstallmentsResult = { installments: [], totalCount: 0, totalPages: 1 };
 
 export async function fetchInstallments({ quickFilter, subType, ownerFilter, page, searchQuery, branchId = null, monthStart = null }: FetchInstallmentsParams): Promise<FetchInstallmentsResult> {
-  const cacheKey = `collection:installments:${quickFilter}:${subType}:${ownerFilter}:${page}:${searchQuery.trim()}:${branchId ?? 'none'}:${monthStart ?? 'current'}`;
+  const cacheKey = `collection:installments:closing-v1:${quickFilter}:${subType}:${ownerFilter}:${page}:${searchQuery.trim()}:${branchId ?? 'none'}:${monthStart ?? 'current'}`;
 
   const result = await dalRead(
     cacheKey,
@@ -174,7 +174,7 @@ export async function fetchCollectionQuickStats(branchId: string | null = null):
   const dayEndIso   = endOfDay(now).toISOString();
 
   const result = await dalRead(
-    `collection:quickStats:${monthStartStr}:${format(now, 'yyyy-MM-dd')}:${branchId ?? 'none'}`,
+    `collection:quickStats:closing-v1:${monthStartStr}:${format(now, 'yyyy-MM-dd')}:${branchId ?? 'none'}`,
     async () => {
       // فلتر الفرع الحالي (لو موجود): بنجيب معه عمود الفرع المرتبط (مباشرة
       // على installments عبر policy، أو على مستوى أعمق على payments عبر
@@ -232,11 +232,11 @@ export async function fetchCollectionQuickStats(branchId: string | null = null):
         // نفس منطق فلتر "تم السداد" بالضبط: مسدد فعلياً خلال الشهر الحالي حسب
         // تاريخ السداد الفعلي (payment_month) وليس تاريخ الاستحقاق
         supabase
-          .from('payments')
+          .from('closing_payments')
           .select(`amount${paymentsBranchSelect}`)
           .eq('is_cancelled', false)
           .eq('installment.policy.status', 'active')
-          .eq('payment_month', monthStartStr),
+          .eq('accounting_month', monthStartStr),
         year2PoliciesQuery,
         year2PaymentsQuery,
       ]);
