@@ -78,15 +78,15 @@ export async function fetchPoliciesForOwners(userIds: string[]) {
 
 export async function fetchPaymentsInRange(start: Date, end: Date) {
   const result = await dalRead(
-    `reports:paymentsInRange:${format(start, 'yyyy-MM-dd')}:${format(end, 'yyyy-MM-dd')}`,
+    `reports:paymentsInRange:closing-v1:${format(start, 'yyyy-MM-dd')}:${format(end, 'yyyy-MM-dd')}`,
     async () => {
       const data = await fetchAllRows((from, to) => supabase
-        .from('payments')
+        .from('closing_payments')
         .select(
-          'amount, payment_month, installment:installment_id(is_first, policy:policy_id(owner_id, policy_number, customer:customer_id(name), owner:owner_id(name)))'
+          'amount, payment_month:accounting_month, installment:installment_id(is_first, policy:policy_id(owner_id, policy_number, customer:customer_id(name), owner:owner_id(name)))'
         , { count: 'exact' })
-        .gte('payment_month', format(start, 'yyyy-MM-dd'))
-        .lte('payment_month', format(end, 'yyyy-MM-dd'))
+        .gte('accounting_month', format(start, 'yyyy-MM-dd'))
+        .lte('accounting_month', format(end, 'yyyy-MM-dd'))
         .eq('is_cancelled', false).order('id').range(from, to));
       return data || [];
     },
@@ -153,13 +153,13 @@ export async function fetchAgentsForReport(userIds: string[]) {
 
 export async function fetchSimplePaymentsInRange(start: Date, end: Date) {
   const result = await dalRead(
-    `reports:simplePaymentsInRange:${format(start, 'yyyy-MM-dd')}:${format(end, 'yyyy-MM-dd')}`,
+    `reports:simplePaymentsInRange:closing-v1:${format(start, 'yyyy-MM-dd')}:${format(end, 'yyyy-MM-dd')}`,
     async () => {
       const data = await fetchAllRows((from, to) => supabase
-        .from('payments')
+        .from('closing_payments')
         .select('amount, installment:installment_id(policy:policy_id(owner_id))', { count: 'exact' })
-        .gte('payment_month', format(start, 'yyyy-MM-dd'))
-        .lte('payment_month', format(end, 'yyyy-MM-dd'))
+        .gte('accounting_month', format(start, 'yyyy-MM-dd'))
+        .lte('accounting_month', format(end, 'yyyy-MM-dd'))
         .eq('is_cancelled', false).order('id').range(from, to));
       return data || [];
     },

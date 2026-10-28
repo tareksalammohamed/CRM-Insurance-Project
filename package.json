@@ -13,8 +13,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run check:help && npm run lint && npm run typecheck && npm test && npm run build",
-    "check:print": "node scripts/check-print.mjs"
+    "check": "npm run check:help && npm run lint && npm run typecheck && npm test && npm run check:closing-sql && npm run build",
+    "check:print": "node scripts/check-print.mjs",
+    "check:closing-sql": "node scripts/check-closing-extensions.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -39,6 +40,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.12",
     "@eslint/js": "^9.9.1",
     "@testing-library/react": "16.3.0",
     "@types/react": "^18.3.5",

@@ -1,6 +1,6 @@
 import { paymentDateIssue } from '../../lib/inputGuidance';
 import { X, CheckCircle, AlertTriangle } from 'lucide-react';
-import { format, startOfMonth } from 'date-fns';
+import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
 
 import type { Installment } from '../../lib/supabase';
@@ -42,7 +42,7 @@ export function PayInstallmentModal({
   groupTotalAmount,
 }: PayInstallmentModalProps) {
   const dateIssue = paymentDateIssue(paymentDateStr);
-  const paymentMonthLabel = dateIssue ? '—' : format(startOfMonth(new Date(`${paymentDateStr}T12:00:00`)), 'MMMM yyyy', { locale: ar });
+  const paymentDateLabel = dateIssue ? '—' : format(new Date(`${paymentDateStr}T12:00:00`), 'd MMMM yyyy', { locale: ar });
   const closeWhenIdle = () => { if (!processing) onClose(); };
   const isGroup = !!groupCount && groupCount > 1;
 
@@ -72,7 +72,7 @@ export function PayInstallmentModal({
                   <p className="text-sm font-medium text-blue-700">سداد مبكر</p>
                   <p className="text-xs text-blue-600 mt-0.5">
                     تاريخ استحقاق هذا القسط {format(new Date(installment.due_date), 'dd/MM/yyyy')} — سيُسجَّل
-                    السداد في شهر {paymentMonthLabel}.
+                    السداد بتاريخ {paymentDateLabel}.
                   </p>
                 </div>
               </div>
@@ -93,8 +93,8 @@ export function PayInstallmentModal({
               />
               <p id="payment-date-help" className="text-xs text-secondary-500 mt-1" role={dateIssue ? 'alert' : undefined}>
                 {dateIssue || <>
-                سيُحسب السداد ضمن تارجت شهر{' '}
-                {paymentMonthLabel}</>}
+                تاريخ السداد الفعلي:{' '}
+                {paymentDateLabel}</>}
               </p>
             </div>
 

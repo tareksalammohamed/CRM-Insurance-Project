@@ -18,6 +18,7 @@ const BACKUP_TABLES: { table: string; sheetName: string }[] = [
   { table: 'installments', sheetName: 'الأقساط' },
   { table: 'payments', sheetName: 'المدفوعات' },
   { table: 'year2_payments', sheetName: 'تحصيلات السنة الثانية' },
+  { table: 'closing_period_extensions', sheetName: 'تمديدات الإقفال' },
   { table: 'monthly_closings', sheetName: 'تقفيلات الشهور' },
   { table: 'users', sheetName: 'المستخدمون' },
   { table: 'settings', sheetName: 'الإعدادات' },

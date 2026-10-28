@@ -1,3 +1,4 @@
+import { ClosingExtensionControl } from '../../features/closingExtensions/ClosingExtensionControl';
 import { useRequestGuard } from '../../hooks/useRequestGuard';
 import { LoadNotice } from '../../components/feedback/LoadNotice';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -394,6 +395,7 @@ export function MonthlyClosing() {
             <ChevronLeft className="w-5 h-5" />
           </button>
         </div>
+        {user && <ClosingExtensionControl key={format(selectedMonth, 'yyyy-MM-dd')} month={format(selectedMonth, 'yyyy-MM-dd')} userId={user.id} canManage={!!canClose} closed={isClosed} ready={ready} onSaved={loadData} />}
       </div>
 
       <LoadNotice message={loadError} loading={loading} onRetry={() => void loadData()} />

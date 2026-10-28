@@ -12,7 +12,7 @@ export function PerformanceTrend({ userId, branchId, selectedUserId }: { userId:
   const rows = available ? query.data!.rows : [];
   return <section className="card space-y-4" aria-labelledby="performance-trend-title">
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div><h2 id="performance-trend-title" className="text-lg font-bold">اتجاه الأداء خلال آخر 6 شهور</h2><p className="text-sm text-secondary-500 mt-1">الإنتاج الجديد والتحصيل الدوري للسنة الأولى حسب شهر السداد. الشهر الحالي غير مكتمل؛ التجديدات لا تدخل في هذا الرسم.</p></div>
+      <div><h2 id="performance-trend-title" className="text-lg font-bold">اتجاه الأداء خلال آخر 6 شهور</h2><p className="text-sm text-secondary-500 mt-1">الإنتاج الجديد والتحصيل الدوري للسنة الأولى حسب شهر الاحتساب. الشهر الحالي غير مكتمل؛ التجديدات لا تدخل في هذا الرسم.</p></div>
       <button type="button" className="btn btn-secondary btn-sm" disabled={query.isFetching} onClick={() => void query.refetch()}>تحديث</button>
     </div>
     <LoadNotice message={query.isError ? 'تعذر تحميل اتجاه الأداء. أعد المحاولة.' : query.data?.message ?? null} loading={query.isFetching} onRetry={() => void query.refetch()} />

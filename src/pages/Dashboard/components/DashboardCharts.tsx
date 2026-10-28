@@ -54,7 +54,7 @@ export function DashboardCharts({ stats, selectedMonth, policyStatusData }: Dash
 
       <div className="payment-overview-summary">
         <span className="payment-overview-summary-icon" aria-hidden="true"><ArrowDownLeft className="w-5 h-5" /></span>
-        <div><span>إجمالي المسدد خلال الشهر</span><strong>{formatCurrency(paidTotal)}</strong></div>
+        <div><span>إجمالي المسدد المحتسب للشهر</span><strong>{formatCurrency(paidTotal)}</strong></div>
         <div className="payment-overview-base"><span>من إجمالي المقارنة</span><strong>{formatCurrency(total)}</strong></div>
       </div>
 
@@ -82,7 +82,7 @@ export function DashboardCharts({ stats, selectedMonth, policyStatusData }: Dash
         })}
       </div>
       <div className="payment-overview-key"><span><i className="payment-key-paid" />المسدد</span><span><i className="payment-key-remaining" />المتبقي</span><span>طول الشريط يوضح الإجمالي بنفس المقياس.</span></div>
-      <p className="payment-overview-note">الإجمالي = المسدد خلال الشهر + المتبقي المستحق فيه. المتبقي لا يشمل متأخرات الشهور السابقة، وتحصيلات السنوات اللاحقة خارج هذه المقارنة.</p>
+      <p className="payment-overview-note">الإجمالي = المسدد المحتسب للشهر + المتبقي المستحق فيه. المتبقي لا يشمل متأخرات الشهور السابقة، وتحصيلات السنوات اللاحقة خارج هذه المقارنة.</p>
 
     </section>
     <div className="payment-overview-sidebar">

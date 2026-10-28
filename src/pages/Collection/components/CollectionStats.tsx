@@ -90,13 +90,13 @@ export function CollectionStats({ quickStats, quickStatsLoading }: CollectionSta
           />
 
           <KpiTile
-            label="إجمالي المسدد هذا الشهر — سنة أولى"
+            label="المسدد المحتسب للشهر — سنة أولى"
             value={formatCurrency(quickStats?.collectedMonthAmount || 0)}
             icon={Banknote}
             tone="brand"
             onClick={() => openFiltered('paid')}
-            ariaLabel="عرض قيمة أقساط السنة الأولى المسددة خلال الشهر الحالي"
-            footer={<span>مسدَّد فعليًا هذا الشهر</span>}
+            ariaLabel="عرض أقساط السنة الأولى المحتسبة للشهر"
+            footer={<span>حسب شهر الاحتساب</span>}
           />
 
           <KpiTile

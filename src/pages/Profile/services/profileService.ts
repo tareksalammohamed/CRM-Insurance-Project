@@ -27,7 +27,7 @@ export async function fetchProfilePerformanceStats(userId: string, role?: UserRo
   const todayStr = format(today, 'yyyy-MM-dd');
 
   const result = await dalRead(
-    `profile:performanceStats:${userId}:${role ?? 'none'}:${todayStr}`,
+    `profile:performanceStats:closing-v1:${userId}:${role ?? 'none'}:${todayStr}`,
     async () => {
       // التارجت الخاص بصاحب الدرجة الوظيفية (مراقب/مشرف/قائد مجموعة...) بيتحقق
       // بإنتاجه الشخصي + إنتاج فريقه معًا، فكل المؤشرات هنا (عدا العمولات)
@@ -61,11 +61,11 @@ export async function fetchProfilePerformanceStats(userId: string, role?: UserRo
       // السنة لغاية النهاردة — منها بنشتق "إجمالي المحقق هذا العام" و"نسبة
       // تحقيق الشهر الحالي"
       const { data: paymentsData, error: paymentsError } = await supabase
-        .from('payments')
-        .select('amount, payment_month, is_cancelled, installment:installment_id(policy:policy_id(owner_id))')
+        .from('closing_payments')
+        .select('amount, payment_month:accounting_month, is_cancelled, installment:installment_id(policy:policy_id(owner_id))')
         .eq('is_cancelled', false)
-        .gte('payment_month', yearStartStr)
-        .lte('payment_month', todayStr);
+        .gte('accounting_month', yearStartStr)
+        .lte('accounting_month', todayStr);
 
       if (paymentsError) throw paymentsError;
 

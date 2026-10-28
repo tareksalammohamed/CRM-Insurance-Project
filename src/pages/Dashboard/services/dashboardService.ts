@@ -46,7 +46,7 @@ const EMPTY_DASHBOARD_RAW: DashboardRawData = {
 
 export async function fetchDashboardRawData(userIds: string[], monthStartStr: string): Promise<DashboardRawData> {
   const result = await dalRead<DashboardRawData>(
-    `dashboard:raw:${userIds.slice().sort().join(',')}:${monthStartStr}`,
+    `dashboard:raw:closing-v1:${userIds.slice().sort().join(',')}:${monthStartStr}`,
     async () => {
       const [customersRes, policiesRes, installmentsRes, paymentsRes] = await Promise.all([
         supabase.from('customers').select('id', { count: 'exact', head: true }).in('owner_id', userIds),
@@ -56,9 +56,9 @@ export async function fetchDashboardRawData(userIds: string[], monthStartStr: st
           .select('id, amount, due_date, status, is_first, policy:policy_id(owner_id)', { count: 'exact' })
           .in('status', ['pending', 'overdue']).order('id').range(from, to)),
         fetchAllRows((from, to) => supabase
-          .from('payments')
-          .select('id, amount, payment_month, is_cancelled, installment:installment_id(is_first, policy:policy_id(owner_id))', { count: 'exact' })
-          .eq('payment_month', monthStartStr)
+          .from('closing_payments')
+          .select('id, amount, payment_month:accounting_month, is_cancelled, installment:installment_id(is_first, policy:policy_id(owner_id))', { count: 'exact' })
+          .eq('accounting_month', monthStartStr)
           .eq('is_cancelled', false).order('id').range(from, to)),
       ]);
 
@@ -97,12 +97,12 @@ export async function fetchTeamUsers(userIds: string[]) {
 
 export async function fetchMonthPayments(monthStartStr: string) {
   const result = await dalRead(
-    `dashboard:monthPayments:${monthStartStr}`,
+    `dashboard:monthPayments:closing-v1:${monthStartStr}`,
     async () => {
       const data = await fetchAllRows((from, to) => supabase
-        .from('payments')
+        .from('closing_payments')
         .select('amount, installment:installment_id(is_first, policy:policy_id(owner_id))', { count: 'exact' })
-        .eq('payment_month', monthStartStr)
+        .eq('accounting_month', monthStartStr)
         .eq('is_cancelled', false).order('id').range(from, to));
       return data || [];
     },

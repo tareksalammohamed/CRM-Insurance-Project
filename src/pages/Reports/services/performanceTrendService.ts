@@ -8,16 +8,16 @@ export async function fetchPerformanceTrend(userId: string, branchId: string | n
   const start = `${months[0].month}-01`;
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const endKey = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-01`;
-  const result = await dalRead(`reports:trend:v1:${userId}:${branchId ?? 'none'}:${selectedUserId}:${start}`, async () => {
+  const result = await dalRead(`reports:trend:v1:closing-v1:${userId}:${branchId ?? 'none'}:${selectedUserId}:${start}`, async () => {
     const base = await fetchUserSubtreeIds(userId, branchId);
     const userIds = selectedUserId ? (await fetchUserSubtreeIds(selectedUserId, branchId)).filter(id => base.includes(id)) : base;
     const rows: TrendPayment[] = [];
     if (userIds.length) {
       for (let offset = 0; ; offset += 500) {
-        const { data, error } = await supabase.from('payments')
-          .select('id, amount, payment_month, installment:installment_id!inner(is_first, policy:policy_id!inner(owner_id))')
+        const { data, error } = await supabase.from('closing_payments')
+          .select('id, amount, payment_month:accounting_month, installment:installment_id!inner(is_first, policy:policy_id!inner(owner_id))')
           .in('installment.policy.owner_id', userIds)
-          .gte('payment_month', start).lt('payment_month', endKey)
+          .gte('accounting_month', start).lt('accounting_month', endKey)
           .eq('is_cancelled', false).order('id').range(offset, offset + 499);
         if (error) throw error;
         rows.push(...(data ?? []) as unknown as TrendPayment[]);

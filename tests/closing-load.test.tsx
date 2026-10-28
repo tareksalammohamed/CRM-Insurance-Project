@@ -1,3 +1,4 @@
+vi.mock('../src/features/closingExtensions/ClosingExtensionControl', () => ({ ClosingExtensionControl: () => null }));
 vi.hoisted(() => { vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co'); vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'test'); });
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';

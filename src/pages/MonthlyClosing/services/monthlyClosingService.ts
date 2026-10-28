@@ -79,10 +79,10 @@ export async function fetchUsersByIds(ids: string[]): Promise<BasicUser[]> {
 
 export async function fetchMonthPayments(monthStr: string): Promise<any[]> {
   const result = await dalRead(
-    `monthlyClosing:monthPayments:${monthStr}`,
+    `monthlyClosing:monthPayments:closing-v1:${monthStr}`,
     async () => {
       const data = await fetchAllRows((from, to) => supabase
-        .from('payments')
+        .from('closing_payments')
         .select(`
           id, amount, paid_at,
           installment:installment_id (
@@ -93,7 +93,7 @@ export async function fetchMonthPayments(monthStr: string): Promise<any[]> {
             )
           )
         `, { count: 'exact' })
-        .eq('payment_month', monthStr)
+        .eq('accounting_month', monthStr)
         .eq('is_cancelled', false).order('id').range(from, to));
       return data || [];
     },
@@ -116,12 +116,12 @@ export async function fetchFirstWorkMonthByOwnerIds(ownerIds: string[]): Promise
   if (ownerIds.length === 0) return result;
 
   const dataResult = await dalRead(
-    `monthlyClosing:firstWorkMonth:${ownerIds.slice().sort().join(',')}`,
+    `monthlyClosing:firstWorkMonth:closing-v1:${ownerIds.slice().sort().join(',')}`,
     async () => {
       const [year1, renewal] = await Promise.all([
         fetchAllRows((from, to) => supabase
-          .from('payments')
-          .select('payment_month, installment:installment_id(policy:policy_id(owner_id))', { count: 'exact' })
+          .from('closing_payments')
+          .select('payment_month:accounting_month, installment:installment_id(policy:policy_id(owner_id))', { count: 'exact' })
           .eq('is_cancelled', false).order('id').range(from, to)),
         fetchAllRows((from, to) => supabase
           .from('year2_payments')

@@ -39,6 +39,9 @@ jobs:
       - name: Regression tests
         run: npm test
 
+      - name: Closing period SQL regression
+        run: npm run check:closing-sql
+
       - name: TypeScript
         run: npm run typecheck
 
