@@ -1,7 +1,7 @@
 import { pendingRead } from './pendingRead';
 import { fetchAllRows } from './fetchAllRows';
 import { supabase } from './supabase';
-import { dalRead, freshDalRead } from './dataAccessLayer';
+import { dalRead, freshDalRead, type DalResult } from './dataAccessLayer';
 import type { UserRole } from './supabase';
 
 // ===================================
@@ -26,12 +26,12 @@ export interface BranchRoleInfo {
  * على المسار العام العابر للفروع. ولو branchId موجود، بتمشي فى السلسلة
  * بالاعتماد على user_branch_roles الخاصة بنفس الفرع بس.
  */
-export async function fetchUserSubtreeIdsBranchAware(
+export async function fetchUserSubtreeReadBranchAware(
   cacheKeyPrefix: string,
   userId: string,
   branchId?: string | null,
   requireFresh = false,
-): Promise<string[]> {
+): Promise<DalResult<string[]>> {
   const result = await (requireFresh ? freshDalRead : dalRead)(
     `${cacheKeyPrefix}:subtree:${userId}:${branchId ?? 'none'}`,
     async () => {
@@ -51,7 +51,12 @@ export async function fetchUserSubtreeIdsBranchAware(
     },
     { emptyValue: [userId] },
   );
-  return result.data;
+  return result;
+}
+
+/** Existing array-returning API, with the same cache and fallback behavior. */
+export async function fetchUserSubtreeIdsBranchAware(cacheKeyPrefix: string, userId: string, branchId?: string | null, requireFresh = false): Promise<string[]> {
+  return (await fetchUserSubtreeReadBranchAware(cacheKeyPrefix, userId, branchId, requireFresh)).data;
 }
 
 /**

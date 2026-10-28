@@ -1,0 +1,60 @@
+vi.hoisted(() => { vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co'); vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'test'); });
+import type { ReactNode } from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import { act, cleanup, renderHook, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import type { Installment, User } from '../src/lib/supabase';
+import type { CustomerPolicySummary } from '../src/pages/Customers/types';
+const mocks = vi.hoisted(() => ({ policy: vi.fn(), installments: vi.fn(), pay: vi.fn() }));
+vi.mock('../src/lib/notify', () => ({ useNotify: () => ({ error: vi.fn(), success: vi.fn() }) }));
+vi.mock('../src/pages/PolicyDetail/services/policyDetailService', () => ({ fetchPolicyById: mocks.policy }));
+vi.mock('../src/features/installments/installmentsService', () => ({ fetchInstallmentsByPolicyId: mocks.installments, payInstallment: mocks.pay, cancelInstallmentPayment: async () => ({}), fetchInstallmentSummaryByPolicyIds: async () => ({}) }));
+import { useCustomerActions } from '../src/pages/Customers/hooks/useCustomerActions';
+const wrapper = ({ children }: { children: ReactNode }) => <MemoryRouter>{children}</MemoryRouter>;
+const props = { user: { id: 'u', role: 'agent' } as User, searchParams: new URLSearchParams(), setSearchParams: vi.fn(), loadCustomers: async () => {}, loadStats: async () => {} };
+const summary = (id: string) => ({ id, policy_number: id } as CustomerPolicySummary);
+const installment = (id: string) => ({ id, policy_id: id, amount: 100 } as Installment);
+beforeEach(() => { vi.resetAllMocks(); mocks.policy.mockImplementation(async (id: string) => ({ id })); mocks.pay.mockResolvedValue(undefined); });
+afterEach(cleanup);
+it('does not turn a failed document read into an empty installment summary and supports retry', async () => {
+  mocks.installments.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce([installment('p')]);
+  const { result } = renderHook(() => useCustomerActions(props), { wrapper });
+  await act(async () => result.current.handleOpenPolicyDetails(summary('p')));
+  expect(result.current.policyDetailError).toContain('تعذر تحميل'); expect(result.current.policyInstallments).toEqual([]);
+  await act(async () => result.current.handleOpenPolicyDetails(summary('p')));
+  expect(result.current.policyDetailError).toBeNull(); expect(result.current.policyInstallments[0].policy_id).toBe('p');
+  expect(mocks.installments).toHaveBeenLastCalledWith('p', true);
+});
+it('does not replace a new policy schedule with a delayed refresh after payment on the old policy', async () => {
+  let finish!: (rows: Installment[]) => void;
+  const pending = new Promise<Installment[]>(resolve => { finish = resolve; });
+  mocks.installments.mockResolvedValueOnce([installment('old')]).mockReturnValueOnce(pending).mockResolvedValueOnce([installment('new')]);
+  const { result } = renderHook(() => useCustomerActions(props), { wrapper });
+  await act(async () => result.current.handleOpenPolicyDetails(summary('old')));
+  act(() => result.current.handleOpenPayment(installment('old')));
+  let payment!: Promise<void>;
+  act(() => { payment = result.current.handleProcessPayment(); });
+  await waitFor(() => expect(mocks.installments).toHaveBeenCalledTimes(2));
+  await act(async () => result.current.handleOpenPolicyDetails(summary('new')));
+  await act(async () => { finish([installment('old')]); await payment; });
+  expect(result.current.openPolicySummary?.id).toBe('new'); expect(result.current.policyInstallments[0].policy_id).toBe('new');
+});
+it('keeps a successful payment separate from a failed schedule refresh', async () => {
+  mocks.installments.mockResolvedValueOnce([installment('p')]).mockRejectedValueOnce(new Error('refresh failed'));
+  const { result } = renderHook(() => useCustomerActions(props), { wrapper });
+  await act(async () => result.current.handleOpenPolicyDetails(summary('p')));
+  act(() => result.current.handleOpenPayment(installment('p')));
+  await act(async () => result.current.handleProcessPayment());
+  expect(mocks.pay).toHaveBeenCalledOnce(); expect(result.current.showPayModal).toBe(false);
+  expect(result.current.policyDetailError).toContain('تعذر تحديث الأقساط بعد العملية');
+  expect(result.current.policyInstallments).toEqual([]);
+});
+
+import { PolicyDetailsDialog } from '../src/pages/Customers/components/dialogs/PolicyDetailsDialog';
+it('shows a retryable failure instead of an empty first-year summary in the document dialog', () => {
+  const retry = vi.fn();
+  render(<PolicyDetailsDialog openPolicySummary={summary('p')} policyDetail={null} policyInstallments={[]} loadingPolicyDetail={false} loadError="تعذر تحميل الوثيقة" onRetry={retry} onClose={vi.fn()} onPay={vi.fn()} onCancel={vi.fn()} />);
+  expect(screen.getByText('تعذر تحميل الوثيقة')).toBeTruthy();
+  expect(screen.queryByText('إجمالي أقساط السنة الأولى')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'إعادة المحاولة' })); expect(retry).toHaveBeenCalledOnce();
+});

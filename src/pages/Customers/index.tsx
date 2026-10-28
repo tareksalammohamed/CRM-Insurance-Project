@@ -60,7 +60,7 @@ export function Customers() {
     moreMenuCustomer, setMoreMenuCustomer, handleOpenCustomerPolicies, handleIssueNewPolicy, handlePrintCustomer,
     detailsCustomer, setDetailsCustomer, showExtraInfo, setShowExtraInfo, policySummaries, handleOpenCustomerDetails,
     policyInstallmentFilter,
-    openPolicySummary, policyDetail, policyInstallments, loadingPolicyDetail,
+    openPolicySummary, policyDetail, policyInstallments, loadingPolicyDetail, policyDetailError,
     handleOpenPolicyDetails, handleClosePolicyDetails,
     selectedInstallment, showPayModal, setShowPayModal, paymentDateStr, setPaymentDateStr,
     showCancelModal, setShowCancelModal, cancelReason, setCancelReason, processingPayment,
@@ -264,6 +264,8 @@ export function Customers() {
           policyDetail={policyDetail}
           policyInstallments={policyInstallments}
           loadingPolicyDetail={loadingPolicyDetail}
+          loadError={policyDetailError}
+          onRetry={() => void handleOpenPolicyDetails(openPolicySummary, policyInstallmentFilter)}
           onClose={handleClosePolicyDetails}
           onPay={handleOpenPayment}
           onCancel={handleOpenCancel}
