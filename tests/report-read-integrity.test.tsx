@@ -24,7 +24,8 @@ it('ignores the previous month response and disables print until the selected re
   const old = deferred(); const next = deferred();
   mocks.customers.mockReturnValue(old.promise);
   const view = render(<Reports />);
-  fireEvent.change(screen.getByLabelText('المؤشر أو التقرير'), { target: { value: 'customers' } });
+  fireEvent.click(screen.getByRole('button', { name: /المؤشر أو التقرير/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'طلبات التأمين' }));
   await waitFor(() => expect(mocks.customers).toHaveBeenCalled());
   expect((screen.getByTitle('طباعة التقرير') as HTMLButtonElement).disabled).toBe(true);
   mocks.customers.mockReturnValue(next.promise);
@@ -39,7 +40,8 @@ it('ignores the previous month response and disables print until the selected re
 it('shows retry and blocks export after a failed report read, then recovers', async () => {
   mocks.customers.mockRejectedValue(new Error('partial page failure'));
   render(<Reports />);
-  fireEvent.change(screen.getByLabelText('المؤشر أو التقرير'), { target: { value: 'customers' } });
+  fireEvent.click(screen.getByRole('button', { name: /المؤشر أو التقرير/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'طلبات التأمين' }));
   await screen.findByText('تعذر تحميل التقرير كاملًا؛ أعد المحاولة.');
   expect((screen.getByTitle('طباعة التقرير') as HTMLButtonElement).disabled).toBe(true);
   mocks.customers.mockResolvedValue([customer('RECOVERED')]);
@@ -52,10 +54,23 @@ it('opens on the six-month trend without fetching the customer report and allows
   mocks.customers.mockResolvedValue([customer('SELECTED')]);
   render(<Reports />);
   await screen.findByText('اتجاه الأداء خلال آخر 6 شهور');
-  expect((screen.getByLabelText('المؤشر أو التقرير') as HTMLSelectElement).value).toBe('trend');
+  expect(screen.getByRole('button', { name: /المؤشر أو التقرير اتجاه الأداء/ }).getAttribute('aria-expanded')).toBe('false');
   expect(mocks.customers).not.toHaveBeenCalled();
-  fireEvent.change(screen.getByLabelText('المؤشر أو التقرير'), { target: { value: 'customers' } });
+  fireEvent.click(screen.getByRole('button', { name: /المؤشر أو التقرير/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'طلبات التأمين' }));
   await screen.findByText('SELECTED');
   fireEvent.click(screen.getByRole('button', { name: 'اتجاه الأداء · 6 شهور' }));
   expect(screen.getByText('اتجاه الأداء خلال آخر 6 شهور')).toBeTruthy();
+});
+
+it('dismisses the styled report picker without changing the report or loading customers', async () => {
+  render(<Reports />);
+  fireEvent.click(screen.getByRole('button', { name: /المؤشر أو التقرير/ }));
+  const dialog = screen.getByRole('dialog', { name: 'اختيار المؤشر أو التقرير' });
+  expect(dialog).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'اتجاه الأداء · 6 شهور' }).getAttribute('aria-pressed')).toBe('true');
+  fireEvent.keyDown(document, { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  expect(screen.getByText('اتجاه الأداء خلال آخر 6 شهور')).toBeTruthy();
+  expect(mocks.customers).not.toHaveBeenCalled();
 });
