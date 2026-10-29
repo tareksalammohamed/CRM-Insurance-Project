@@ -46,6 +46,7 @@ import {
 } from './business/reportsCalculator';
 import { loadCancellationSummary } from '../Cancellations/services/cancellationService';
 import { ActivityTargetsPanel } from './components/ActivityTargetsPanel';
+import { ReportPicker } from './components/ReportPicker';
 import { ReportButtonGroup } from './components/ReportButtonGroup';
 import { PerformanceScoreRow } from './components/PerformanceScoreRow';
 import { CollectionDetailsByAgent } from './components/CollectionDetailsByAgent';
@@ -369,14 +370,11 @@ export function Reports() {
   if (reportType === 'trend') return <div className="workspace-page space-y-5">
     <PageHeader title="اتجاه الأداء" subtitle="تطور الإنتاج والتحصيل عبر الشهور ضمن صلاحياتك والفرع المختار" />
     <div className="card grid gap-4 sm:grid-cols-2 print:hidden">
-      <div className="min-w-0">
-        <label htmlFor="indicator-report" className="mb-2 block text-sm font-semibold" style={{ color: 'var(--ink-soft)' }}>المؤشر أو التقرير</label>
-        <select id="indicator-report" className="input-field" value={reportType} onChange={event => setReportType(event.target.value as ReportType)}>
-          <optgroup label="التقارير">{mainReportButtons.map(report => <option key={report.id} value={report.id}>{report.label}</option>)}</optgroup>
-          <optgroup label="تقارير الأداء">{performanceReportButtons.map(report => <option key={report.id} value={report.id}>{report.label}</option>)}</optgroup>
-          <optgroup label="الإلغاءات">{cancellationsReportButtons.map(report => <option key={report.id} value={report.id}>{report.label}</option>)}</optgroup>
-        </select>
-      </div>
+      <ReportPicker value={reportType} onSelect={setReportType} groups={[
+        { title: 'التقارير', options: mainReportButtons },
+        { title: 'تقارير الأداء', options: performanceReportButtons },
+        { title: 'الإلغاءات', options: cancellationsReportButtons },
+      ]} />
       <div className="min-w-0"><label htmlFor="trend-user" className="mb-2 block text-sm font-semibold" style={{ color: 'var(--ink-soft)' }}>نطاق الفريق</label><select id="trend-user" className="input-field" value={selectedUserId} onChange={event => setSelectedUserId(event.target.value)}><option value="">نطاقي بالكامل</option>{selectableUsers.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}</select></div>
     </div>
     {user && <PerformanceTrend userId={user.id} branchId={currentBranchId} selectedUserId={selectedUserId} />}
