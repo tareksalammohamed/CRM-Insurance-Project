@@ -14,6 +14,7 @@ vi.mock('../src/pages/Reports/services/reportsService', () => ({
   fetchUserSubtreeIds: async () => ['u'], fetchCustomerRequestsReport: mocks.customers,
   fetchUsersInSubtree: async () => [], fetchPoliciesForOwners: async () => [], fetchPaymentsInRange: async () => [], fetchAllInstallmentsWithPolicy: async () => [], fetchAgentsForReport: async () => [], fetchSimplePaymentsInRange: async () => [], fetchUsersByRole: async () => [], fetchLeadersPerformance: async () => [], fetchInstallmentsDueInRange: async () => [], fetchSupervisoryPerformanceUsers: async () => [],
 }));
+vi.mock('../src/pages/Reports/components/PerformanceTrend', () => ({ PerformanceTrend: () => <div>اتجاه الأداء خلال آخر 6 شهور</div> }));
 import { Reports } from '../src/pages/Reports';
 const deferred = () => { let resolve!: (rows: unknown[]) => void; const promise = new Promise<unknown[]>(done => { resolve = done; }); return { promise, resolve }; };
 const customer = (name: string) => ({ id: name, name, created_at: '2026-01-01', policies: [], insurance_amount: 500, owner: { name: 'Agent' } });
@@ -23,6 +24,7 @@ it('ignores the previous month response and disables print until the selected re
   const old = deferred(); const next = deferred();
   mocks.customers.mockReturnValue(old.promise);
   const view = render(<Reports />);
+  fireEvent.change(screen.getByLabelText('المؤشر أو التقرير'), { target: { value: 'customers' } });
   await waitFor(() => expect(mocks.customers).toHaveBeenCalled());
   expect((screen.getByTitle('طباعة التقرير') as HTMLButtonElement).disabled).toBe(true);
   mocks.customers.mockReturnValue(next.promise);
@@ -37,10 +39,23 @@ it('ignores the previous month response and disables print until the selected re
 it('shows retry and blocks export after a failed report read, then recovers', async () => {
   mocks.customers.mockRejectedValue(new Error('partial page failure'));
   render(<Reports />);
+  fireEvent.change(screen.getByLabelText('المؤشر أو التقرير'), { target: { value: 'customers' } });
   await screen.findByText('تعذر تحميل التقرير كاملًا؛ أعد المحاولة.');
   expect((screen.getByTitle('طباعة التقرير') as HTMLButtonElement).disabled).toBe(true);
   mocks.customers.mockResolvedValue([customer('RECOVERED')]);
   fireEvent.click(screen.getByRole('button', { name: 'إعادة المحاولة' }));
   await screen.findByText('RECOVERED');
   expect((screen.getByTitle('طباعة التقرير') as HTMLButtonElement).disabled).toBe(false);
+});
+
+it('opens on the six-month trend without fetching the customer report and allows direct report navigation', async () => {
+  mocks.customers.mockResolvedValue([customer('SELECTED')]);
+  render(<Reports />);
+  await screen.findByText('اتجاه الأداء خلال آخر 6 شهور');
+  expect((screen.getByLabelText('المؤشر أو التقرير') as HTMLSelectElement).value).toBe('trend');
+  expect(mocks.customers).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText('المؤشر أو التقرير'), { target: { value: 'customers' } });
+  await screen.findByText('SELECTED');
+  fireEvent.click(screen.getByRole('button', { name: 'اتجاه الأداء · 6 شهور' }));
+  expect(screen.getByText('اتجاه الأداء خلال آخر 6 شهور')).toBeTruthy();
 });
