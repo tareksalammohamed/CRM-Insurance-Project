@@ -56,7 +56,7 @@ export function Reports() {
   const { user } = useAuth();
   const { currentBranchId } = useBranchContext();
   const navigate = useNavigate();
-  const [reportType, setReportType] = useState<ReportType>('customers');
+  const [reportType, setReportType] = useState<ReportType>('trend');
   const [customerRequestFilter, setCustomerRequestFilter] = useState<CustomerRequestFilter>('all');
   const [dateRange, setDateRange] = useState<DateRange>('month');
   const currentYear = new Date().getFullYear();
@@ -368,8 +368,17 @@ export function Reports() {
 
   if (reportType === 'trend') return <div className="workspace-page space-y-5">
     <PageHeader title="اتجاه الأداء" subtitle="تطور الإنتاج والتحصيل عبر الشهور ضمن صلاحياتك والفرع المختار" />
-    <button type="button" className="btn btn-secondary" onClick={() => setReportType('customers')}>العودة إلى التقارير</button>
-    <div><label htmlFor="trend-user" className="input-label">نطاق الفريق</label><select id="trend-user" className="input-field" value={selectedUserId} onChange={event => setSelectedUserId(event.target.value)}><option value="">نطاقي بالكامل</option>{selectableUsers.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}</select></div>
+    <div className="card grid gap-4 sm:grid-cols-2 print:hidden">
+      <div className="min-w-0">
+        <label htmlFor="indicator-report" className="mb-2 block text-sm font-semibold" style={{ color: 'var(--ink-soft)' }}>المؤشر أو التقرير</label>
+        <select id="indicator-report" className="input-field" value={reportType} onChange={event => setReportType(event.target.value as ReportType)}>
+          <optgroup label="التقارير">{mainReportButtons.map(report => <option key={report.id} value={report.id}>{report.label}</option>)}</optgroup>
+          <optgroup label="تقارير الأداء">{performanceReportButtons.map(report => <option key={report.id} value={report.id}>{report.label}</option>)}</optgroup>
+          <optgroup label="الإلغاءات">{cancellationsReportButtons.map(report => <option key={report.id} value={report.id}>{report.label}</option>)}</optgroup>
+        </select>
+      </div>
+      <div className="min-w-0"><label htmlFor="trend-user" className="mb-2 block text-sm font-semibold" style={{ color: 'var(--ink-soft)' }}>نطاق الفريق</label><select id="trend-user" className="input-field" value={selectedUserId} onChange={event => setSelectedUserId(event.target.value)}><option value="">نطاقي بالكامل</option>{selectableUsers.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}</select></div>
+    </div>
     {user && <PerformanceTrend userId={user.id} branchId={currentBranchId} selectedUserId={selectedUserId} />}
   </div>;
 
