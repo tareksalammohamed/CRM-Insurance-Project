@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { PromiseDialog } from '../../../../features/customerFollowup/FollowupPanel';
 import { CalendarClock, Hash, UserRound, CalendarDays, CheckCircle2, AlertTriangle, Clock3, History, ListChecks, CheckCircle } from 'lucide-react';
@@ -56,14 +57,14 @@ function Year2CollectionCardImpl({ policy, formatCurrency, onHistory, onAddPayme
         </span>
 
         <div className="col-row-ident">
-          <span className="col-row-name" title={customerName}>
+          <Link to={`/customers?open=${encodeURIComponent(policy.customer_id)}`} className="col-row-name hover:underline" title={customerName} aria-label={`فتح ملف العميل ${customerName}`}>
             {customerName}
-          </span>
+          </Link>
           <div className="col-row-sub">
-            <span className="col-row-policy" dir="ltr">
+            <Link to={`/policies/${policy.id}`} className="col-row-policy hover:underline" dir="ltr" aria-label={`تفاصيل الوثيقة ${policy.policy_number}`}>
               <Hash aria-hidden="true" />
               <span>{policy.policy_number}</span>
-            </span>
+            </Link>
             <span className="col-kpi-chip">{yearBadgeLabel(policy.policy_year_number)}</span>
           </div>
         </div>

@@ -96,7 +96,7 @@ export function CustomerDetailsDialog({
               </div>
             )}
 
-            <CustomerReview policySummaries={policySummaries} customer={customer} onEdit={() => onEdit(customer)} onOpenPolicy={onOpenPolicyDetails} />
+            <CustomerReview policySummaries={policySummaries} customer={customer} onEdit={() => onEdit(customer)} onOpenPolicy={onOpenPolicyDetails} onNavigate={onClose} />
 
             {/* ===== بيانات إضافية (اختيارية) — نفس البيانات محفوظة وقابلة للتعديل، فقط غير معروضة افتراضياً ===== */}
             <div className="surface-sunken !p-0">

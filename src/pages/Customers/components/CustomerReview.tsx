@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import type { PolicyInstallmentSummary } from '../../../features/installments/installmentsService';
 import { EXPIRY_REASONS, type ExpiryReason } from '../../../features/customerFollowup/model';
 import { customerRequestStatus } from '../../../lib/customerRequestStatus';
@@ -5,10 +6,11 @@ import { ClipboardCheck, AlertTriangle, ArrowLeft, FileWarning } from 'lucide-re
 import { customerInputHints } from '../../../lib/inputGuidance';
 import type { CustomerPolicySummary, CustomerWithRelations } from '../types';
 
-export function CustomerReview({ customer, onEdit, onOpenPolicy, policySummaries = {} }: {
+export function CustomerReview({ customer, onEdit, onOpenPolicy, onNavigate, policySummaries = {} }: {
   customer: CustomerWithRelations;
   policySummaries?: Record<string, PolicyInstallmentSummary>;
   onEdit: () => void;
+  onNavigate: () => void;
   onOpenPolicy: (policy: CustomerPolicySummary, filter?: 'all' | 'paid' | 'pending' | 'overdue') => void;
 }) {
   const expired = customerRequestStatus(customer) === 'expired';
@@ -27,7 +29,7 @@ export function CustomerReview({ customer, onEdit, onOpenPolicy, policySummaries
     </div>
     {count > 0 && <details className="customer-review-details"><summary>عرض الملاحظات وأسبابها</summary>
       <ul>{hints.map(hint => <li key={hint}><AlertTriangle aria-hidden="true" /><p>{hint}</p></li>)}
-        {missingAmounts.map(policy => <li key={policy.id}><FileWarning aria-hidden="true" /><div><p>الوثيقة <bdi>{policy.policy_number}</bdi>: مبلغ التأمين غير مسجل أو يساوي صفرًا؛ راجعه لأن احتساب العمولة يعتمد عليه.</p><button type="button" className="customer-review-link" onClick={() => onOpenPolicy(policy)}>مراجعة هذه الوثيقة</button></div></li>)}
+        {missingAmounts.map(policy => <li key={policy.id}><FileWarning aria-hidden="true" /><div><p>الوثيقة <bdi>{policy.policy_number}</bdi>: مبلغ التأمين غير مسجل أو يساوي صفرًا؛ راجعه لأن احتساب العمولة يعتمد عليه.</p><Link className="customer-review-link" to={`/policies/${policy.id}`} onClick={onNavigate}>مراجعة هذه الوثيقة</Link></div></li>)}
         {overduePolicies.map(policy => <li key={`overdue-${policy.id}`}><AlertTriangle aria-hidden="true" /><div><p>الوثيقة <bdi>{policy.policy_number}</bdi> بها {policySummaries[policy.id].overdue} قسط متأخر حسب ملخص الأقساط المحمّل؛ راجع تفاصيلها لتحديد المتابعة المناسبة.</p><button type="button" className="customer-review-link" onClick={() => onOpenPolicy(policy, 'overdue')}>فتح الوثيقة والأقساط</button></div></li>)}
       </ul>
       <p className="customer-review-footnote">ملاحظات للمراجعة وفق البيانات المسجلة؛ لا تمنع الحفظ ولا تعدّل البيانات تلقائيًا.</p>

@@ -85,7 +85,7 @@ export function usePolicyActions({
       } finally {
         const next = new URLSearchParams(searchParams);
         next.delete('edit');
-        setSearchParams(next);
+        setSearchParams(next, { replace: true });
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -130,7 +130,7 @@ export function usePolicyActions({
       } finally {
         const next = new URLSearchParams(searchParams);
         next.delete('new_for_customer');
-        setSearchParams(next);
+        setSearchParams(next, { replace: true });
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps

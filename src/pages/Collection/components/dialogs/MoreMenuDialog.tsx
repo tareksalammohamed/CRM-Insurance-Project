@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { CalendarClock, User, Receipt, History as HistoryIcon, XCircle, CheckCircle } from 'lucide-react';
 import { AppBottomSheet, type ActionMenuAnchor } from '../../../../components/ui/AppBottomSheet';
 import type { InstallmentWithRelations } from '../../types';
@@ -5,8 +6,6 @@ import type { InstallmentWithRelations } from '../../types';
 interface MoreMenuDialogProps {
   installment: InstallmentWithRelations;
   onClose: () => void;
-  onShowCustomerDetails: () => void;
-  onShowPolicyDetails: () => void;
   onOpenPolicyHistory: () => void;
   onOpenCancel: () => void;
   onOpenPayment: () => void;
@@ -18,8 +17,6 @@ interface MoreMenuDialogProps {
 export function MoreMenuDialog({
   installment,
   onClose,
-  onShowCustomerDetails,
-  onShowPolicyDetails,
   onOpenPolicyHistory,
   onOpenCancel,
   onOpenPayment,
@@ -38,14 +35,14 @@ export function MoreMenuDialog({
       anchor={anchor || undefined}
       estimatedHeight={300}
     >
-      <button onClick={onShowCustomerDetails} className="dropdown-item w-full">
+      <Link to={`/customers?open=${encodeURIComponent(installment.policy.customer_id)}`} onClick={onClose} className="dropdown-item w-full">
         <User className="w-4 h-4" />
-        <span>عرض بيانات العميل</span>
-      </button>
-      <button onClick={onShowPolicyDetails} className="dropdown-item w-full">
+        <span>فتح ملف العميل</span>
+      </Link>
+      <Link to={`/policies/${installment.policy_id}`} onClick={onClose} className="dropdown-item w-full">
         <Receipt className="w-4 h-4" />
-        <span>عرض بيانات الوثيقة</span>
-      </button>
+        <span>تفاصيل الوثيقة</span>
+      </Link>
       <button onClick={onOpenPolicyHistory} className="dropdown-item w-full">
         <HistoryIcon className="w-4 h-4" />
         <span>سجل أقساط السنة الأولى للوثيقة</span>

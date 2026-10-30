@@ -122,7 +122,7 @@ export function useCustomerActions({
     handleOpenModal();
     const next = new URLSearchParams(searchParams);
     next.delete('new');
-    setSearchParams(next);
+    setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, user]);
 
@@ -147,7 +147,7 @@ export function useCustomerActions({
 
     const next = new URLSearchParams(searchParams);
     next.delete('open');
-    setSearchParams(next);
+    setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, user]);
 

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { LoadNotice } from '../../../../components/feedback/LoadNotice';
 import { FirstYearSummary } from '../../../../features/installments/FirstYearSummary';
 import { useState } from 'react';
@@ -122,6 +123,7 @@ export function PolicyDetailsDialog({
             )}
           </div>
 
+          <div className="p-4 sm:p-6 border-t border-secondary-200"><Link to={`/policies/${openPolicySummary.id}`} onClick={onClose} className="btn btn-primary w-full">تفاصيل الوثيقة</Link></div>
           <div className="safe-area-bottom" />
     </AppDialog>
   );
