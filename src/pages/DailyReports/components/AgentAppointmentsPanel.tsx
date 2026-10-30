@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Loader2, Plus, Trash2, MapPin, Clock, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Loader2, Plus, Trash2, MapPin, Clock, CheckCircle2, ExternalLink, ChevronDown } from 'lucide-react';
 
 import { fetchAgentAppointments, createAppointment, deleteAppointment } from '../services/appointmentCheckinsService';
 import type { AgentAppointmentCheckin } from '../types';
@@ -72,10 +72,12 @@ export function AgentAppointmentsPanel({ agentId, dateStr, enteredBy, isOutdoor 
   }
 
   return (
-    <div className="space-y-2 border-t border-secondary-100 pt-3">
-      <div className="flex items-center gap-1.5 text-xs font-bold text-secondary-500 uppercase tracking-wide">
-        <MapPin className="w-3.5 h-3.5" /> مواعيد اليوم وتثبيت الموقع
-      </div>
+    <details className="daily-appointments-section space-y-2 border-t border-secondary-100 pt-2">
+      <summary className="flex min-h-11 cursor-pointer items-center gap-1.5 text-xs font-bold text-secondary-500">
+        <MapPin aria-hidden="true" className="w-3.5 h-3.5" />
+        <span className="min-w-0 flex-1">مواعيد اليوم وتثبيت الموقع</span>
+        <ChevronDown aria-hidden="true" className="daily-appointments-chevron h-4 w-4 shrink-0" />
+      </summary>
 
       {loading ? (
         <div className="text-sm text-secondary-400 flex items-center gap-1.5">
@@ -164,6 +166,6 @@ export function AgentAppointmentsPanel({ agentId, dateStr, enteredBy, isOutdoor 
           {error && <p className="text-sm text-error-600">{error}</p>}
         </>
       )}
-    </div>
+    </details>
   );
 }

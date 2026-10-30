@@ -28,7 +28,7 @@ export function StatsSummaryCard({ aggregate, title }: StatsSummaryCardProps) {
       {title && <h3 className="font-bold text-secondary-900">{title}</h3>}
 
       <section className="daily-activity-overview" aria-label="ملخص النشاط">
-        <div className="daily-activity-heading"><h4>النشاط خلال الفترة</h4><span>{a.entriesCount} يومًا مسجلًا</span></div>
+        <div className="daily-activity-heading"><h4>النشاط خلال الفترة</h4><span>{a.entriesCount} تقرير يومي مسجل</span></div>
         <div className="daily-activity-primary">
           {[
             { label: 'إجمالي المكالمات', value: a.callsActual, icon: Phone, tone: 'brand' },
@@ -41,13 +41,14 @@ export function StatsSummaryCard({ aggregate, title }: StatsSummaryCardProps) {
         </div>
         <dl className="daily-activity-secondary">
           <div><dt><UserPlus aria-hidden="true" />طلبات تأمين جديدة</dt><dd>{a.newClients}</dd></div>
-          <div><dt><MapPin aria-hidden="true" />أيام عمل ميداني</dt><dd>{a.outdoorDaysCount}</dd></div>
+          <div><dt><MapPin aria-hidden="true" />تقارير عمل ميداني</dt><dd>{a.outdoorDaysCount}</dd></div>
           <div><dt><BadgeCheck aria-hidden="true" />الالتزام بالمواعيد والزي</dt><dd>{punctualityPct !== null ? `${punctualityPct}%` : '—'}</dd></div>
         </dl>
       </section>
 
       <div className="card daily-quality-card">
         <p className="input-label mb-1.5">جودة المواعيد بعد المراجعة</p>
+        <p className="mb-2 text-xs text-secondary-500">عدد التقارير اليومية لكل تقييم</p>
         <div className="flex flex-wrap gap-2">
           {(Object.keys(APPOINTMENTS_QUALITY_LABELS) as (keyof typeof APPOINTMENTS_QUALITY_LABELS)[]).map((q) => (
             <span key={q} className="badge badge-secondary">

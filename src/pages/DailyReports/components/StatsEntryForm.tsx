@@ -1,4 +1,6 @@
-import { useEffect, useState, useCallback } from 'react';
+import { LoadNotice } from '../../../components/feedback/LoadNotice';
+import { useRequestGuard } from '../../../hooks/useRequestGuard';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { CheckCircle2, Loader2, AlertCircle, BadgeCheck, Phone, CalendarClock, UserPlus } from 'lucide-react';
 
@@ -72,6 +74,7 @@ function AgentAvatar({ agentId, agentName }: { agentId: string; agentName: strin
 export function StatsEntryForm() {
   const { user } = useAuth();
   const { currentBranchId } = useBranchContext();
+  const userId = user?.id;
 
   const [reportDate, setReportDate] = useState(() => new Date());
   const [rows, setRows] = useState<RowState[]>([]);
@@ -79,23 +82,33 @@ export function StatsEntryForm() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const dateStr = formatDateInput(reportDate);
+  const guard = useRequestGuard();
+  const loadGeneration = useRef(0);
+  const contextKey = JSON.stringify([user?.id, currentBranchId, dateStr]);
+  const contextRef = useRef(contextKey);
+  contextRef.current = contextKey;
+  const [loadedKey, setLoadedKey] = useState('');
+  const ready = loadedKey === contextKey && !loading && !loadError;
 
   const load = useCallback(async () => {
-    if (!user) return;
+    if (!userId) return;
+    const request = guard.start();
+    loadGeneration.current = request;
     setLoading(true);
     setLoadError(null);
     try {
-      const data = await fetchEntryFormRows(user.id, dateStr, currentBranchId);
+      const data = await fetchEntryFormRows(userId, dateStr, currentBranchId);
+      if (!guard.isCurrent(request)) return;
       setRows(data.map(toRowState));
+      setLoadedKey(contextKey);
     } catch {
-      setLoadError('تعذّر تحميل بيانات الفريق. حاول مرة أخرى.');
+      if (guard.isCurrent(request)) setLoadError('تعذّر تحميل بيانات الفريق. حاول مرة أخرى.');
     } finally {
-      setLoading(false);
+      if (guard.isCurrent(request)) setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, dateStr, currentBranchId]);
+  }, [userId, dateStr, currentBranchId, contextKey, guard]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); return () => guard.invalidate(); }, [load, guard]);
 
   function updateRow(agentId: string, patch: Partial<RowState>) {
     setRows((prev) => prev.map((r) => (r.agentId === agentId ? { ...r, ...patch, saved: false, error: null } : r)));
@@ -104,7 +117,9 @@ export function StatsEntryForm() {
   async function saveRow(agentId: string) {
     if (!user) return;
     const row = rows.find((r) => r.agentId === agentId);
-    if (!row) return;
+    if (!row || row.saving || !ready) return;
+    const request = loadGeneration.current;
+    const saveContext = contextKey;
 
     const error = validateRow(row);
     if (error) {
@@ -129,11 +144,12 @@ export function StatsEntryForm() {
         },
         user.id,
       );
+      if (!guard.isCurrent(request) || contextRef.current !== saveContext) return;
       setRows((prev) => prev.map((r) => (r.agentId === agentId
         ? { ...r, existing: saved, saving: false, saved: true, error: null }
         : r)));
     } catch {
-      updateRow(agentId, { saving: false, error: 'تعذّر الحفظ. حاول مرة أخرى.' });
+      if (guard.isCurrent(request) && contextRef.current === saveContext) updateRow(agentId, { saving: false, error: 'تعذّر الحفظ. حاول مرة أخرى.' });
     }
   }
 
@@ -143,9 +159,9 @@ export function StatsEntryForm() {
     <div className="daily-entry-form space-y-3">
       <div className="card">
         <div className="space-y-1 max-w-xs">
-          <label className="input-label">تاريخ التقرير</label>
+          <label htmlFor="daily-entry-date" className="input-label">تاريخ التقرير</label>
           <input
-            type="date"
+            type="date" id="daily-entry-date" disabled={ready && rows.some(row => row.saving)}
             className="input-field"
             value={dateStr}
             max={formatDateInput(new Date())}
@@ -155,26 +171,28 @@ export function StatsEntryForm() {
         </div>
       </div>
 
-      {loading && (
+      {ready && <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-secondary-500" role="status">
+        <span>تقارير محفوظة: <strong className="text-success-600">{rows.filter(row => row.saved).length}</strong> من {rows.length}</span>
+        <span>غير محفوظ: <strong>{rows.filter(row => !row.saved).length}</strong></span>
+      </p>}
+      <LoadNotice message={loadError} loading={loading} onRetry={() => void load()} />
+
+      {(loading || (!ready && !loadError)) && (
         <div className="card text-center py-8 text-secondary-400">
           <Loader2 className="w-5 h-5 animate-spin inline-block ms-2" /> جارِ التحميل...
         </div>
       )}
 
-      {!loading && loadError && (
-        <div className="card text-center py-8 text-error-600">{loadError}</div>
-      )}
-
-      {!loading && !loadError && rows.length === 0 && (
+      {ready && rows.length === 0 && (
         <div className="card text-center py-8 text-secondary-400">لا يوجد أفراد فى فريقك حالياً</div>
       )}
 
-      {!loading && !loadError && rows.map((row) => (
-        <div key={row.agentId} className="card daily-entry-card space-y-3">
+      {ready && rows.map((row) => (
+        <fieldset key={row.agentId} disabled={row.saving} aria-label={`تقرير ${row.agentName}`} className="card daily-entry-card min-w-0 space-y-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
               <AgentAvatar agentId={row.agentId} agentName={row.agentName} />
-              <h3 className="font-bold text-secondary-900 truncate">{row.agentName}</h3>
+              <h3 className="font-bold text-secondary-900 break-words">{row.agentName}</h3>
             </div>
             {row.saved && !row.saving && (
               <span className="badge badge-success flex items-center gap-1 shrink-0">
@@ -183,11 +201,12 @@ export function StatsEntryForm() {
             )}
           </div>
 
+          <div className="daily-entry-fields grid md:grid-cols-2 gap-3 items-start">
           {/* قسم الالتزام */}
           <div className="space-y-2">
             <SectionHeading icon={<BadgeCheck className="w-3.5 h-3.5" />} label="قسم الالتزام" />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="space-y-1">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1 col-span-2">
                 <label className="input-label">الالتزام بالمواعيد والزي الرسمي</label>
                 <select
                   className="input-field"
@@ -205,7 +224,7 @@ export function StatsEntryForm() {
           {/* قسم المكالمات */}
           <div className="space-y-2 border-t border-secondary-100 pt-3">
             <SectionHeading icon={<Phone className="w-3.5 h-3.5" />} label="قسم المكالمات" />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="input-label">عدد مكالمات فعلية</label>
                 <input
@@ -233,7 +252,7 @@ export function StatsEntryForm() {
           {/* قسم المواعيد (عدد المواعيد الفعلية ثم جودتها مباشرة، ومربع outdoor) */}
           <div className="space-y-2 border-t border-secondary-100 pt-3">
             <SectionHeading icon={<CalendarClock className="w-3.5 h-3.5" />} label="قسم المواعيد" />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="input-label">عدد المواعيد الفعلية</label>
                 <input
@@ -279,8 +298,8 @@ export function StatsEntryForm() {
           {/* عملاء جدد (طلبات تأمين) — بعد قسم المواعيد */}
           <div className="space-y-2 border-t border-secondary-100 pt-3">
             <SectionHeading icon={<UserPlus className="w-3.5 h-3.5" />} label="عملاء جدد" />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="space-y-1">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1 col-span-2">
                 <label className="input-label">عملاء جدد (طلبات تأمين)</label>
                 <input
                   type="number"
@@ -291,6 +310,8 @@ export function StatsEntryForm() {
                 />
               </div>
             </div>
+          </div>
+
           </div>
 
           <AgentAppointmentsPanel agentId={row.agentId} dateStr={dateStr} enteredBy={user.id} isOutdoor={row.isOutdoor} />
@@ -306,7 +327,7 @@ export function StatsEntryForm() {
               {row.saving ? <Loader2 className="w-4 h-4 animate-spin" /> : (row.existing ? 'تحديث' : 'حفظ')}
             </button>
           </div>
-        </div>
+        </fieldset>
       ))}
     </div>
   );

@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { LoadNotice } from '../../../components/feedback/LoadNotice';
+import { useDailyRead } from '../hooks/useDailyRead';
 import { Loader2, Clock, CheckCircle2, ExternalLink } from 'lucide-react';
 
 import { fetchAgentAppointments } from '../services/appointmentCheckinsService';
-import type { AgentAppointmentCheckin } from '../types';
 
 interface AgentAppointmentsReadOnlyProps {
   agentId: string;
@@ -19,19 +19,12 @@ function formatDateTime(iso: string): string {
  * — تُستخدم من المراقب/المراقب العام/مدير التطوير عند النزول لفرد بعينه فى
  * شجرة الإحصائيات المجمّعة (بدون صلاحية إضافة أو حذف، دي بس لرئيس المجموعة) */
 export function AgentAppointmentsReadOnly({ agentId, startDate, endDate }: AgentAppointmentsReadOnlyProps) {
-  const [appointments, setAppointments] = useState<AgentAppointmentCheckin[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    const dayStart = new Date(`${startDate}T00:00:00`).toISOString();
-    const dayEnd = new Date(`${endDate}T23:59:59.999`).toISOString();
-    fetchAgentAppointments(agentId, dayStart, dayEnd)
-      .then((data) => { if (!cancelled) setAppointments(data); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [agentId, startDate, endDate]);
+  const dayStart = new Date(`${startDate}T00:00:00`).toISOString();
+  const dayEnd = new Date(`${endDate}T23:59:59.999`).toISOString();
+  const { data: appointments = [], loading, loadError, reload } = useDailyRead(
+    JSON.stringify([agentId, dayStart, dayEnd]), () => fetchAgentAppointments(agentId, dayStart, dayEnd),
+    'تعذّر تحميل المواعيد. أعد المحاولة.');
+  if (loadError) return <LoadNotice message={loadError} onRetry={() => void reload()} />;
 
   if (loading) {
     return (

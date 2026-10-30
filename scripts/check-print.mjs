@@ -20,7 +20,7 @@ const server = await createServer({
     'import.meta.env.VITE_SUPABASE_URL': JSON.stringify('https://example.supabase.co'),
     'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify('print-fixture-only'),
   },
-  optimizeDeps: { entries: ['tests/browser/fixtures/closing.html'] },
+  optimizeDeps: { entries: ['tests/browser/fixtures/closing.html', 'tests/browser/fixtures/daily-reports.html'] },
   server: { host: '127.0.0.1', port: 0 },
 });
 let browser;
@@ -79,6 +79,36 @@ try {
       await page.close();
     }
   }
+  for (const width of [390, 1440]) {
+    for (const dark of [false, true]) {
+      const label = `daily ${width}px ${dark ? 'dark' : 'light'}`;
+      const page = await browser.newPage({ viewport: { width, height: 900 } });
+      const errors = [];
+      page.on('pageerror', error => errors.push(error.message));
+      await page.route('**/*', route => route.request().url().startsWith(origin) ? route.continue() : route.abort());
+      await page.goto(`${origin}/tests/browser/fixtures/daily-reports.html${dark ? '?dark' : ''}`);
+      await page.locator('.print-report').waitFor({ state: 'attached' });
+      await page.waitForFunction(() => document.getAnimations().every(animation => animation.playState === 'finished'));
+      assert.equal(await page.locator('.print-report').isVisible(), false, `${label}: print report leaked on screen`);
+      await page.emulateMedia({ media: 'print' });
+      const buffer = await page.pdf({ format: 'A4', preferCSSPageSize: true, printBackground: true });
+      const pdf = await getDocument({ data: new Uint8Array(buffer), useSystemFonts: true }).promise;
+      try {
+        assert.equal(pdf.numPages, 1, `${label}: short daily report must not append an empty page`);
+        const content = await (await pdf.getPage(1)).getTextContent();
+        const text = content.items.map(item => item.str ?? '').join('').replace(/[\s,]/g, '');
+        assert.ok(text.length > 80, `${label}: blank daily report`);
+        for (const number of ['1537', '1000', '500', '37']) assert.ok(text.includes(number), `${label}: missing total or agent value ${number}`);
+      } finally { await pdf.destroy(); }
+      await page.emulateMedia({ media: 'screen' });
+      assert.equal(await page.locator('.print-report').isVisible(), false, `${label}: report leaked after print`);
+      assert.equal(await page.locator('header').isVisible(), true, `${label}: screen header did not return`);
+      assert.deepEqual(errors, [], `${label}: browser errors`);
+      console.log(`PASS print regression: ${label}, 1 populated PDF page with complete totals`);
+      await page.close();
+    }
+  }
+
 } finally {
   await browser?.close();
   await server.close();

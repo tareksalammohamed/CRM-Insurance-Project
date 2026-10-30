@@ -1,0 +1,41 @@
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import type { EntryFormRow } from '../src/pages/DailyReports/types';
+const mocks = vi.hoisted(() => ({ fetch: vi.fn(), save: vi.fn(), branch: 'a', user: { id: 'leader' } }));
+vi.mock('../src/hooks/useAuth', () => ({ useAuth: () => ({ user: mocks.user }) }));
+vi.mock('../src/lib/branchContext', () => ({ useBranchContext: () => ({ currentBranchId: mocks.branch }) }));
+vi.mock('../src/pages/DailyReports/services/dailyStatsService', () => ({ fetchEntryFormRows: mocks.fetch, upsertAgentStat: mocks.save }));
+vi.mock('../src/pages/DailyReports/components/AgentAppointmentsPanel', () => ({ AgentAppointmentsPanel: () => null }));
+import { StatsEntryForm } from '../src/pages/DailyReports/components/StatsEntryForm';
+const row = (agentId = 'agent'): EntryFormRow => ({ agentId, agentName: agentId, existing: null, punctualityOk: true, callsActual: '4', callsToAppointments: '1', appointmentsActual: '0', appointmentsQuality: null, newClients: '2', isOutdoor: false });
+const deferred = () => { let resolve!: (data: object) => void; const promise = new Promise<object>(done => { resolve = done; }); return { promise, resolve }; };
+beforeEach(() => { vi.resetAllMocks(); mocks.branch = 'a'; mocks.fetch.mockResolvedValue([row()]); }); afterEach(cleanup);
+it('protects the current row and report date while saving the unchanged payload', async () => {
+  const saved = deferred(); mocks.save.mockReturnValue(saved.promise);
+  render(<StatsEntryForm />); await screen.findByText('agent');
+  const date = (screen.getByLabelText('تاريخ التقرير') as HTMLInputElement).value;
+  fireEvent.click(screen.getByRole('button', { name: 'حفظ' }));
+  expect(screen.getByRole('group', { name: 'تقرير agent' }).hasAttribute('disabled')).toBe(true);
+  expect((screen.getByLabelText('تاريخ التقرير') as HTMLInputElement).disabled).toBe(true);
+  expect(mocks.save).toHaveBeenCalledExactlyOnceWith({ agentId: 'agent', reportDate: date, punctualityOk: true, callsActual: 4, callsToAppointments: 1, appointmentsActual: 0, appointmentsQuality: null, newClients: 2, isOutdoor: false }, 'leader');
+  await act(async () => saved.resolve({ id: 'saved' }));
+  expect(screen.getByText('محفوظ')).toBeTruthy();
+  expect((screen.getByLabelText('تاريخ التقرير') as HTMLInputElement).disabled).toBe(false);
+});
+it('does not apply an old branch save acknowledgement to the new branch rows', async () => {
+  const saved = deferred(); mocks.save.mockReturnValue(saved.promise);
+  const view = render(<StatsEntryForm />); await screen.findByText('agent');
+  fireEvent.click(screen.getByRole('button', { name: 'حفظ' }));
+  mocks.branch = 'b'; mocks.fetch.mockResolvedValue([row('new-agent')]); view.rerender(<StatsEntryForm />);
+  await screen.findByText('new-agent');
+  await act(async () => saved.resolve({ id: 'old-branch-save' }));
+  expect(screen.queryByText('محفوظ')).toBeNull(); expect(screen.getByRole('button', { name: 'حفظ' })).toBeTruthy();
+  expect(mocks.fetch.mock.calls.at(-1)?.[2]).toBe('b');
+});
+it('recovers a failed team read through retry without fabricating an empty team', async () => {
+  mocks.fetch.mockRejectedValueOnce(new Error('unavailable')).mockResolvedValueOnce([row()]);
+  render(<StatsEntryForm />); await screen.findByText('تعذّر تحميل بيانات الفريق. حاول مرة أخرى.');
+  expect(screen.queryByText('لا يوجد أفراد فى فريقك حالياً')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'إعادة المحاولة' }));
+  await waitFor(() => expect(screen.getByText('agent')).toBeTruthy());
+});

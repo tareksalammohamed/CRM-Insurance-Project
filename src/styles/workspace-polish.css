@@ -398,3 +398,24 @@
   .payment-overview-summary strong { font-size: 18px; }
   .payment-overview-base strong { font-size: 12px; }
 }
+
+@media screen {
+  .daily-selected-detail, .daily-team-selector { scroll-margin-top: 90px; }
+  .daily-selected-detail:focus, .daily-team-selector:focus { outline: none; }
+  .daily-team-tree-list { scrollbar-gutter: stable; }
+  .daily-entry-card:disabled { opacity: .8; }
+}
+
+@media screen {
+  .daily-reports-page .input-label, .daily-reports-page .page-header-subtitle { color: var(--muted-ink) !important; }
+  .daily-team-tree .input-field[type="search"] { padding-inline-start: 2.5rem; padding-inline-end: 2.75rem; }
+  .daily-appointments-section > summary { list-style: none; }
+  .daily-appointments-section > summary::-webkit-details-marker { display: none; }
+  .daily-appointments-section[open] .daily-appointments-chevron { transform: rotate(180deg); }
+}
+/* A viewport-height minimum otherwise leaves a trailing empty landscape page. */
+@media print {
+  html:has(.daily-reports-page .print-report),
+  body:has(.daily-reports-page .print-report),
+  .app-shell:has(.daily-reports-page .print-report) { min-height: 0 !important; }
+}

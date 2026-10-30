@@ -1,5 +1,6 @@
+import { fetchAllRows } from '../../../lib/fetchAllRows';
 import { supabase, ROLE_LABELS, getRoleLevel, type UserRole } from '../../../lib/supabase';
-import { dalRead } from '../../../lib/dataAccessLayer';
+import { dalRead, readStatusMessage, type DalResult } from '../../../lib/dataAccessLayer';
 import { fetchBranchRoleMap } from '../../../lib/branchHierarchy';
 import type {
   DailyAgentStatRow,
@@ -9,6 +10,14 @@ import type {
   UpsertAgentStatInput,
 } from '../types';
 import { EMPTY_STATS_AGGREGATE } from '../types';
+
+/** A failed read without a cached snapshot is unavailable, not an empty report. */
+function dailyReadData<T>(result: DalResult<T>): T {
+  if (result.status === 'error' || result.status === 'offline-empty') {
+    throw new Error(readStatusMessage(result) ?? 'تعذّر تحميل التقارير اليومية.');
+  }
+  return result.data;
+}
 
 // ── تجميع الأرقام ───────────────────────────────────────────────────────
 
@@ -84,11 +93,11 @@ export async function fetchTeamAgentsForEntry(
       const teamIds: string[] = (subtreeIds || []).filter((id: string) => id !== groupLeaderId);
       if (teamIds.length === 0) return [];
 
-      const { data: usersData, error: usersError } = await supabase
+      const usersData = await fetchAllRows<LightUserRow>((from, to) => supabase
         .from('users')
-        .select('id, name, role, manager_id, is_active, deleted_at')
-        .in('id', teamIds);
-      if (usersError) throw usersError;
+        .select('id, name, role, manager_id, is_active, deleted_at', { count: 'exact' })
+        .in('id', teamIds)
+        .order('id', { ascending: true }).range(from, to));
 
       const branchRoles = await fetchBranchRoleMap(branchId, teamIds);
 
@@ -103,7 +112,7 @@ export async function fetchTeamAgentsForEntry(
     },
     { emptyValue: [] as { id: string; name: string }[] },
   );
-  return result.data;
+  return dailyReadData(result);
 }
 
 /** نموذج إدخال رئيس المجموعة ليوم معيّن: كل أفراد فريقه، مع القيم المحفوظة
@@ -119,18 +128,17 @@ export async function fetchEntryFormRows(
   const result = await dalRead(
     `dailyStats:entryForm:${groupLeaderId}:${reportDate}:${branchId ?? 'none'}`,
     async () => {
-      const { data, error } = await supabase
+      return fetchAllRows<DailyAgentStatRow>((from, to) => supabase
         .from('daily_agent_stats')
-        .select('*')
-        .in('agent_id', agents.map((a) => a.id))
-        .eq('report_date', reportDate);
-      if (error) throw error;
-      return (data || []) as DailyAgentStatRow[];
+        .select('*', { count: 'exact' })
+        .in('agent_id', agents.map(a => a.id))
+        .eq('report_date', reportDate)
+        .order('id', { ascending: true }).range(from, to));
     },
     { emptyValue: [] as DailyAgentStatRow[] },
   );
 
-  const existingMap = new Map(result.data.map((r) => [r.agent_id, r]));
+  const existingMap = new Map(dailyReadData(result).map((r) => [r.agent_id, r]));
 
   return agents.map((a): EntryFormRow => {
     const existing = existingMap.get(a.id) || null;
@@ -228,19 +236,19 @@ export async function fetchStatsTree(
       const teamIds: string[] = (subtreeIds || []).filter((id: string) => id !== userId);
       if (teamIds.length === 0) return [];
 
-      const { data: allUsersData, error: usersError } = await supabase
+      const allUsersData = await fetchAllRows<LightUserRow>((from, to) => supabase
         .from('users')
-        .select('id, name, role, manager_id, is_active, deleted_at')
-        .in('id', teamIds);
-      if (usersError) throw usersError;
+        .select('id, name, role, manager_id, is_active, deleted_at', { count: 'exact' })
+        .in('id', teamIds)
+        .order('id', { ascending: true }).range(from, to));
 
-      const { data: statsData, error: statsError } = await supabase
+      const statsData = await fetchAllRows<DailyAgentStatRow>((from, to) => supabase
         .from('daily_agent_stats')
-        .select('*')
+        .select('*', { count: 'exact' })
         .in('agent_id', teamIds)
         .gte('report_date', startDate)
-        .lte('report_date', endDate);
-      if (statsError) throw statsError;
+        .lte('report_date', endDate)
+        .order('report_date', { ascending: true }).order('id', { ascending: true }).range(from, to));
 
       const branchRoles = await fetchBranchRoleMap(branchId, teamIds);
       const allUsersMap = new Map<string, AnyUserRow>();
@@ -315,7 +323,7 @@ export async function fetchStatsTree(
     },
     { emptyValue: [] as StatsTreeNode[] },
   );
-  return result.data;
+  return dailyReadData(result);
 }
 
 /** إحصائيات الإيجنت الشخصية فقط، خلال فترة زمنية معيّنة (لعرضه هو لنفسه) */
@@ -327,17 +335,15 @@ export async function fetchAgentOwnEntries(
   const result = await dalRead(
     `dailyStats:own:${agentId}:${startDate}:${endDate}`,
     async () => {
-      const { data, error } = await supabase
+      return fetchAllRows<DailyAgentStatRow>((from, to) => supabase
         .from('daily_agent_stats')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('agent_id', agentId)
         .gte('report_date', startDate)
         .lte('report_date', endDate)
-        .order('report_date', { ascending: false });
-      if (error) throw error;
-      return (data || []) as DailyAgentStatRow[];
+        .order('report_date', { ascending: false }).order('id', { ascending: true }).range(from, to));
     },
     { emptyValue: [] as DailyAgentStatRow[] },
   );
-  return result.data;
+  return dailyReadData(result);
 }

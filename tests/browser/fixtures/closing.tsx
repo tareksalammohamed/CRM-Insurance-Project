@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import '../../../src/index.css';
+import '../../../src/styles/workspace-polish.css';
 import { PrintReport } from '../../../src/pages/MonthlyClosing/components/PrintReport';
 import type { PrintDetailRow, SupervisorAgg } from '../../../src/pages/MonthlyClosing/types';
 
