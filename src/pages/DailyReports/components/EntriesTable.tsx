@@ -46,7 +46,7 @@ export function EntriesTable({ entries }: EntriesTableProps) {
                     <span>{e.appointments_actual}</span>
                   </div>
                   <div className="stack-row-cell">
-                    <span>عملاء جدد</span>
+                    <span>طلبات تأمين جديدة</span>
                     <span>{e.new_clients}</span>
                   </div>
                   <div className="stack-row-cell">
@@ -74,8 +74,8 @@ export function EntriesTable({ entries }: EntriesTableProps) {
               <th scope="col">نتج عنها مواعيد</th>
               <th scope="col">مواعيد فعلية</th>
               <th scope="col">جودة المواعيد</th>
-              <th scope="col">عملاء جدد</th>
-              <th scope="col">outdoor</th>
+              <th scope="col">طلبات تأمين جديدة</th>
+              <th scope="col">عمل ميداني</th>
             </tr>
           </thead>
           <tbody>

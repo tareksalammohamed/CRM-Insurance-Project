@@ -28,7 +28,7 @@ export function DailyReports() {
   // مواعيده ويثبت موقعه عليها — لا يشترك فى نظام إحصائيات daily_agent_stats
   if (user.role === 'premium_agent') {
     return (
-      <div className="daily-reports-page space-y-3 md:space-y-4">
+      <div className="workspace-page daily-reports-page space-y-3 md:space-y-4">
         <PageHeader title="مواعيدي" subtitle="سجّل مواعيدك، وثبّت موقعك عند وصولك لكل معاد" />
         <AgentAppointmentsView agentId={user.id} role="premium_agent" />
       </div>
@@ -40,11 +40,12 @@ export function DailyReports() {
   // دخّلها رئيس مجموعته صباحاً، مع تثبيت موقعه بنفسه عند وصوله لكل معاد
   if (user.role === 'agent') {
     return (
-      <div className="daily-reports-page space-y-3 md:space-y-4">
+      <div className="workspace-page daily-reports-page space-y-3 md:space-y-4">
         <PageHeader title="تقاريري اليومية" subtitle="مواعيدك المسجّلة وتثبيت موقعك عليها، وإحصائياتك المسجّلة من رئيس مجموعتك" />
 
         <div className="daily-report-tabs surface-tabs">
           <button
+            type="button" aria-pressed={agentTab === 'appointments'}
             onClick={() => setAgentTab('appointments')}
             className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
               agentTab === 'appointments'
@@ -55,6 +56,7 @@ export function DailyReports() {
             <MapPin className="w-4 h-4" /> مواعيدي
           </button>
           <button
+            type="button" aria-pressed={agentTab === 'stats'}
             onClick={() => setAgentTab('stats')}
             className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
               agentTab === 'stats'
@@ -79,13 +81,14 @@ export function DailyReports() {
   // لأي فرد بعينه)
   if (canEnterDailyAgentStats(user.role)) {
     return (
-      <div className="daily-reports-page space-y-3 md:space-y-4">
+      <div className="workspace-page daily-reports-page space-y-3 md:space-y-4">
         <div className="print:hidden">
           <PageHeader title="تقارير العمل اليومية" subtitle="إدخال إحصائيات فريقك بعد استلام التقرير الورقي، ومتابعة إحصائياتهم المجمّعة" />
         </div>
 
         <div className="daily-report-tabs surface-tabs print:hidden">
           <button
+            type="button" aria-pressed={groupLeaderTab === 'entry'}
             onClick={() => setGroupLeaderTab('entry')}
             className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
               groupLeaderTab === 'entry'
@@ -96,6 +99,7 @@ export function DailyReports() {
             <ClipboardList className="w-4 h-4" /> إدخال التقرير
           </button>
           <button
+            type="button" aria-pressed={groupLeaderTab === 'team'}
             onClick={() => setGroupLeaderTab('team')}
             className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
               groupLeaderTab === 'team'
@@ -119,7 +123,7 @@ export function DailyReports() {
   // المراقب / المراقب العام / مدير التطوير / مدير النظام: إحصائيات مجمّعة
   // لكامل نطاقهم الإداري، مع إمكانية النزول لأي مجموعة أو فرد بعينه
   return (
-    <div className="daily-reports-page space-y-3 md:space-y-4">
+    <div className="workspace-page daily-reports-page space-y-3 md:space-y-4">
       <div className="print:hidden">
         <PageHeader title="تقارير العمل اليومية" subtitle="إحصائيات فرقك المجمّعة، مع إمكانية النزول لأي مجموعة أو فرد بعينه" />
       </div>

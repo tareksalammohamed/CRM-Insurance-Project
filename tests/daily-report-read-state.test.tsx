@@ -1,0 +1,55 @@
+vi.hoisted(() => { vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co'); vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'test'); });
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { EMPTY_STATS_AGGREGATE, type StatsTreeNode } from '../src/pages/DailyReports/types';
+const mocks = vi.hoisted(() => ({ tree: vi.fn(), own: vi.fn(), print: vi.fn() }));
+vi.mock('../src/pages/DailyReports/services/dailyStatsService', async importOriginal => ({ ...await importOriginal<object>(), fetchStatsTree: mocks.tree, fetchAgentOwnEntries: mocks.own }));
+vi.mock('../src/lib/branchContext', () => ({ useBranchContext: () => ({ branches: [{ branchId: 'a', branchName: 'طنطا' }] }) }));
+vi.mock('../src/hooks/useReconnectRefetch', () => ({ useReconnectRefetch: vi.fn() }));
+vi.mock('../src/lib/printWithTitle', () => ({ printWithTitle: mocks.print }));
+vi.mock('../src/pages/DailyReports/components/NodeDetailPanel', () => ({ NodeDetailPanel: ({ node }: { node: StatsTreeNode }) => <p>تفاصيل {node.name}</p> }));
+vi.mock('../src/pages/DailyReports/components/PrintTeamStats', () => ({ flattenStatsTree: (nodes: StatsTreeNode[]) => nodes, PrintTeamStats: ({ rows }: { rows: StatsTreeNode[] }) => <div data-testid="print-data">{rows.map(row => row.name).join(',')}</div> }));
+import { TeamStatsView } from '../src/pages/DailyReports/components/TeamStatsView';
+import { AgentOwnStatsView } from '../src/pages/DailyReports/components/AgentOwnStatsView';
+const props = { userId: 'u', viewerName: 'طارق', viewerRoleLabel: 'مراقب', roleLevel: 3, branchId: 'a' };
+const node = (name: string): StatsTreeNode => ({ userId: name, name, role: 'agent', roleLabel: 'وكيل', roleLevel: 1, own: { ...EMPTY_STATS_AGGREGATE }, subtree: { ...EMPTY_STATS_AGGREGATE }, ownEntries: [], children: [] });
+const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; };
+beforeEach(() => { vi.resetAllMocks(); }); afterEach(cleanup);
+it('never publishes an old branch response under a new scope or enables its print action', async () => {
+  const old = deferred<StatsTreeNode[]>(); const next = deferred<StatsTreeNode[]>();
+  mocks.tree.mockReturnValueOnce(old.promise).mockReturnValueOnce(next.promise);
+  const view = render(<TeamStatsView {...props} />);
+  await waitFor(() => expect(mocks.tree).toHaveBeenCalledTimes(1));
+  view.rerender(<TeamStatsView {...props} branchId="b" />);
+  await waitFor(() => expect(mocks.tree).toHaveBeenCalledTimes(2));
+  await act(async () => old.resolve([node('OLD')]));
+  expect(screen.queryByText('OLD')).toBeNull(); expect((screen.getByRole('button', { name: 'طباعة التقرير' }) as HTMLButtonElement).disabled).toBe(true);
+  await act(async () => next.resolve([node('CURRENT')]));
+  await screen.findByRole('button', { name: /^CURRENT/ });
+  expect(screen.getByTestId('print-data').textContent).toBe('CURRENT');
+  expect((screen.getByRole('button', { name: 'طباعة التقرير' }) as HTMLButtonElement).disabled).toBe(false);
+});
+it('shows retry instead of an empty report after failure and recovers without changing the requested scope', async () => {
+  mocks.tree.mockRejectedValueOnce(new Error('unavailable')).mockResolvedValueOnce([node('RECOVERED')]);
+  render(<TeamStatsView {...props} />);
+  await screen.findByText('تعذّر تحميل إحصائيات الفريق. أعد المحاولة.');
+  expect(screen.queryByTestId('print-data')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'إعادة المحاولة' }));
+  await screen.findByRole('button', { name: /^RECOVERED/ }); expect(mocks.tree.mock.calls[0]).toEqual(mocks.tree.mock.calls[1]);
+});
+it('prevents a queued print from printing a different period', async () => {
+  mocks.tree.mockResolvedValue([node('REPORT')]);
+  render(<TeamStatsView {...props} />); await screen.findByRole('button', { name: /^REPORT/ });
+  fireEvent.click(screen.getByRole('button', { name: 'طباعة التقرير' }));
+  fireEvent.change(screen.getByLabelText('من'), { target: { value: '2025-01-01' } });
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 80)); });
+  expect(mocks.print).not.toHaveBeenCalled();
+});
+it('provides recovery on the agent personal statistics view too', async () => {
+  mocks.own.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce([]);
+  render(<AgentOwnStatsView agentId="a" roleLevel={1} />);
+  await screen.findByText('تعذّر تحميل إحصائياتك. أعد المحاولة.');
+  expect(screen.queryByText('لا توجد إحصائيات مسجّلة لهذه الفترة')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'إعادة المحاولة' }));
+  await screen.findByText('لا توجد إحصائيات مسجّلة لهذه الفترة');
+});

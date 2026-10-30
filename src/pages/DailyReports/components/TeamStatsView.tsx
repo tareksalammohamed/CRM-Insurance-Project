@@ -1,4 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { LoadNotice } from '../../../components/feedback/LoadNotice';
+import { useReconnectRefetch } from '../../../hooks/useReconnectRefetch';
+import { useDailyRead } from '../hooks/useDailyRead';
+import { useRef, useState } from 'react';
 import { Loader2, Printer } from 'lucide-react';
 
 import { useBranchContext } from '../../../lib/branchContext';
@@ -37,24 +40,28 @@ export function TeamStatsView({ userId, viewerName, viewerRoleLabel, roleLevel, 
   const { branches } = useBranchContext();
   const [periodType, setPeriodType] = useState<StatsPeriodType>(() => defaultPeriodTypeForRole(roleLevel));
   const [range, setRange] = useState(() => defaultRangeForPeriodType(defaultPeriodTypeForRole(roleLevel)));
-  const [tree, setTree] = useState<StatsTreeNode[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const detailRef = useRef<HTMLDivElement>(null);
+  const treeRef = useRef<HTMLDivElement>(null);
 
   const startStr = formatDateInput(range.start);
   const endStr = formatDateInput(range.end);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await fetchStatsTree(userId, startStr, endStr, branchId);
-      setTree(data);
-    } finally {
-      setLoading(false);
-    }
-  }, [userId, startStr, endStr, branchId]);
+  const read = useDailyRead(JSON.stringify([userId, branchId, startStr, endStr]),
+    () => fetchStatsTree(userId, startStr, endStr, branchId), 'تعذّر تحميل إحصائيات الفريق. أعد المحاولة.');
+  const { loading, loadError, ready, reload } = read;
+  const tree = read.data ?? [];
+  useReconnectRefetch(reload);
 
-  useEffect(() => { void load(); }, [load]);
+  function selectNode(node: StatsTreeNode) {
+    setSelectedId(node.userId);
+    if (window.matchMedia('(max-width: 1023px)').matches) {
+      requestAnimationFrame(() => {
+        detailRef.current?.focus({ preventScroll: true });
+        detailRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
+      });
+    }
+  }
 
   function handlePeriodTypeChange(type: StatsPeriodType) {
     setPeriodType(type);
@@ -67,7 +74,9 @@ export function TeamStatsView({ userId, viewerName, viewerRoleLabel, roleLevel, 
   const periodLabel = periodRangeLabel(periodType, range.start, range.end);
 
   function handlePrint() {
-    setTimeout(() => printWithTitle(`تقرير-إحصائيات-يومية-${formatDateInput(range.start)}-${formatDateInput(range.end)}`), 50);
+    if (!ready || tree.length === 0) return;
+    const isCurrent = read.capture();
+    setTimeout(() => { if (isCurrent()) printWithTitle(`تقرير-إحصائيات-يومية-${startStr}-${endStr}`); }, 50);
   }
 
   return (
@@ -80,26 +89,40 @@ export function TeamStatsView({ userId, viewerName, viewerRoleLabel, roleLevel, 
           end={range.end}
           onRangeChange={(start, end) => setRange({ start, end })}
         />
-        <button onClick={handlePrint} disabled={loading || tree.length === 0} className="btn btn-outline btn-sm print:hidden shrink-0">
+        <button onClick={handlePrint} disabled={!ready || tree.length === 0} className="btn btn-outline btn-sm print:hidden shrink-0">
           <Printer className="w-4 h-4" /> طباعة التقرير
         </button>
       </div>
 
       <p className="text-xs text-secondary-500 print:hidden">{periodLabel}</p>
 
+      <div className="print:hidden"><LoadNotice message={loadError} loading={loading} onRetry={() => void reload()} /></div>
+
       {loading ? (
         <div className="card text-center py-8 text-secondary-400 print:hidden">
           <Loader2 className="w-5 h-5 animate-spin inline-block ms-2" /> جارِ التحميل...
         </div>
-      ) : (
+      ) : ready ? (
         <>
           <div className="print:hidden space-y-4">
             <StatsSummaryCard aggregate={overallAggregate} title="الإجمالي الكلي" />
 
             <div className="grid lg:grid-cols-2 gap-4 items-start">
-              <StatsTreeView nodes={tree} selectedId={selectedId} onSelect={(n) => setSelectedId(n.userId)} />
+              <div ref={treeRef} tabIndex={-1} className="daily-team-selector min-w-0" aria-label="اختيار فرد أو فريق">
+                <StatsTreeView nodes={tree} selectedId={selectedId} onSelect={selectNode} />
+              </div>
               {selectedNode ? (
-                <NodeDetailPanel node={selectedNode} startDate={startStr} endDate={endStr} />
+                <div ref={detailRef} tabIndex={-1} className="daily-selected-detail min-w-0 space-y-3" aria-label={`تفاصيل ${selectedNode.name}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-sm font-bold text-secondary-900">{selectedNode.name} <span className="text-xs font-normal text-secondary-500">· {selectedNode.roleLabel}</span></h3>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => {
+                      setSelectedId(null);
+                      treeRef.current?.focus({ preventScroll: true });
+                      if (window.matchMedia('(max-width: 1023px)').matches) treeRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
+                    }}>إغلاق التفاصيل</button>
+                  </div>
+                  <NodeDetailPanel node={selectedNode} startDate={startStr} endDate={endStr} />
+                </div>
               ) : (
                 <div className="card text-center py-8 text-secondary-400">
                   اختر فرداً أو مجموعة من القائمة لعرض تفاصيلها
@@ -117,7 +140,7 @@ export function TeamStatsView({ userId, viewerName, viewerRoleLabel, roleLevel, 
             rows={flattenStatsTree(tree)}
           />
         </>
-      )}
+      ) : null}
     </div>
   );
 }
