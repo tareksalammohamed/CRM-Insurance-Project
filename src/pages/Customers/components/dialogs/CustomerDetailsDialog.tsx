@@ -1,4 +1,5 @@
 import { useId, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { FollowupPanel } from '../../../../features/customerFollowup/FollowupPanel';
 import { CopyValueButton } from '../../../../components/ui/CopyValueButton';
 import { CustomerReview } from '../CustomerReview';
@@ -267,13 +268,14 @@ export function CustomerDetailsDialog({
                           </div>
                         )}
 
-                        <button
-                          onClick={() => onOpenPolicyDetails(policy)}
+                        <Link
+                          to={`/policies/${policy.id}`}
+                          onClick={onClose}
                           className="btn btn-secondary btn-sm w-full mt-2.5"
                         >
                           <CreditCard className="w-3.5 h-3.5" />
                           <span>عرض التفاصيل</span>
-                        </button>
+                        </Link>
                       </div>
                     );
                   })}

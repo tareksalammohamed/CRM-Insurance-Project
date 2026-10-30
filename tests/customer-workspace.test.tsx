@@ -3,6 +3,7 @@ vi.mock('../src/lib/branchContext', () => ({ useBranchContext: () => ({ currentB
 vi.hoisted(() => { vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co'); vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'test-only-key'); });
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { CustomerDetailsDialog } from '../src/pages/Customers/components/dialogs/CustomerDetailsDialog';
 import { PolicyDetailsDialog } from '../src/pages/Customers/components/dialogs/PolicyDetailsDialog';
 import { customerInputHints } from '../src/lib/inputGuidance';
@@ -12,7 +13,7 @@ const policy: CustomerPolicySummary = { id: 'policy-a', policy_number: '100001',
 afterEach(cleanup);
 it('opens installments for the selected policy and exact status instead of a general collection page', () => {
   const open = vi.fn();
-  render(<CustomerDetailsDialog customer={{ id: 'customer-a', name: 'عميل', phone: '', policies: [policy] } as CustomerWithRelations} showExtraInfo={false} onToggleExtraInfo={vi.fn()} policySummaries={{ 'policy-a': { paid: 2, pending: 3, overdue: 1 } }} onClose={vi.fn()} onEdit={vi.fn()} onPrint={vi.fn()} onIssueNewPolicy={vi.fn()} onOpenPolicyDetails={open} />);
+  render(<MemoryRouter><CustomerDetailsDialog customer={{ id: 'customer-a', name: 'عميل', phone: '', policies: [policy] } as CustomerWithRelations} showExtraInfo={false} onToggleExtraInfo={vi.fn()} policySummaries={{ 'policy-a': { paid: 2, pending: 3, overdue: 1 } }} onClose={vi.fn()} onEdit={vi.fn()} onPrint={vi.fn()} onIssueNewPolicy={vi.fn()} onOpenPolicyDetails={open} /></MemoryRouter>);
   fireEvent.click(screen.getByRole('button', { name: 'الوثائق والأقساط (1)' }));
   fireEvent.click(screen.getByRole('button', { name: 'عرض أقساط السنة الأولى المتأخرة (1)' }));
   expect(open).toHaveBeenCalledWith(policy, 'overdue');
@@ -35,7 +36,7 @@ it('keeps policy details scoped while allowing the user to clear the status filt
   expect(screen.getAllByRole('button', { name: 'إلغاء سداد القسط رقم 1' }).length).toBeGreaterThan(0);
 });
 it('organizes customer information separately from policy rendering', () => {
-  render(<CustomerDetailsDialog customer={{ id: 'customer-a', name: 'عميل', phone: '01012345678', policies: [policy] } as CustomerWithRelations} showExtraInfo={false} onToggleExtraInfo={vi.fn()} policySummaries={{}} onClose={vi.fn()} onEdit={vi.fn()} onPrint={vi.fn()} onIssueNewPolicy={vi.fn()} onOpenPolicyDetails={vi.fn()} />);
+  render(<MemoryRouter><CustomerDetailsDialog customer={{ id: 'customer-a', name: 'عميل', phone: '01012345678', policies: [policy] } as CustomerWithRelations} showExtraInfo={false} onToggleExtraInfo={vi.fn()} policySummaries={{}} onClose={vi.fn()} onEdit={vi.fn()} onPrint={vi.fn()} onIssueNewPolicy={vi.fn()} onOpenPolicyDetails={vi.fn()} /></MemoryRouter>);
   expect(screen.getByRole('button', { name: 'البيانات والمراجعة' }).getAttribute('aria-pressed')).toBe('true');
   expect(screen.queryByText('100001')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'الوثائق والأقساط (1)' }));
@@ -44,8 +45,35 @@ it('organizes customer information separately from policy rendering', () => {
 });
 it('explains overdue attention from the loaded summary and opens the exact policy filter', () => {
   const open = vi.fn();
-  render(<CustomerDetailsDialog customer={{ id: 'customer-a', name: 'عميل', phone: '01012345678', policies: [policy] } as CustomerWithRelations} showExtraInfo={false} onToggleExtraInfo={vi.fn()} policySummaries={{ 'policy-a': { paid: 1, pending: 2, overdue: 3 } }} onClose={vi.fn()} onEdit={vi.fn()} onPrint={vi.fn()} onIssueNewPolicy={vi.fn()} onOpenPolicyDetails={open} />);
+  render(<MemoryRouter><CustomerDetailsDialog customer={{ id: 'customer-a', name: 'عميل', phone: '01012345678', policies: [policy] } as CustomerWithRelations} showExtraInfo={false} onToggleExtraInfo={vi.fn()} policySummaries={{ 'policy-a': { paid: 1, pending: 2, overdue: 3 } }} onClose={vi.fn()} onEdit={vi.fn()} onPrint={vi.fn()} onIssueNewPolicy={vi.fn()} onOpenPolicyDetails={open} /></MemoryRouter>);
   fireEvent.click(screen.getByText('عرض الملاحظات وأسبابها'));
   fireEvent.click(screen.getByText('فتح الوثيقة والأقساط'));
   expect(open).toHaveBeenCalledWith(policy, 'overdue');
+});
+
+function CurrentPath() {
+  const location = useLocation();
+  return <output aria-label="current route">{location.pathname}</output>;
+}
+
+it('opens the chosen customer document on the canonical policy page and closes the customer workspace', () => {
+  const close = vi.fn();
+  const openInstallments = vi.fn();
+  const anotherPolicy = { ...policy, id: 'policy-b', policy_number: '100002' };
+  render(<MemoryRouter initialEntries={['/customers?search=client']}>
+    <CustomerDetailsDialog
+      customer={{ id: 'customer-a', name: 'عميل', phone: '01012345678', policies: [policy, anotherPolicy] } as CustomerWithRelations}
+      showExtraInfo={false} onToggleExtraInfo={vi.fn()} policySummaries={{}}
+      onClose={close} onEdit={vi.fn()} onPrint={vi.fn()} onIssueNewPolicy={vi.fn()}
+      onOpenPolicyDetails={openInstallments}
+    />
+    <CurrentPath />
+  </MemoryRouter>);
+  fireEvent.click(screen.getByRole('button', { name: 'الوثائق والأقساط (2)' }));
+  const links = screen.getAllByRole('link', { name: 'عرض التفاصيل' });
+  expect(links.map(link => link.getAttribute('href')).sort()).toEqual(['/policies/policy-a', '/policies/policy-b']);
+  fireEvent.click(links.find(link => link.getAttribute('href') === '/policies/policy-b')!);
+  expect(screen.getByLabelText('current route').textContent).toBe('/policies/policy-b');
+  expect(close).toHaveBeenCalledOnce();
+  expect(openInstallments).not.toHaveBeenCalled();
 });
