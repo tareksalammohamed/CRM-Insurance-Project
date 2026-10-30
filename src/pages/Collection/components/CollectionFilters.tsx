@@ -1,3 +1,4 @@
+import { FilterPicker } from '../../../components/forms/FilterPicker';
 import { Filter, RefreshCw } from 'lucide-react';
 import { QUICK_FILTERS, type QuickFilter, type SubType, type OwnerFilter } from '../types';
 import type { UserRole } from '../../../lib/supabase';
@@ -78,15 +79,7 @@ export function CollectionFilters({
             {(quickFilterDraft === 'month' || quickFilterDraft === 'paid') && (
               <div>
                 <label htmlFor="collection-type-filter" className="input-label">النوع</label>
-                <select id="collection-type-filter"
-                  value={subTypeDraft}
-                  onChange={(e) => onSubTypeDraftChange(e.target.value as SubType)}
-                  className="input-field"
-                >
-                  <option value="all">الكل (إنتاج جديد + تحصيل دوري)</option>
-                  <option value="new">إنتاج جديد فقط</option>
-                  <option value="periodic">تحصيل دوري فقط</option>
-                </select>
+                <FilterPicker id="collection-type-filter" label="نوع التحصيل" value={subTypeDraft} onChange={value => onSubTypeDraftChange(value as SubType)} options={[{ value: 'all', label: 'الكل (إنتاج جديد + تحصيل دوري)' }, { value: 'new', label: 'إنتاج جديد فقط' }, { value: 'periodic', label: 'تحصيل دوري فقط' }]} />
               </div>
             )}
             {teamMembers.length > 0 && (

@@ -1,3 +1,4 @@
+import { FilterPicker } from '../../../components/forms/FilterPicker';
 import type { StatsPeriodType } from '../utils';
 import { PERIOD_TYPE_LABELS, formatDateInput, parseDateInput } from '../utils';
 
@@ -17,15 +18,7 @@ export function PeriodControls({ periodType, onPeriodTypeChange, start, end, onR
       <div className="grid grid-cols-2 sm:grid-cols-3 items-end gap-2 sm:gap-3">
         <div className="space-y-1 min-w-0 col-span-2 sm:col-span-1">
           <label htmlFor="daily-period-type" className="input-label">نوع الفترة</label>
-          <select id="daily-period-type"
-            className="input-field"
-            value={periodType}
-            onChange={(e) => onPeriodTypeChange(e.target.value as StatsPeriodType)}
-          >
-            {(Object.keys(PERIOD_TYPE_LABELS) as StatsPeriodType[]).map((t) => (
-              <option key={t} value={t}>{PERIOD_TYPE_LABELS[t]}</option>
-            ))}
-          </select>
+          <FilterPicker id="daily-period-type" label="نوع الفترة" value={periodType} onChange={value => onPeriodTypeChange(value as StatsPeriodType)} options={Object.entries(PERIOD_TYPE_LABELS).map(([value, label]) => ({ value, label }))} />
         </div>
 
         <div className="space-y-1 min-w-0">

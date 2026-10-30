@@ -1,3 +1,4 @@
+import { PageHeader } from '../components/layout/PageHeader';
 import { CommissionSettings } from '../features/commissionSettings/CommissionSettings';
 import { DisplayPreferences } from '../components/DisplayPreferences';
 import { queryClient } from '../lib/queryClient';
@@ -155,13 +156,7 @@ export function Settings() {
 
   return (
     <div className="workspace-page workspace-page-settings space-y-6 animate-fadeIn">
-      <div className="settings-page-heading">
-        <span className="workspace-section-kicker">إدارة النظام</span>
-        <h2 className="text-xl md:text-2xl font-bold text-secondary-900">إعدادات النظام</h2>
-        <p className="text-sm text-secondary-500 mt-0.5">
-          العمولات، العرض، هوية الشركة، الإشعارات والنسخ الاحتياطية
-        </p>
-      </div>
+      <PageHeader title="إعدادات النظام" subtitle="العمولات، العرض، هوية الشركة، الإشعارات والنسخ الاحتياطية" />
 
       <CommissionSettings />
       <DisplayPreferences />

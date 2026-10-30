@@ -1,3 +1,4 @@
+import { PageHeader } from '../../components/layout/PageHeader';
 import { CommissionDetails } from './components/CommissionDetails';
 import { useCommissionRates } from '../../features/commissionSettings/useCommissionRates';
 import { useRequestGuard } from '../../hooks/useRequestGuard';
@@ -88,15 +89,8 @@ export function Commissions() {
   const renewalSummary = computeSummary(renewalRows);
 
   return (
-    <div className="space-y-3 md:space-y-4">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-secondary-900 flex items-center gap-2"><Wallet aria-hidden="true" className="w-6 h-6 text-primary-600" />العمولات</h1>
-          <p className="text-xs text-secondary-500 mt-1">
-            ملخص عمولاتك ومواعيد صرفها خلال الشهر المختار.
-          </p>
-        </div>
-
+    <div className="workspace-page workspace-page-commissions space-y-3 md:space-y-4">
+      <PageHeader title="العمولات" subtitle="ملخص عمولاتك ومواعيد صرفها خلال الشهر المختار." action={
         <label className="flex items-center gap-2 text-xs font-medium text-secondary-600">
           شهر الصرف
         <input
@@ -106,7 +100,7 @@ export function Commissions() {
           className="input-field !w-auto !py-2 min-w-0"
         />
         </label>
-      </div>
+      } />
 
       <LoadNotice message={ratesQuery.isError ? 'تعذّر تحميل نسب العمولات. لا يمكن تأكيد الحساب قبل إعادة تحميلها.' : loadMessage} loading={ratesQuery.isFetching} onRetry={() => { void ratesQuery.refetch(); void loadCommissions(); }} />
       {ratesQuery.isError ? <p className="card text-secondary-600">الحساب متوقف لحين تحميل النسب المعتمدة.</p> : <>

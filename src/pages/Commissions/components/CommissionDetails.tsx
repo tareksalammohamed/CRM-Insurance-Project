@@ -1,3 +1,4 @@
+import { FilterPicker } from '../../../components/forms/FilterPicker';
 import { useMemo, useState } from 'react';
 import { Banknote, CalendarClock, ReceiptText } from 'lucide-react';
 import { SearchInput } from '../../../components/forms/SearchInput';
@@ -32,16 +33,10 @@ export function CommissionDetails({ rows }: { rows: CommissionRow[] }) {
       <div className="commission-details-filters">
         <SearchInput value={search} onChange={value => { setSearch(value); setPage(1); }} placeholder="اسم العميل أو آخر 6 أرقام من الوثيقة" />
         <label className="space-y-1 min-w-0"><span className="input-label">نوع العمولة</span>
-          <select className="input-field" value={type} onChange={e => { setType(e.target.value); setPage(1); }}>
-            <option value="all">كل الأنواع</option>
-            <option value="year1">السنة الأولى</option>
-            <option value="renewal">السنة الثانية والثالثة</option>
-          </select>
+          <FilterPicker label="نوع العمولة" value={type} onChange={value => { setType(value); setPage(1); }} options={[{ value: 'all', label: 'كل الأنواع' }, { value: 'year1', label: 'السنة الأولى' }, { value: 'renewal', label: 'السنة الثانية والثالثة' }]} />
         </label>
         <label className="space-y-1 min-w-0"><span className="input-label">يوم الصرف</span>
-          <select className="input-field" value={day} onChange={e => { setDay(e.target.value); setPage(1); }}>
-            <option value="all">كل المواعيد</option><option value="12">يوم 12</option><option value="27">يوم 27</option>
-          </select>
+          <FilterPicker label="يوم الصرف" value={day} onChange={value => { setDay(value); setPage(1); }} options={[{ value: 'all', label: 'كل المواعيد' }, { value: '12', label: 'يوم 12' }, { value: '27', label: 'يوم 27' }]} />
         </label>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-secondary-500">

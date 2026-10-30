@@ -1,3 +1,4 @@
+import { FilterPicker } from '../../../components/forms/FilterPicker';
 import { RefreshCw } from 'lucide-react';
 import { AgentCombobox } from './AgentCombobox';
 import type { User } from '../../../lib/supabase';
@@ -36,16 +37,7 @@ export function CustomerFilters({
       <div className="compact-filter-grid grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div>
           <label htmlFor="customers-status-filter" className="input-label">حالة العميل</label>
-          <select id="customers-status-filter"
-            value={statusDraft}
-            onChange={(e) => onStatusDraftChange(e.target.value)}
-            className="input-field"
-          >
-            <option value="all">جميع الحالات</option>
-            <option value="active">نشط</option>
-            <option value="inactive">غير نشط</option>
-            <option value="expired">طلبات تالفة (60 يومًا بدون وثائق)</option>
-          </select>
+          <FilterPicker id="customers-status-filter" label="حالة العميل" value={statusDraft} onChange={onStatusDraftChange} options={[{ value: 'all', label: 'جميع الحالات' }, { value: 'active', label: 'نشط' }, { value: 'inactive', label: 'غير نشط' }, { value: 'expired', label: 'طلبات تالفة (60 يومًا بدون وثائق)' }]} />
         </div>
         {isManagerRole && (
           <div>
@@ -62,16 +54,7 @@ export function CustomerFilters({
         )}
         <div>
           <label htmlFor="customers-month-filter" className="input-label">الشهر</label>
-          <select id="customers-month-filter"
-            value={monthDraft}
-            onChange={(e) => onMonthDraftChange(e.target.value)}
-            className="input-field"
-          >
-            <option value="all">كل الشهور</option>
-            {monthOptions.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
-          </select>
+          <FilterPicker id="customers-month-filter" label="الشهر" value={monthDraft} onChange={onMonthDraftChange} options={[{ value: 'all', label: 'كل الشهور' }, ...monthOptions]} />
         </div>
       </div>
       <div className="compact-filter-actions flex items-center justify-end gap-2">
