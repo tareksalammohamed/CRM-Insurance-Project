@@ -47,6 +47,7 @@ import {
 import { loadCancellationSummary } from '../Cancellations/services/cancellationService';
 import { ActivityTargetsPanel } from './components/ActivityTargetsPanel';
 import { ReportPicker } from './components/ReportPicker';
+import { TeamScopePicker } from './components/TeamScopePicker';
 import { ReportButtonGroup } from './components/ReportButtonGroup';
 import { PerformanceScoreRow } from './components/PerformanceScoreRow';
 import { CollectionDetailsByAgent } from './components/CollectionDetailsByAgent';
@@ -352,6 +353,8 @@ export function Reports() {
   const reportButtons = [...mainReportButtons, ...performanceReportButtons, ...cancellationsReportButtons];
 
   // قائمة السنوات المتاحة للاختيار (5 سنوات سابقة + السنة القادمة)
+  const scopeMembers = selectableUsers.map(member => ({ id: member.id, name: member.name, roleLabel: ROLE_LABELS[member.role as keyof typeof ROLE_LABELS] || member.role }));
+
   const yearOptions = Array.from({ length: 7 }, (_, i) => currentYear + 1 - i);
 
   const { start: periodStart, end: periodEnd } = getDateRange();
@@ -375,7 +378,7 @@ export function Reports() {
         { title: 'تقارير الأداء', options: performanceReportButtons },
         { title: 'الإلغاءات', options: cancellationsReportButtons },
       ]} />
-      <div className="min-w-0"><label htmlFor="trend-user" className="mb-2 block text-sm font-semibold" style={{ color: 'var(--ink-soft)' }}>نطاق الفريق</label><select id="trend-user" className="input-field" value={selectedUserId} onChange={event => setSelectedUserId(event.target.value)}><option value="">نطاقي بالكامل</option>{selectableUsers.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}</select></div>
+      <TeamScopePicker value={selectedUserId} members={scopeMembers} onSelect={setSelectedUserId} />
     </div>
     {user && <PerformanceTrend userId={user.id} branchId={currentBranchId} selectedUserId={selectedUserId} />}
   </div>;
@@ -587,20 +590,8 @@ export function Reports() {
                 <option value="unpaid">غير مسدد فقط</option>
               </select>
             </div>
-            <div>
-              <label className="input-label">مستخدم معين</label>
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                className="input-field w-auto mt-1"
-              >
-                <option value="">الكل (نطاقي الكامل)</option>
-                {selectableUsers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} — {ROLE_LABELS[u.role as keyof typeof ROLE_LABELS] || u.role}
-                  </option>
-                ))}
-              </select>
+            <div className="min-w-0 w-full sm:w-72">
+              <TeamScopePicker value={selectedUserId} members={scopeMembers} onSelect={setSelectedUserId} />
             </div>
           </div>
         </div>
