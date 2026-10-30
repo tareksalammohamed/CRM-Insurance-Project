@@ -30,7 +30,7 @@ it('keeps policy details scoped while allowing the user to clear the status filt
     { id: 'i1', installment_number: 1, status: 'paid', amount: 100, due_date: '2026-01-01', paid_at: '2026-01-01' },
     { id: 'i2', installment_number: 2, status: 'overdue', amount: 100, due_date: '2026-02-01' },
   ] as Installment[];
-  render(<PolicyDetailsDialog openPolicySummary={policy} policyDetail={null} policyInstallments={installments} initialFilter="overdue" loadingPolicyDetail={false} onClose={vi.fn()} onPay={vi.fn()} onCancel={vi.fn()} />);
+  render(<MemoryRouter><PolicyDetailsDialog openPolicySummary={policy} policyDetail={null} policyInstallments={installments} initialFilter="overdue" loadingPolicyDetail={false} onClose={vi.fn()} onPay={vi.fn()} onCancel={vi.fn()} /></MemoryRouter>);
   expect(screen.queryByRole('button', { name: 'إلغاء سداد القسط رقم 1' })).toBeNull();
   fireEvent.change(screen.getByLabelText('تصفية أقساط السنة الأولى لهذه الوثيقة'), { target: { value: 'all' } });
   expect(screen.getAllByRole('button', { name: 'إلغاء سداد القسط رقم 1' }).length).toBeGreaterThan(0);

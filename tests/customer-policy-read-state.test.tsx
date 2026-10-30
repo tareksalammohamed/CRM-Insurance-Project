@@ -53,7 +53,7 @@ it('keeps a successful payment separate from a failed schedule refresh', async (
 import { PolicyDetailsDialog } from '../src/pages/Customers/components/dialogs/PolicyDetailsDialog';
 it('shows a retryable failure instead of an empty first-year summary in the document dialog', () => {
   const retry = vi.fn();
-  render(<PolicyDetailsDialog openPolicySummary={summary('p')} policyDetail={null} policyInstallments={[]} loadingPolicyDetail={false} loadError="تعذر تحميل الوثيقة" onRetry={retry} onClose={vi.fn()} onPay={vi.fn()} onCancel={vi.fn()} />);
+  render(<MemoryRouter><PolicyDetailsDialog openPolicySummary={summary('p')} policyDetail={null} policyInstallments={[]} loadingPolicyDetail={false} loadError="تعذر تحميل الوثيقة" onRetry={retry} onClose={vi.fn()} onPay={vi.fn()} onCancel={vi.fn()} /></MemoryRouter>);
   expect(screen.getByText('تعذر تحميل الوثيقة')).toBeTruthy();
   expect(screen.queryByText('إجمالي أقساط السنة الأولى')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'إعادة المحاولة' })); expect(retry).toHaveBeenCalledOnce();

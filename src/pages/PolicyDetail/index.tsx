@@ -405,7 +405,7 @@ export function PolicyDetail() {
                 <span className="detail-field-label flex items-center gap-1">
                   <User className="w-3 h-3" /> العميل
                 </span>
-                <span className="detail-field-value">{policy.customer?.name || '—'}</span>
+                <button type="button" className="detail-field-value text-start hover:underline" onClick={() => navigate(`/customers?open=${encodeURIComponent(policy.customer_id)}`)}>{policy.customer?.name || '—'}</button>
               </div>
               <div className="detail-field">
                 <span className="detail-field-label flex items-center gap-1">

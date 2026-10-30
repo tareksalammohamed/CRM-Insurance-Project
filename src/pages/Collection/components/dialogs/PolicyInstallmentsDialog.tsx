@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { LoadNotice } from '../../../../components/feedback/LoadNotice';
 import { FirstYearSummary } from '../../../../features/installments/FirstYearSummary';
 import { X } from 'lucide-react';
@@ -58,7 +59,8 @@ export function PolicyInstallmentsDialog({
             />
             </>}
           </div>
-          <div className="flex justify-end gap-3 p-6 border-t border-secondary-200">
+          <div className="flex flex-wrap justify-end gap-3 p-6 border-t border-secondary-200">
+            <Link to={`/policies/${policy.id}`} onClick={onClose} className="btn btn-primary">تفاصيل الوثيقة</Link>
             <button onClick={onClose} className="btn btn-secondary">
               إغلاق
             </button>

@@ -30,7 +30,6 @@ import { CollectionSearch } from './components/CollectionSearch';
 import { CollectionFilters } from './components/CollectionFilters';
 import { CollectionList } from './components/CollectionList';
 import { MoreMenuDialog } from './components/dialogs/MoreMenuDialog';
-import { DetailsDialog } from './components/dialogs/DetailsDialog';
 import { PolicyInstallmentsDialog } from './components/dialogs/PolicyInstallmentsDialog';
 
 // السنة الأولى تبقى مستقلة تماماً بحساباتها، والقسم الآخر يستمر في
@@ -156,7 +155,6 @@ export function Collection() {
     setMoreMenuAnchor(null);
     setMoreMenuInstallment(null);
   };
-  const [detailsView, setDetailsView] = useState<{ installment: InstallmentWithRelations; view: 'customer' | 'policy' } | null>(null);
 
   return (
     <div className="workspace-page workspace-page-collection col-page space-y-3 md:space-y-3.5 animate-fadeIn pb-2">
@@ -322,22 +320,11 @@ export function Collection() {
         <MoreMenuDialog
           installment={moreMenuInstallment}
           onClose={closeMoreMenu}
-          onShowCustomerDetails={() => { setDetailsView({ installment: moreMenuInstallment, view: 'customer' }); closeMoreMenu(); }}
-          onShowPolicyDetails={() => { setDetailsView({ installment: moreMenuInstallment, view: 'policy' }); closeMoreMenu(); }}
           onOpenPolicyHistory={() => { handleOpenPolicyDetails(moreMenuInstallment.policy); closeMoreMenu(); }}
           onOpenCancel={() => { handleOpenCancel(moreMenuInstallment); closeMoreMenu(); }}
           onOpenPromise={() => { setPromiseInstallment(moreMenuInstallment); closeMoreMenu(); }}
           onOpenPayment={() => { handleOpenPayment(moreMenuInstallment); closeMoreMenu(); }}
           anchor={moreMenuAnchor}
-        />
-      )}
-
-      {/* ===== مودال بيانات العميل / الوثيقة ===== */}
-      {detailsView && (
-        <DetailsDialog
-          installment={detailsView.installment}
-          view={detailsView.view}
-          onClose={() => setDetailsView(null)}
         />
       )}
 
