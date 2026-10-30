@@ -16,8 +16,10 @@ it('bounds rendered details and finds a policy beyond the first page without cha
 });
 it('combines type and due-day filters and restores results after reset', () => {
   render(<CommissionDetails rows={rows} />);
-  fireEvent.change(screen.getByLabelText('نوع العمولة'), { target: { value: 'renewal' } });
-  fireEvent.change(screen.getByLabelText('يوم الصرف'), { target: { value: '27' } });
+  fireEvent.click(screen.getByRole('button', { name: /نوع العمولة:/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'السنة الثانية والثالثة' }));
+  fireEvent.click(screen.getByRole('button', { name: /يوم الصرف:/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'يوم 27' }));
   expect(screen.getByRole('status').textContent).toBe('لا توجد نتائج مطابقة');
   fireEvent.click(screen.getByRole('button', { name: 'مسح التصفية' }));
   expect(screen.getByRole('status').textContent).toBe('1–25 من 30 عملية');

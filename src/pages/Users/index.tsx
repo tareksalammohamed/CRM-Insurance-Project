@@ -1,10 +1,13 @@
+import { PageHeader } from '../../components/layout/PageHeader';
+import { SearchInput } from '../../components/forms/SearchInput';
+import { FilterPicker } from '../../components/forms/FilterPicker';
 import { friendlyError } from '../../lib/errorMessages';
 import { useNotify } from '../../lib/notify';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReconnectRefetch } from '../../hooks/useReconnectRefetch';
 import { User, UserRole, ROLE_LABELS, canManageUsers, canResetOtherUserPassword } from '../../lib/supabase';
-import { Plus, Search, Shield, X } from 'lucide-react';
+import { Plus, Shield } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import clsx from 'clsx';
@@ -318,39 +321,17 @@ export function Users() {
     <div className="workspace-page workspace-page-users space-y-5 animate-fadeIn pb-4">
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl md:text-2xl font-bold text-secondary-900">إدارة المستخدمين</h2>
-          <p className="text-sm text-secondary-500 mt-0.5">إدارة المستخدمين والهيكل الإداري</p>
-        </div>
-        <button onClick={openCreateModal} className="btn btn-primary w-full sm:w-auto shadow-sm">
-          <Plus className="w-5 h-5" />
+      <PageHeader title="إدارة المستخدمين" subtitle="إدارة المستخدمين والهيكل الإداري" action={
+        <button type="button" onClick={openCreateModal} className="btn btn-primary w-full sm:w-auto shadow-sm">
+          <Plus aria-hidden="true" className="w-5 h-5" />
           <span>إضافة مستخدم</span>
         </button>
-      </div>
+      } />
 
       {/* Filters */}
       <div className="card space-y-3">
         <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1 relative">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary-400" />
-            <input
-              type="text"
-              value={localSearch}
-              onChange={(e) => setLocalSearch(e.target.value)}
-              placeholder="بحث بالاسم أو البريد الإلكتروني..."
-              className="input-field pr-10 pl-9"
-            />
-            {localSearch && (
-              <button
-                onClick={() => setLocalSearch('')}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-secondary-100 text-secondary-400 hover:text-secondary-600"
-                aria-label="مسح البحث"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+          <SearchInput value={localSearch} onChange={setLocalSearch} placeholder="بحث بالاسم أو البريد الإلكتروني..." />
 
           {/* Segmented status filter */}
           <div className="flex items-center bg-secondary-100 rounded-lg p-1 shrink-0">
@@ -374,30 +355,10 @@ export function Users() {
 
         <div className="grid grid-cols-2 gap-2 sm:gap-3">
           {/* فلتر حسب الدرجة الوظيفية */}
-          <select
-            aria-label="الدرجة الوظيفية"
-            value={roleFilter}
-            onChange={(e) => { setRoleFilter(e.target.value as UserRole | 'all'); setPage(1); }}
-            className="input-field min-w-0"
-          >
-            <option value="all">كل الدرجات الوظيفية</option>
-            {ROLES.map((r) => (
-              <option key={r} value={r}>{ROLE_LABELS[r]}</option>
-            ))}
-          </select>
+          <FilterPicker label="الدرجة الوظيفية" value={roleFilter} onChange={value => { setRoleFilter(value as UserRole | 'all'); setPage(1); }} options={[{ value: 'all', label: 'كل الدرجات الوظيفية' }, ...ROLES.map(value => ({ value, label: ROLE_LABELS[value] }))]} />
 
           {/* فلتر حسب الفرع */}
-          <select
-            aria-label="الفرع"
-            value={branchFilter}
-            onChange={(e) => { setBranchFilter(e.target.value); setPage(1); }}
-            className="input-field min-w-0"
-          >
-            <option value="all">كل الفروع</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>{b.name}</option>
-            ))}
-          </select>
+          <FilterPicker label="الفرع" value={branchFilter} onChange={value => { setBranchFilter(value); setPage(1); }} options={[{ value: 'all', label: 'كل الفروع' }, ...branches.map(branch => ({ value: branch.id, label: branch.name }))]} />
         </div>
 
         {/* عدد النتائج — بنفس مكانه وشكله فى صفحات العملاء/الوثائق/التحصيل */}

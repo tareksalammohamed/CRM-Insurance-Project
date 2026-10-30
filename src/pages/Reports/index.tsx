@@ -1,3 +1,4 @@
+import { FilterPicker } from '../../components/forms/FilterPicker';
 import { useRequestGuard } from '../../hooks/useRequestGuard';
 import { LoadNotice } from '../../components/feedback/LoadNotice';
 import { PerformanceTrend } from './components/PerformanceTrend';
@@ -479,60 +480,28 @@ export function Reports() {
             <span className="report-period-icon flex h-7 w-7 items-center justify-center rounded-lg bg-white shadow-sm text-secondary-600 border border-secondary-100"><Layers className="h-3.5 w-3.5" /></span>
             <label className="text-sm font-bold text-secondary-900">نطاق التقرير والفترة</label>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <select
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value as DateRange)}
-              className="input-field w-auto"
-            >
-              <option value="month">شهر محدد</option>
-              <option value="quarter">ربع سنوي محدد</option>
-              <option value="year">سنة محددة</option>
-            </select>
+          <div className="grid grid-cols-2 lg:grid-cols-3 items-end gap-3">
+            <FilterPicker label="الفترة" value={dateRange} onChange={value => setDateRange(value as DateRange)} options={[{ value: 'month', label: 'شهر محدد' }, { value: 'quarter', label: 'ربع سنوي محدد' }, { value: 'year', label: 'سنة محددة' }]} />
 
             {dateRange === 'month' && (
               <input
                 type="month"
+                aria-label="الشهر المحدد للتقرير"
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="input-field w-auto"
+                className="input-field w-full min-w-0"
               />
             )}
 
             {dateRange === 'quarter' && (
               <>
-                <select
-                  value={selectedQuarter}
-                  onChange={(e) => setSelectedQuarter(Number(e.target.value))}
-                  className="input-field w-auto"
-                >
-                  <option value={1}>الربع الأول (يناير - مارس)</option>
-                  <option value={2}>الربع الثاني (أبريل - يونيو)</option>
-                  <option value={3}>الربع الثالث (يوليو - سبتمبر)</option>
-                  <option value={4}>الربع الرابع (أكتوبر - ديسمبر)</option>
-                </select>
-                <select
-                  value={quarterYear}
-                  onChange={(e) => setQuarterYear(Number(e.target.value))}
-                  className="input-field w-auto"
-                >
-                  {yearOptions.map((y) => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
+                <FilterPicker label="الربع السنوي" value={String(selectedQuarter)} onChange={value => setSelectedQuarter(Number(value))} options={[{ value: '1', label: 'الربع الأول (يناير - مارس)' }, { value: '2', label: 'الربع الثاني (أبريل - يونيو)' }, { value: '3', label: 'الربع الثالث (يوليو - سبتمبر)' }, { value: '4', label: 'الربع الرابع (أكتوبر - ديسمبر)' }]} />
+                <FilterPicker label="سنة الربع السنوي" value={String(quarterYear)} onChange={value => setQuarterYear(Number(value))} options={yearOptions.map(year => ({ value: String(year), label: String(year) }))} />
               </>
             )}
 
             {dateRange === 'year' && (
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="input-field w-auto"
-              >
-                {yearOptions.map((y) => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
+              <FilterPicker label="السنة" value={String(selectedYear)} onChange={value => setSelectedYear(Number(value))} options={yearOptions.map(year => ({ value: String(year), label: String(year) }))} />
             )}
           </div>
         </div>
@@ -580,15 +549,7 @@ export function Reports() {
           <div className="flex flex-wrap gap-4">
             <div>
               <label className="input-label">الحالة قبل الطباعة</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as 'all' | 'paid' | 'unpaid')}
-                className="input-field w-auto mt-1"
-              >
-                <option value="all">الكل (مسدد وغير مسدد)</option>
-                <option value="paid">مسدد فقط</option>
-                <option value="unpaid">غير مسدد فقط</option>
-              </select>
+              <FilterPicker label="الحالة قبل الطباعة" value={statusFilter} onChange={value => setStatusFilter(value as 'all' | 'paid' | 'unpaid')} options={[{ value: 'all', label: 'الكل (مسدد وغير مسدد)' }, { value: 'paid', label: 'مسدد فقط' }, { value: 'unpaid', label: 'غير مسدد فقط' }]} />
             </div>
             <div className="min-w-0 w-full sm:w-72">
               <TeamScopePicker value={selectedUserId} members={scopeMembers} onSelect={setSelectedUserId} />

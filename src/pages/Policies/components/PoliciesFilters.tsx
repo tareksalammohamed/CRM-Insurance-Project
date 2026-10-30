@@ -1,3 +1,4 @@
+import { FilterPicker } from '../../../components/forms/FilterPicker';
 import { RefreshCw } from 'lucide-react';
 import { POLICY_TYPE_LABELS } from '../../../lib/supabase';
 
@@ -29,41 +30,15 @@ export function PoliciesFilters({
       <div className="compact-filter-grid grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div>
           <label className="input-label">حالة الوثيقة</label>
-          <select
-            value={statusDraft}
-            onChange={(e) => onStatusDraftChange(e.target.value)}
-            className="input-field"
-          >
-            <option value="all">جميع الحالات</option>
-            <option value="active">نشط</option>
-            <option value="cancelled">ملغى</option>
-          </select>
+          <FilterPicker label="حالة الوثيقة" value={statusDraft} onChange={onStatusDraftChange} options={[{ value: 'all', label: 'جميع الحالات' }, { value: 'active', label: 'نشط' }, { value: 'cancelled', label: 'ملغى' }]} />
         </div>
         <div>
           <label className="input-label">نوع الوثيقة</label>
-          <select
-            value={typeDraft}
-            onChange={(e) => onTypeDraftChange(e.target.value)}
-            className="input-field"
-          >
-            <option value="all">جميع الأنواع</option>
-            {Object.entries(POLICY_TYPE_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
+          <FilterPicker label="نوع الوثيقة" value={typeDraft} onChange={onTypeDraftChange} options={[{ value: 'all', label: 'جميع الأنواع' }, ...Object.entries(POLICY_TYPE_LABELS).map(([value, label]) => ({ value, label }))]} />
         </div>
         <div>
           <label className="input-label">الشهر</label>
-          <select
-            value={monthDraft}
-            onChange={(e) => onMonthDraftChange(e.target.value)}
-            className="input-field"
-          >
-            <option value="all">كل الشهور</option>
-            {monthOptions.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
-          </select>
+          <FilterPicker label="الشهر" value={monthDraft} onChange={onMonthDraftChange} options={[{ value: 'all', label: 'كل الشهور' }, ...monthOptions]} />
         </div>
       </div>
       <div className="compact-filter-actions flex items-center justify-end gap-2">

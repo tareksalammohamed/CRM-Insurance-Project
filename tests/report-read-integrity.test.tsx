@@ -74,3 +74,29 @@ it('dismisses the styled report picker without changing the report or loading cu
   expect(screen.getByText('اتجاه الأداء خلال آخر 6 شهور')).toBeTruthy();
   expect(mocks.customers).not.toHaveBeenCalled();
 });
+
+it('preserves quarter and year boundaries when using the themed period filters', async () => {
+  mocks.customers.mockResolvedValue([customer('PERIOD')]);
+  render(<Reports />);
+  fireEvent.click(screen.getByRole('button', { name: /المؤشر أو التقرير/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'طلبات التأمين' }));
+  await screen.findByText('PERIOD');
+  fireEvent.click(screen.getByRole('button', { name: 'الفترة: شهر محدد' }));
+  fireEvent.click(screen.getByRole('button', { name: 'ربع سنوي محدد' }));
+  fireEvent.click(screen.getByRole('button', { name: /^الربع السنوي:/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'الربع الثاني (أبريل - يونيو)' }));
+  await waitFor(() => {
+    const call = mocks.customers.mock.calls.at(-1)!;
+    expect([call[1].getMonth(), call[1].getDate(), call[2].getMonth(), call[2].getDate()]).toEqual([3, 1, 5, 30]);
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'الفترة: ربع سنوي محدد' }));
+  fireEvent.click(screen.getByRole('button', { name: 'سنة محددة' }));
+  fireEvent.click(screen.getByRole('button', { name: /^السنة:/ }));
+  const previousYear = new Date().getFullYear() - 1;
+  fireEvent.click(screen.getByRole('button', { name: String(previousYear), exact: true }));
+  await waitFor(() => {
+    const call = mocks.customers.mock.calls.at(-1)!;
+    expect([call[1].getFullYear(), call[1].getMonth(), call[1].getDate()]).toEqual([previousYear, 0, 1]);
+    expect([call[2].getFullYear(), call[2].getMonth(), call[2].getDate()]).toEqual([previousYear, 11, 31]);
+  });
+});

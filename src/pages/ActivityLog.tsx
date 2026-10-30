@@ -1,3 +1,5 @@
+import { PageHeader } from '../components/layout/PageHeader';
+import { FilterPicker } from '../components/forms/FilterPicker';
 import { SearchInput } from '../components/forms/SearchInput';
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
@@ -25,6 +27,27 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Pagination } from '../components/ui/Pagination';
+
+const ACTION_FILTER_OPTIONS = [
+  {"value": "all", "label": "جميع العمليات"},
+  {"value": "user_create", "label": "إنشاء مستخدم", "group": "المستخدمون"},
+  {"value": "user_update", "label": "تعديل مستخدم", "group": "المستخدمون"},
+  {"value": "user_disable", "label": "تعطيل مستخدم", "group": "المستخدمون"},
+  {"value": "user_enable", "label": "تفعيل مستخدم", "group": "المستخدمون"},
+  {"value": "customer_create", "label": "إنشاء عميل", "group": "العملاء"},
+  {"value": "customer_update", "label": "تعديل عميل", "group": "العملاء"},
+  {"value": "customer_delete", "label": "حذف عميل", "group": "العملاء"},
+  {"value": "policy_create", "label": "إصدار وثيقة", "group": "الوثائق"},
+  {"value": "policy_update", "label": "تعديل وثيقة", "group": "الوثائق"},
+  {"value": "policy_suspend", "label": "إيقاف وثيقة", "group": "الوثائق"},
+  {"value": "policy_cancel", "label": "إلغاء وثيقة", "group": "الوثائق"},
+  {"value": "payment_create", "label": "تسجيل سداد", "group": "السداد"},
+  {"value": "payment_cancel", "label": "إلغاء سداد", "group": "السداد"},
+  {"value": "year2_payment_create", "label": "تحصيل سنة ثانية", "group": "تحصيل السنة الثانية"},
+  {"value": "year2_payment_cancel", "label": "إلغاء تحصيل سنة ثانية", "group": "تحصيل السنة الثانية"},
+  {"value": "month_close", "label": "تقفيل شهر", "group": "التقفيل"},
+  {"value": "month_open", "label": "فتح شهر", "group": "التقفيل"},
+];
 
 const ACTION_CONFIG: Record<ActionType, { label: string; icon: any; color: string }> = {
   login: { label: 'تسجيل دخول', icon: LogIn, color: 'text-info-600 bg-info-100' },
@@ -160,59 +183,14 @@ export function ActivityLog() {
   };
 
   return (
-    <div className="activity-log-page space-y-4 animate-fadeIn">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-secondary-900">سجل العمليات</h2>
-          <p className="text-sm text-secondary-500 mt-1">
-            سجل جميع العمليات داخل النظام
-          </p>
-        </div>
-      </div>
+    <div className="workspace-page activity-log-page space-y-4 animate-fadeIn">
+      <PageHeader title="سجل العمليات" subtitle="سجل جميع العمليات داخل النظام" />
 
       <div className="card">
         <div className="activity-log-filters">
           <SearchInput value={localSearch} onChange={setLocalSearch} placeholder="بحث باسم المستخدم..." />
           <label className="space-y-1 min-w-0"><span className="input-label">نوع العملية</span>
-          <select
-            value={actionFilter}
-            onChange={(e) => {
-              setActionFilter(e.target.value as ActionType | 'all');
-              setPage(1);
-            }}
-            className="input-field w-auto"
-          >
-            <option value="all">جميع العمليات</option>
-            <optgroup label="المستخدمون">
-              <option value="user_create">إنشاء مستخدم</option>
-              <option value="user_update">تعديل مستخدم</option>
-              <option value="user_disable">تعطيل مستخدم</option>
-              <option value="user_enable">تفعيل مستخدم</option>
-            </optgroup>
-            <optgroup label="العملاء">
-              <option value="customer_create">إنشاء عميل</option>
-              <option value="customer_update">تعديل عميل</option>
-              <option value="customer_delete">حذف عميل</option>
-            </optgroup>
-            <optgroup label="الوثائق">
-              <option value="policy_create">إصدار وثيقة</option>
-              <option value="policy_update">تعديل وثيقة</option>
-              <option value="policy_suspend">إيقاف وثيقة</option>
-              <option value="policy_cancel">إلغاء وثيقة</option>
-            </optgroup>
-            <optgroup label="السداد">
-              <option value="payment_create">تسجيل سداد</option>
-              <option value="payment_cancel">إلغاء سداد</option>
-            </optgroup>
-            <optgroup label="تحصيل السنة الثانية">
-              <option value="year2_payment_create">تحصيل سنة ثانية</option>
-              <option value="year2_payment_cancel">إلغاء تحصيل سنة ثانية</option>
-            </optgroup>
-            <optgroup label="التقفيل">
-              <option value="month_close">تقفيل شهر</option>
-              <option value="month_open">فتح شهر</option>
-            </optgroup>
-          </select>
+          <FilterPicker label="نوع العملية" value={actionFilter} onChange={value => { setActionFilter(value as ActionType | 'all'); setPage(1); }} options={ACTION_FILTER_OPTIONS} />
           </label>
         </div>
 

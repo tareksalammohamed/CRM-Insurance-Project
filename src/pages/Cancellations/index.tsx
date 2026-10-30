@@ -1,3 +1,4 @@
+import { FilterPicker } from '../../components/forms/FilterPicker';
 import { useRequestGuard } from '../../hooks/useRequestGuard';
 import { LoadNotice } from '../../components/feedback/LoadNotice';
 import { SearchInput } from '../../components/forms/SearchInput';
@@ -185,29 +186,11 @@ export function Cancellations() {
             <div className="cancellation-filter-toolbar print:hidden">
               <SearchInput value={searchTerm} onChange={setSearchTerm} placeholder="اسم العميل أو الوكيل أو آخر 6 أرقام من الوثيقة" />
               <label className="space-y-1 min-w-0"><span className="input-label">نوع الوثيقة</span>
-              <select
-                value={policyTypeFilter}
-                onChange={(e) => setPolicyTypeFilter(e.target.value as PolicyType | 'all')}
-                className="input-field w-auto"
-              >
-                <option value="all">كل أنواع الوثائق</option>
-                {Object.entries(POLICY_TYPE_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
+              <FilterPicker label="نوع الوثيقة" value={policyTypeFilter} onChange={value => setPolicyTypeFilter(value as PolicyType | 'all')} options={[{ value: 'all', label: 'كل أنواع الوثائق' }, ...Object.entries(POLICY_TYPE_LABELS).map(([value, label]) => ({ value, label }))]} />
               </label>
 
               <label className="space-y-1 min-w-0"><span className="input-label">مدة الوثيقة قبل الإلغاء</span>
-              <select
-                value={monthsBucket}
-                onChange={(e) => setMonthsBucket(e.target.value as MonthsBucket)}
-                className="input-field w-auto"
-              >
-                <option value="all">كل المدد</option>
-                <option value="lt6">أقل من 6 أشهر</option>
-                <option value="6to12">من 6 إلى أقل من 12 شهر</option>
-                <option value="12to18">من 12 إلى أقل من 18 شهر</option>
-              </select>
+              <FilterPicker label="مدة الوثيقة قبل الإلغاء" value={monthsBucket} onChange={value => setMonthsBucket(value as MonthsBucket)} options={[{ value: 'all', label: 'كل المدد' }, { value: 'lt6', label: 'أقل من 6 أشهر' }, { value: '6to12', label: 'من 6 إلى أقل من 12 شهر' }, { value: '12to18', label: 'من 12 إلى أقل من 18 شهر' }]} />
               </label>
             </div>
             <div className="cancellation-results-note print:hidden">
@@ -224,10 +207,7 @@ export function Cancellations() {
               <>
               <div className="lg:hidden print:hidden mb-3 flex flex-wrap items-center gap-2">
                 <label htmlFor="cancellation-sort" className="text-xs text-secondary-600">ترتيب حسب</label>
-                <select id="cancellation-sort" className="input-field !w-auto flex-1 min-w-0" value={sortKey}
-                  onChange={(e) => toggleSort(e.target.value as SortKey)}>
-                  {columns.filter((col) => col.key).map((col) => <option key={col.key} value={col.key!}>{col.label}</option>)}
-                </select>
+                <FilterPicker id="cancellation-sort" label="ترتيب حسب" value={sortKey} onChange={value => toggleSort(value as SortKey)} options={columns.filter(col => col.key).map(col => ({ value: col.key!, label: col.label }))} />
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => toggleSort(sortKey)} aria-label="عكس ترتيب النتائج"><ArrowUpDown className="w-4 h-4" /><span>{sortDir === 'asc' ? 'تصاعدي' : 'تنازلي'}</span></button>
               </div>
               <div className="cancellation-mobile-list lg:hidden print:hidden space-y-3">
