@@ -6,9 +6,9 @@ import { LoadNotice } from '../../../components/feedback/LoadNotice';
 import { fetchPerformanceTrend } from '../services/performanceTrendService';
 import { formatCurrency } from '../business/reportsCalculator';
 
-export function PerformanceTrend({ userId, branchId, selectedUserId }: { userId: string; branchId: string | null; selectedUserId: string }) {
-  const month = format(new Date(), 'yyyy-MM');
-  const query = useQuery({ queryKey: ['performance-trend', userId, branchId, selectedUserId, month], queryFn: () => fetchPerformanceTrend(userId, branchId, selectedUserId), staleTime: 60_000 });
+export function PerformanceTrend({ userId, branchId, selectedUserId, referenceMonth = new Date() }: { userId: string; branchId: string | null; selectedUserId: string; referenceMonth?: Date }) {
+  const month = format(referenceMonth, 'yyyy-MM');
+  const query = useQuery({ queryKey: ['performance-trend', userId, branchId, selectedUserId, month], queryFn: () => fetchPerformanceTrend(userId, branchId, selectedUserId, referenceMonth), staleTime: 60_000 });
   const available = query.data && !['error', 'offline-empty'].includes(query.data.status);
   const rows = available ? query.data!.rows : [];
   return <section className="card min-w-0 space-y-5" aria-labelledby="performance-trend-title">

@@ -1,3 +1,4 @@
+import { useOperationalMonth } from '../../../features/closingExtensions/useOperationalMonth';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { useBranchContext } from '../../../lib/branchContext';
@@ -6,7 +7,6 @@ import { dalRead } from '../../../lib/dataAccessLayer';
 import { fetchUserSubtreeIdsBranchAware, fetchBranchRoleMap } from '../../../lib/branchHierarchy';
 import { useReconnectRefetch } from '../../../hooks/useReconnectRefetch';
 import type { RosterUser } from '../types';
-import { monthStartStr } from '../utils';
 
 // ─── hook: منطق تحميل وعرض الهيكل الوظيفي ──────────────────
 // النظام دلوقتي "Drill-down": بتشوف مستوى واحد بس فى كل مرة (اللي أنت
@@ -15,6 +15,10 @@ import { monthStartStr } from '../utils';
 export function useOrgStructure() {
   const { user } = useAuth();
   const { currentBranchId } = useBranchContext();
+  const operationalMonth = useOperationalMonth(user?.id);
+  const reportingScope = `${user?.id}:${currentBranchId}:${operationalMonth.automaticKey}:${operationalMonth.ready}`;
+  const reportingScopeRef = useRef(reportingScope);
+  reportingScopeRef.current = reportingScope;
   const canView = !!user && canViewOrgStructure(user.role);
 
   const [loading, setLoading]       = useState(true);
@@ -56,6 +60,7 @@ export function useOrgStructure() {
   }, [roster]);
 
   const ensureProduction = useCallback(async (ids: string[], rosterOverride?: Map<string, RosterUser>) => {
+    if (!operationalMonth.ready || reportingScopeRef.current !== reportingScope) return;
     const r = rosterOverride || rosterRef.current;
     const toFetch = ids.filter(
       (id) => r.has(id) && !productionRef.current.has(id) && !loadingRef.current.has(id)
@@ -73,7 +78,7 @@ export function useOrgStructure() {
     for (let i = 0; i < toFetch.length; i += CHUNK) {
       const chunk = toFetch.slice(i, i + CHUNK);
       try {
-        const monthKey = monthStartStr();
+        const monthKey = operationalMonth.automaticKey;
         const branchId = branchIdRef.current;
         const result = await dalRead(
           `orgstructure:production:${branchId || 'default'}:${monthKey}:${[...chunk].sort().join(',')}`,
@@ -88,6 +93,7 @@ export function useOrgStructure() {
           },
           { emptyValue: [] as { user_id: string; production: number }[] },
         );
+        if (reportingScopeRef.current !== reportingScope) return;
         setProduction((prev) => {
           const next = new Map(prev);
           result.data.forEach((row) => next.set(row.user_id, Number(row.production) || 0));
@@ -98,6 +104,7 @@ export function useOrgStructure() {
         console.error('Error loading production:', err);
       } finally {
         setLoadingIds((prev) => {
+          if (reportingScopeRef.current !== reportingScope) return prev;
           const next = new Set(prev);
           chunk.forEach((id) => next.delete(id));
           loadingRef.current = next;
@@ -105,9 +112,11 @@ export function useOrgStructure() {
         });
       }
     }
-  }, []);
+  }, [operationalMonth.ready, operationalMonth.automaticKey, reportingScope]);
 
   const loadRoster = useCallback(async () => {
+    if (!operationalMonth.ready) return;
+    const scope = reportingScope;
     setLoading(true);
     try {
       // نطاق المستخدم (نفسه + كل من تحته) فى سياق الفرع الحالي (المرحلة 3):
@@ -148,6 +157,7 @@ export function useOrgStructure() {
           return !isAgent || u.is_active;
         });
 
+      if (reportingScopeRef.current !== scope) return;
       const map = new Map<string, RosterUser>();
       rosterData.forEach((u) => map.set(u.id, u));
 
@@ -168,9 +178,9 @@ export function useOrgStructure() {
     } catch (err) {
       console.error('Error loading org structure:', err);
     } finally {
-      setLoading(false);
+      if (reportingScopeRef.current === scope) setLoading(false);
     }
-  }, [user, currentBranchId, ensureProduction]);
+  }, [user, currentBranchId, ensureProduction, operationalMonth.ready, reportingScope]);
 
   useEffect(() => { if (user && canView) loadRoster(); }, [user, canView, loadRoster]);
 
@@ -232,6 +242,7 @@ export function useOrgStructure() {
   }, [roster]);
 
   return {
+    operationalMonth,
     user,
     canView,
     loading,

@@ -1,3 +1,5 @@
+import { useOperationalMonth } from '../../features/closingExtensions/useOperationalMonth';
+import { OperationalMonthNotice } from '../../features/closingExtensions/OperationalMonthNotice';
 import { FilterPicker } from '../../components/forms/FilterPicker';
 import { useRequestGuard } from '../../hooks/useRequestGuard';
 import { LoadNotice } from '../../components/feedback/LoadNotice';
@@ -64,7 +66,12 @@ export function Reports() {
   const [dateRange, setDateRange] = useState<DateRange>('month');
   const currentYear = new Date().getFullYear();
   // فلتر الشهر: بصيغة yyyy-MM، يُستخدم فقط عندما تكون dateRange = 'month'
-  const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
+  const operationalMonth = useOperationalMonth(user?.id);
+  const selectedMonth = format(operationalMonth.selectedMonth, 'yyyy-MM');
+  const setSelectedMonth = (value: string) => {
+    if (value) operationalMonth.setSelectedMonth(new Date(`${value}-01T12:00:00`));
+    else operationalMonth.resetMonth();
+  };
   // فلتر الربع السنوي: رقم الربع (1-4) والسنة — يختارهما المستخدم بحرية
   // بدل الاعتماد دائماً على آخر 3 أشهر من تاريخ اليوم
   const [selectedQuarter, setSelectedQuarter] = useState<number>(Math.floor(new Date().getMonth() / 3) + 1);
@@ -110,7 +117,7 @@ export function Reports() {
       loadReportRef.current();
     }
     return () => reportGuard.invalidate();
-  }, [reportGuard, user, reportType, dateRange, selectedMonth, selectedQuarter, quarterYear, selectedYear, selectedUserId, currentBranchId, activityTargets, customerRequestFilter]);
+  }, [reportGuard, user, reportType, dateRange, selectedMonth, selectedQuarter, quarterYear, selectedYear, selectedUserId, currentBranchId, activityTargets, customerRequestFilter, operationalMonth.ready]);
 
   useReconnectRefetch(() => { if (user) loadReport(); });
 
@@ -160,7 +167,7 @@ export function Reports() {
 
   const loadReport = async () => {
     const request = reportGuard.start();
-    if (reportType === 'trend' || !user) return;
+    if (reportType === 'trend' || !user || !operationalMonth.ready) return;
     if (requiresActivity && !activityTargets) { setLoading(false); return; }
     setLoading(true);
     setLoadError(null);
@@ -371,6 +378,8 @@ export function Reports() {
   // والفترة، فكل تقرير ينزل باسمه الحقيقى بدل اسم الشركة الثابت.
   const printFileName = `${currentReportLabel ?? 'تقرير'}-${format(periodStart, 'yyyy-MM-dd')}-${format(periodEnd, 'yyyy-MM-dd')}`;
 
+  if (!operationalMonth.ready) return <OperationalMonthNotice period={operationalMonth} />;
+
   if (reportType === 'trend') return <div className="workspace-page space-y-5">
     <PageHeader title="اتجاه الأداء" subtitle="تطور الإنتاج والتحصيل عبر الشهور ضمن صلاحياتك والفرع المختار" />
     <div className="card grid gap-4 sm:grid-cols-2 print:hidden">
@@ -381,7 +390,7 @@ export function Reports() {
       ]} />
       <TeamScopePicker value={selectedUserId} members={scopeMembers} onSelect={setSelectedUserId} />
     </div>
-    {user && <PerformanceTrend userId={user.id} branchId={currentBranchId} selectedUserId={selectedUserId} />}
+    {user && <PerformanceTrend userId={user.id} branchId={currentBranchId} selectedUserId={selectedUserId} referenceMonth={operationalMonth.automaticMonth} />}
   </div>;
 
   return (

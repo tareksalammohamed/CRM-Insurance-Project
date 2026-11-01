@@ -1,3 +1,4 @@
+import { OperationalMonthNotice } from '../../features/closingExtensions/OperationalMonthNotice';
 import { LoadNotice } from '../../components/feedback/LoadNotice';
 import { useDashboard } from './hooks/useDashboard';
 import { DashboardLoading } from './components/DashboardLoading';
@@ -22,6 +23,7 @@ function OperationalDashboard() {
     lastUpdated,
     refreshing,
     refresh,
+    operationalMonth,
     selectedMonth,
     isCurrentMonth,
     goToPreviousMonth,
@@ -39,6 +41,8 @@ function OperationalDashboard() {
     handleSheetBack,
     handleSheetClose,
   } = useDashboard();
+
+  if (!operationalMonth.ready) return <OperationalMonthNotice period={operationalMonth} />;
 
   if (loading) {
     return <DashboardLoading />;

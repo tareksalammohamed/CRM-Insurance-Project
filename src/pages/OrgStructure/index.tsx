@@ -1,3 +1,4 @@
+import { OperationalMonthNotice, OperationalMonthHint } from '../../features/closingExtensions/OperationalMonthNotice';
 import { DownloadFormationModal } from '../OrgFormation/DownloadFormationModal';
 import { FormationPreviewModal } from '../OrgFormation/FormationPreviewModal';
 import { buildOrgChart } from '../OrgFormation/orgChartBuilder';
@@ -18,6 +19,7 @@ export type { RosterUser } from './types';
 // ─── component ────────────────────────────────────────────
 export function OrgStructure() {
   const {
+    operationalMonth,
     user,
     canView,
     loading,
@@ -46,6 +48,8 @@ export function OrgStructure() {
     return <AccessDenied />;
   }
 
+  if (!operationalMonth.ready) return <OperationalMonthNotice period={operationalMonth} />;
+
   const currentId = path[path.length - 1];
   const currentNode = currentId ? roster.get(currentId) : undefined;
   const isSearching = matches !== null;
@@ -54,6 +58,7 @@ export function OrgStructure() {
     <>
     <div className="workspace-page workspace-page-org space-y-4 animate-fadeIn">
       <OrgHeader />
+      <OperationalMonthHint period={operationalMonth} />
 
       {loading ? (
         <LoadingState />

@@ -6,19 +6,20 @@ import { fetchCollectionQuickStats, type CollectionQuickStats } from '../service
 import { useReconnectRefetch } from '../../../hooks/useReconnectRefetch';
 
 // ===== بطاقات إحصائية سريعة (لحظية من Supabase) =====
-export function useCollectionQuickStats(user: User | null | undefined, branchId: string | null, ensureMaintenance: () => Promise<void>, read: AdaptiveRead = directRead) {
+export function useCollectionQuickStats(user: User | null | undefined, branchId: string | null, ensureMaintenance: () => Promise<void>, read: AdaptiveRead = directRead, monthStart: string | null = null, enabled = true) {
   const [quickStats, setQuickStats] = useState<CollectionQuickStats | null>(null);
   const [quickStatsLoading, setQuickStatsLoading] = useState(true);
 
   const requestId = useRef(0);
   const loadQuickStats = useCallback(async () => {
+    if (!enabled) return;
     const currentRequest = ++requestId.current;
     setQuickStatsLoading(true);
     try {
       const stats = await read(async () => {
         await ensureMaintenance();
         if (currentRequest !== requestId.current) throw Object.assign(new Error('قراءة قديمة'), { name: 'AbortError' });
-        return fetchCollectionQuickStats(branchId);
+        return fetchCollectionQuickStats(branchId, monthStart);
       }, 1, () => currentRequest === requestId.current);
       if (currentRequest === requestId.current) setQuickStats(stats);
     } catch (error) {
@@ -27,7 +28,7 @@ export function useCollectionQuickStats(user: User | null | undefined, branchId:
     } finally {
       if (currentRequest === requestId.current) setQuickStatsLoading(false);
     }
-  }, [branchId, ensureMaintenance, read]);
+  }, [branchId, ensureMaintenance, read, monthStart, enabled]);
 
   useEffect(() => {
     if (user) loadQuickStats();
