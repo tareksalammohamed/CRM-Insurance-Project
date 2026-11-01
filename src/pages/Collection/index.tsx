@@ -167,7 +167,7 @@ export function Collection() {
   return (
     <div className="workspace-page workspace-page-collection col-page space-y-3 md:space-y-3.5 animate-fadeIn pb-2">
 
-      <CollectionHeader />
+      <CollectionHeader month={yearMode !== 'year2' && financialReady ? displayMonth : undefined} />
       {yearMode === 'year1' && !initialMonth && <OperationalMonthHint period={operationalMonth} />}
       <div className="flex justify-end"><FollowupWorkspaceButton /></div>
 

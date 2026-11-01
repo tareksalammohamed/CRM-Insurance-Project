@@ -1,5 +1,5 @@
 vi.hoisted(() => { vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co'); vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'test'); });
-import { act, cleanup, render, renderHook, waitFor } from '@testing-library/react';
+import { act, cleanup, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import type { ReactNode } from 'react';
@@ -49,6 +49,7 @@ it('passes the same held month to collection lists and summary cards after confi
   expect(mocks.list.mock.calls.at(-1)?.[0].monthStart).toBe('2026-10-01');
   expect(mocks.quick.mock.calls.at(-1)?.[4]).toBe('2026-10-01');
   expect(mocks.quick.mock.calls.at(-1)?.[5]).toBe(true);
+  expect(screen.getByText('متابعة الأقساط والتحصيلات — أكتوبر 2026')).toBeTruthy();
 });
 it('retains an explicit historical collection link instead of silently replacing its scope', async () => {
   mocks.clock.mockResolvedValue(period);
@@ -56,4 +57,5 @@ it('retains an explicit historical collection link instead of silently replacing
   await waitFor(() => expect(mocks.list.mock.calls.at(-1)?.[0].yearMode).toBe('year1'));
   expect(mocks.list.mock.calls.at(-1)?.[0].monthStart).toBe('2026-09-01');
   expect(mocks.list.mock.calls.at(-1)?.[0].quickFilter).toBe('paid');
+  expect(screen.getByText('متابعة الأقساط والتحصيلات — سبتمبر 2026')).toBeTruthy();
 });
