@@ -1,3 +1,5 @@
+import { useOperationalMonth } from '../../features/closingExtensions/useOperationalMonth';
+import { OperationalMonthNotice } from '../../features/closingExtensions/OperationalMonthNotice';
 import { ClosingExtensionControl } from '../../features/closingExtensions/ClosingExtensionControl';
 import { useRequestGuard } from '../../hooks/useRequestGuard';
 import { LoadNotice } from '../../components/feedback/LoadNotice';
@@ -13,7 +15,7 @@ import {
   Printer
 } from 'lucide-react';
 import clsx from 'clsx';
-import { format, startOfMonth, subMonths, addMonths, isSameMonth } from 'date-fns';
+import { format, startOfMonth, subMonths, addMonths } from 'date-fns';
 import { ar } from 'date-fns/locale';
 
 import type { AgentSummary, SupervisorSummary, SupervisorAgg, PrintDetailRow } from './types';
@@ -42,7 +44,8 @@ export function MonthlyClosing() {
   // عنصر التقرير المطبوع نفسه — بيتصوّر كما هو عند "حفظ كصورة"
   const printReportRef = useRef<HTMLDivElement>(null);
 
-  const [selectedMonth, setSelectedMonth] = useState(startOfMonth(new Date()));
+  const operationalMonth = useOperationalMonth(user?.id);
+  const { selectedMonth, setSelectedMonth } = operationalMonth;
   const [loading, setLoading]             = useState(true);
   // بيبقى true بعد أول تحميل ناجح — بيفرّق بين "أول فتح للصفحة" (يستحق
   // شاشة تحميل كاملة) و"تغيير الشهر" بعد كده (يحافظ على آخر تقرير ظاهر
@@ -99,6 +102,7 @@ export function MonthlyClosing() {
   // إنه بقى useCallback بنفس الـdeps اللي كانت معلنة يدويًا على الـeffect
   // (user / selectedMonth / currentBranchId).
   const loadData = useCallback(async () => {
+    if (!operationalMonth.ready) return;
     const request = requestGuard.start();
     const current = () => requestGuard.isCurrent(request) && contextRef.current === contextKey;
     setLoading(true);
@@ -247,7 +251,7 @@ export function MonthlyClosing() {
     } finally {
       if (current()) { setLoading(false); setHasLoadedOnce(true); }
     }
-  }, [user, selectedMonth, currentBranchId, contextKey, requestGuard]);
+  }, [user, selectedMonth, currentBranchId, contextKey, requestGuard, operationalMonth.ready]);
 
   useEffect(() => { if (user && canView) void loadData(); return requestGuard.invalidate; }, [user, canView, loadData, requestGuard]);
 
@@ -338,7 +342,7 @@ export function MonthlyClosing() {
     }
   };
 
-  const isCurrentMonth = isSameMonth(selectedMonth, new Date());
+  const isCurrentMonth = operationalMonth.isCurrentMonth;
   const grandTotal     = grandProduction + grandCollection;
   const monthLabel     = format(selectedMonth, 'MMMM yyyy', { locale: ar });
 
@@ -350,6 +354,8 @@ export function MonthlyClosing() {
       </div>
     );
   }
+
+  if (!operationalMonth.ready) return <OperationalMonthNotice period={operationalMonth} />;
 
   return (
     <div className="workspace-page workspace-page-monthly-closing space-y-6 animate-fadeIn" ref={printRef}>

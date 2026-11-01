@@ -19,15 +19,18 @@ const EMPTY_PROFILE_STATS: ProfilePerformanceStats = {
   commissionsThisMonth: 0,
 };
 
-export async function fetchProfilePerformanceStats(userId: string, role?: UserRole): Promise<ProfilePerformanceStats> {
+export async function fetchProfilePerformanceStats(userId: string, role?: UserRole, reportingMonth?: string): Promise<ProfilePerformanceStats> {
   const today = new Date();
   const yearStartStr = format(startOfYear(today), 'yyyy-MM-dd');
-  const monthStartStr = format(startOfMonth(today), 'yyyy-MM-dd');
-  const monthEndStr = format(endOfMonth(today), 'yyyy-MM-dd');
+  const referenceMonth = reportingMonth ? new Date(`${reportingMonth}T12:00:00`) : today;
+  const monthStartStr = format(startOfMonth(referenceMonth), 'yyyy-MM-dd');
+  const monthEndStr = format(endOfMonth(referenceMonth), 'yyyy-MM-dd');
+  const paymentReadStart = monthStartStr < yearStartStr ? monthStartStr : yearStartStr;
   const todayStr = format(today, 'yyyy-MM-dd');
+  const paymentReadEnd = monthStartStr > todayStr ? monthStartStr : todayStr;
 
   const result = await dalRead(
-    `profile:performanceStats:closing-v1:${userId}:${role ?? 'none'}:${todayStr}`,
+    `profile:performanceStats:closing-v1:${userId}:${role ?? 'none'}:${todayStr}:${monthStartStr}`,
     async () => {
       // التارجت الخاص بصاحب الدرجة الوظيفية (مراقب/مشرف/قائد مجموعة...) بيتحقق
       // بإنتاجه الشخصي + إنتاج فريقه معًا، فكل المؤشرات هنا (عدا العمولات)
@@ -64,8 +67,8 @@ export async function fetchProfilePerformanceStats(userId: string, role?: UserRo
         .from('closing_payments')
         .select('amount, payment_month:accounting_month, is_cancelled, installment:installment_id(policy:policy_id(owner_id))')
         .eq('is_cancelled', false)
-        .gte('accounting_month', yearStartStr)
-        .lte('accounting_month', todayStr);
+        .gte('accounting_month', paymentReadStart)
+        .lte('accounting_month', paymentReadEnd);
 
       if (paymentsError) throw paymentsError;
 
@@ -74,7 +77,7 @@ export async function fetchProfilePerformanceStats(userId: string, role?: UserRo
         (p) => p.installment?.policy?.owner_id && ownerIdsSet.has(p.installment.policy.owner_id)
       );
 
-      const yearTotalPaid = teamPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+      const yearTotalPaid = teamPayments.filter(p => p.payment_month >= yearStartStr && p.payment_month <= todayStr).reduce((sum, p) => sum + Number(p.amount), 0);
       const monthTotalPaid = teamPayments
         .filter((p) => p.payment_month >= monthStartStr && p.payment_month <= monthEndStr)
         .reduce((sum, p) => sum + Number(p.amount), 0);

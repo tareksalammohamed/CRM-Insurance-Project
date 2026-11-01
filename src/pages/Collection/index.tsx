@@ -1,3 +1,5 @@
+import { useOperationalMonth } from '../../features/closingExtensions/useOperationalMonth';
+import { OperationalMonthNotice, OperationalMonthHint } from '../../features/closingExtensions/OperationalMonthNotice';
 import { useAdaptiveReads } from '../../hooks/useAdaptiveReads';
 import { PromiseDialog, FollowupWorkspaceButton } from '../../features/customerFollowup/FollowupPanel';
 import { AppliedFilters } from '../../components/forms/AppliedFilters';
@@ -39,6 +41,7 @@ type YearMode = 'year1' | 'year2';
 export function Collection() {
   const { user } = useAuth();
   const { currentBranchId } = useBranchContext();
+  const operationalMonth = useOperationalMonth(user?.id);
   const read = useAdaptiveReads(`${user?.id}:${currentBranchId}`);
   const ensureMaintenance = useCollectionMaintenance(user?.id);
 
@@ -72,6 +75,9 @@ export function Collection() {
     activeFilterCount,
   } = useCollectionFilters({ initialQuickFilter, initialSubType, initialOwnerFilter });
 
+  const financialReady = !!initialMonth || operationalMonth.ready;
+  const displayMonth = initialMonth ?? operationalMonth.automaticKey;
+
   const {
     installments,
     loading,
@@ -85,7 +91,7 @@ export function Collection() {
     localSearch,
     setLocalSearch,
     loadInstallments,
-  } = useCollectionInstallments({ user, ensureMaintenance, yearMode, quickFilter, subType, ownerFilter, branchId: currentBranchId, monthStart: initialMonth, initialSearch, read });
+  } = useCollectionInstallments({ user, ensureMaintenance, yearMode: financialReady ? yearMode : null, quickFilter, subType, ownerFilter, branchId: currentBranchId, monthStart: displayMonth, initialSearch, read });
 
   // المستخدم وصل للصفحة من نقرة على بطاقة/رقم بفلتر جاهز فى الرابط —
   // لازم يشوف دليل واضح إن القائمة مفلترة بالفعل مع مخرج للرجوع للكل.
@@ -107,7 +113,7 @@ export function Collection() {
   const hasActiveFilters = activeFilterCount > 0 || !!searchQuery;
 
   const teamMembers = useTeamMembers(user, currentBranchId, read);
-  const { quickStats, quickStatsLoading, loadQuickStats } = useCollectionQuickStats(user, currentBranchId, ensureMaintenance, read);
+  const { quickStats, quickStatsLoading, loadQuickStats } = useCollectionQuickStats(user, currentBranchId, ensureMaintenance, read, displayMonth, financialReady);
 
   const {
     showPolicyModal,
@@ -156,10 +162,13 @@ export function Collection() {
     setMoreMenuInstallment(null);
   };
 
+  if (yearMode === 'year1' && !financialReady) return <OperationalMonthNotice period={operationalMonth} />;
+
   return (
     <div className="workspace-page workspace-page-collection col-page space-y-3 md:space-y-3.5 animate-fadeIn pb-2">
 
       <CollectionHeader />
+      {yearMode === 'year1' && !initialMonth && <OperationalMonthHint period={operationalMonth} />}
       <div className="flex justify-end"><FollowupWorkspaceButton /></div>
 
       {/* ===== مسار التحصيل ===== */}

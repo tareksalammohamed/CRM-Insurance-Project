@@ -164,10 +164,11 @@ const EMPTY_COLLECTION_QUICK_STATS: CollectionQuickStats = {
   year2TotalCollectedAmount: 0,
 };
 
-export async function fetchCollectionQuickStats(branchId: string | null = null): Promise<CollectionQuickStats> {
+export async function fetchCollectionQuickStats(branchId: string | null = null, reportingMonth: string | null = null): Promise<CollectionQuickStats> {
   const now = new Date();
-  const monthStart = startOfMonth(now);
-  const monthEnd = endOfMonth(now);
+  const referenceMonth = reportingMonth ? parseISO(reportingMonth) : now;
+  const monthStart = startOfMonth(referenceMonth);
+  const monthEnd = endOfMonth(referenceMonth);
   const monthStartStr = format(monthStart, 'yyyy-MM-dd');
   const monthEndStr = format(monthEnd, 'yyyy-MM-dd');
   const dayStartIso = startOfDay(now).toISOString();
@@ -259,7 +260,7 @@ export async function fetchCollectionQuickStats(branchId: string | null = null):
       const collectedMonthAmount = collectedMonthRows.reduce((sum, r: any) => sum + Number(r.amount), 0);
       const year2CollectedMonthRows = (year2PaymentsRes.data || []) as any[];
       const year2CollectedMonthRowsForCurrentMonth = year2CollectedMonthRows.filter(
-        (row) => row.payment_month === monthStartStr,
+        (row) => row.payment_month === format(startOfMonth(now), 'yyyy-MM-dd'),
       );
       const year2CollectedMonthAmount = year2CollectedMonthRowsForCurrentMonth.reduce((sum, r) => sum + Number(r.amount), 0);
       const year2TotalCollectedAmount = year2CollectedMonthRows.reduce((sum, r) => sum + Number(r.amount), 0);

@@ -1,3 +1,4 @@
+import { useOperationalMonth } from '../../../features/closingExtensions/useOperationalMonth';
 import { isAbortedRead } from '../../../lib/adaptiveReads';
 import { useRequestGuard } from '../../../hooks/useRequestGuard';
 import { useAdaptiveReads } from '../../../hooks/useAdaptiveReads';
@@ -6,7 +7,7 @@ import { useAuth } from '../../../hooks/useAuth';
 import { useBranchContext } from '../../../lib/branchContext';
 import { type UserRole } from '../../../lib/supabase';
 import type { BranchRoleInfo } from '../../../lib/branchHierarchy';
-import { format, startOfMonth, endOfMonth, addMonths, isWithinInterval, isSameMonth } from 'date-fns';
+import { format, startOfMonth, endOfMonth, addMonths, isWithinInterval } from 'date-fns';
 
 import type { DashboardStats, TeamPerformance, TeamMemberDetail } from '../types';
 import {
@@ -41,8 +42,10 @@ export function useDashboard() {
   // "المستحق/المتأخر" بتعكس الحالة الحيّة الآن فى قاعدة البيانات (status)
   // مش لقطة مجمّدة وقت الشهر ده، بعكس "الإنتاج/التحصيل" اللي دايماً دقيقة
   // لأنها مبنية على payment_month الفعلي المسجَّل وقت السداد.
-  const [selectedMonth, setSelectedMonth] = useState<Date>(() => new Date());
-  const isCurrentMonth = isSameMonth(selectedMonth, new Date());
+  const operationalMonth = useOperationalMonth(user?.id);
+  const { selectedMonth, setSelectedMonth, isCurrentMonth } = operationalMonth;
+  const dashboardScope = `${user?.id}:${currentBranchId}:${format(selectedMonth, 'yyyy-MM')}`;
+  const [loadedDashboardScope, setLoadedDashboardScope] = useState('');
   const [chartData, setChartData] = useState<{ production: number; collection: number }>({ production: 0, collection: 0 });
   // مؤشر "نسبة الإلغاءات" — يُحمَّل بشكل مستقل تماماً ولا يؤثر على أي حساب آخر في الصفحة
   const [cancellationSummary, setCancellationSummary] = useState<CancellationSummary | null>(null);
@@ -92,6 +95,7 @@ export function useDashboard() {
   }, [user, currentBranchId, read, cancellationGuard]);
 
   const loadDashboardData = useCallback(async (silent = false) => {
+    if (!operationalMonth.ready) return;
     const requestId = ++dashboardRequestIdRef.current;
     if (!silent) setLoading(true);
     setTeamLoading(true);
@@ -139,6 +143,7 @@ export function useDashboard() {
         target: user?.target || 0,
       }));
 
+      setLoadedDashboardScope(dashboardScope);
       setChartData(computeChartData(payments, userIds));
       const verifiedTimes = [scope.cachedAt, raw.cachedAt].filter((time): time is number => typeof time === 'number');
       setLastUpdated(degraded ? (verifiedTimes.length ? new Date(Math.min(...verifiedTimes)) : null) : new Date());
@@ -172,7 +177,7 @@ export function useDashboard() {
     } finally {
       if (requestId === dashboardRequestIdRef.current) { if (!silent) setLoading(false); setTeamLoading(false); }
     }
-  }, [user, currentBranchId, selectedMonth, read]);
+  }, [user, currentBranchId, selectedMonth, read, operationalMonth.ready, dashboardScope]);
 
   useEffect(() => {
     if (user) loadDashboardData();
@@ -246,7 +251,7 @@ export function useDashboard() {
     if (isCurrentMonth) return;
     setSelectedMonth((prev) => addMonths(prev, 1));
   };
-  const goToCurrentMonth = () => setSelectedMonth(new Date());
+  const goToCurrentMonth = operationalMonth.resetMonth;
 
   // تحديث يدوي (زرار في الهيدر): بيعيد تحميل نفس بيانات لوحة التحكم لنفس
   // الشهر المُختار حاليًا + مؤشر الإلغاءات، بدون إظهار الـ skeleton الكامل
@@ -269,7 +274,7 @@ export function useDashboard() {
   return {
     user,
     stats,
-    loading,
+    loading: loading || (!dashboardError && loadedDashboardScope !== dashboardScope),
     teamLoading,
     teamError,
     dashboardError,
@@ -277,6 +282,7 @@ export function useDashboard() {
     lastUpdated,
     refreshing,
     refresh,
+    operationalMonth,
     selectedMonth,
     isCurrentMonth,
     goToPreviousMonth,

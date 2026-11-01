@@ -1,3 +1,4 @@
+import { OperationalMonthHint } from '../../features/closingExtensions/OperationalMonthNotice';
 import { DisplayPreferences } from '../../components/DisplayPreferences';
 import { useProfile } from './hooks/useProfile';
 import { ProfileHeader } from './components/ProfileHeader';
@@ -9,6 +10,7 @@ import { SubscriptionTab } from '../../features/subscriptions/components/Subscri
 
 export function Profile() {
   const {
+    operationalMonth,
     user,
     activeTab,
     setActiveTab,
@@ -61,6 +63,7 @@ export function Profile() {
         onAvatarUpload={handleAvatarUpload}
       />
 
+      <OperationalMonthHint period={operationalMonth} />
       <ProfilePerformance
         user={user}
         stats={stats}

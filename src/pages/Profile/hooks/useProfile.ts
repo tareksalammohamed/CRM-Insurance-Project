@@ -1,5 +1,7 @@
+import { useOperationalMonth } from '../../../features/closingExtensions/useOperationalMonth';
+import { useRequestGuard } from '../../../hooks/useRequestGuard';
 import { friendlyError } from '../../../lib/errorMessages';
-import { useState, useEffect, useRef } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { isPasskeySupported } from '../../../lib/supabase';
 import { useForm } from 'react-hook-form';
@@ -28,6 +30,10 @@ export function useProfile() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const operationalMonth = useOperationalMonth(user?.id);
+  const statsGuard = useRequestGuard();
+  const statsKey = `${user?.id}:${operationalMonth.automaticKey}`;
+  const [loadedStatsKey, setLoadedStatsKey] = useState('');
   const [stats, setStats] = useState<ProfilePerformanceStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState<string | null>(null);
@@ -58,25 +64,28 @@ export function useProfile() {
   const newPasswordValue = watchPassword('newPassword');
 
   // جلب مؤشرات الأداء الحقيقية من قاعدة البيانات لحظة فتح الصفحة
-  const loadStats = async () => {
-    if (!user) return;
+  const loadStats = useCallback(async () => {
+    if (!user || !operationalMonth.ready) return;
+    const request = statsGuard.start();
     setStatsLoading(true);
     setStatsError(null);
     try {
-      const result = await fetchProfilePerformanceStats(user.id, user.role);
+      const result = await fetchProfilePerformanceStats(user.id, user.role, operationalMonth.automaticKey);
+      if (!statsGuard.isCurrent(request)) return;
       setStats(result);
+      setLoadedStatsKey(statsKey);
     } catch (err) {
       console.error('Error fetching profile performance stats:', err);
-      setStatsError('تعذر تحميل مؤشرات الأداء، حاول تحديث الصفحة');
+      if (statsGuard.isCurrent(request)) setStatsError('تعذر تحميل مؤشرات الأداء، حاول تحديث الصفحة');
     } finally {
-      setStatsLoading(false);
+      if (statsGuard.isCurrent(request)) setStatsLoading(false);
     }
-  };
+  }, [user, operationalMonth.ready, operationalMonth.automaticKey, statsGuard, statsKey]);
 
   useEffect(() => {
-    loadStats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+    void loadStats();
+    return () => statsGuard.invalidate();
+  }, [loadStats, statsGuard]);
 
   useReconnectRefetch(loadStats);
 
@@ -185,11 +194,12 @@ export function useProfile() {
     }
   };
 
-  const monthlyAchievementRate = stats && user?.target
+  const monthlyAchievementRate = loadedStatsKey === statsKey && stats && user?.target
     ? Math.round((stats.monthTotalPaid / user.target) * 100)
     : null;
 
   return {
+    operationalMonth,
     user,
     activeTab,
     setActiveTab,
@@ -209,9 +219,9 @@ export function useProfile() {
     setShowNewPassword,
     passwordStrength,
     fileInputRef,
-    stats,
-    statsLoading,
-    statsError,
+    stats: loadedStatsKey === statsKey ? stats : null,
+    statsLoading: operationalMonth.error ? false : statsLoading || !operationalMonth.ready || (!statsError && loadedStatsKey !== statsKey),
+    statsError: operationalMonth.error ?? statsError,
     registerProfile,
     handleProfileSubmit,
     profileErrors,
