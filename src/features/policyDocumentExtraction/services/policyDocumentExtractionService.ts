@@ -10,9 +10,11 @@ import type { DetectedFormField, ExtractionResult } from '../../customerDataExtr
 /** يستخرج فقط قيم حقول نموذج "إصدار وثيقة تأمين" الممرَّرة، من صورة/صور المستند المختار */
 export function extractPolicyDataFromDocument(
   images: string[],
-  fields: DetectedFormField[]
+  fields: DetectedFormField[],
+  expectedCustomerName?: string
 ): Promise<ExtractionResult> {
   return extractFormDataFromDocument(images, fields, {
     formPurpose: 'نموذج "إصدار وثيقة تأمين"',
+    expectedCustomerName,
   });
 }

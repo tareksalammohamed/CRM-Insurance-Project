@@ -1,5 +1,5 @@
 import { friendlyError } from '../../lib/errorMessages';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Download,
@@ -22,9 +22,10 @@ import clsx from 'clsx';
 
 import { useAuth } from '../../hooks/useAuth';
 import { useBranchContext } from '../../lib/branchContext';
-import type { ParsedRow, ImportSummary } from './types';
-import { downloadTemplateFile, parseWorkbookFile, importRows, fetchImportAgents, exportErrorReport, revalidateRow, type ImportAgent } from './services/dataImportService';
+import type { ParsedRow, ImportSummary, ImportColumnReview as ColumnReview } from './types';
+import { downloadTemplateFile, parseWorkbookFile, importRows, fetchImportAgents, exportErrorReport, revalidateRow, validateFileDuplicates, type ImportAgent } from './services/dataImportService';
 import { detectDocumentKind, extractRowsFromDocument } from './services/aiDocumentExtractor';
+import { ImportColumnReview } from './components/ImportColumnReview';
 import { RowEditModal } from './components/RowEditModal';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { createAppJob, finishAppJob, updateAppJob } from '../../features/jobs/jobService';
@@ -49,6 +50,11 @@ export function DataImport() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [headerError, setHeaderError] = useState<string | null>(null);
   const [aiNotice, setAiNotice] = useState<string | null>(null);
+  const importBusy = useRef(false);
+  const sourceFileRef = useRef<File | null>(null);
+  const parseRequest = useRef(0);
+  const [columnMappingDirty, setColumnMappingDirty] = useState(false);
+  const [columnReview, setColumnReview] = useState<ColumnReview | null>(null);
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
   const [agents, setAgents] = useState<ImportAgent[]>([]);
   const [excludedRows, setExcludedRows] = useState<Set<number>>(new Set());
@@ -101,7 +107,8 @@ export function DataImport() {
       .catch((err) => console.warn('Import checkpoint update failed:', err));
   };
 
-  const activeRows = parsedRows.filter((r) => !excludedRows.has(r.rowNumber));
+  const validatedRows = useMemo(() => parsedRows.map(row => revalidateRow(row, agents)), [parsedRows, agents]);
+  const activeRows = useMemo(() => validateFileDuplicates(validatedRows.filter(row => !excludedRows.has(row.rowNumber))), [validatedRows, excludedRows]);
   const validRowsCount = activeRows.filter((r) => r.payload !== null).length;
   const invalidRowsCount = activeRows.length - validRowsCount;
   const excludedCount = excludedRows.size;
@@ -109,6 +116,11 @@ export function DataImport() {
   const agentIssueRowsCount = activeRows.filter((r) => r.clientError?.includes('الوكيل')).length;
 
   const resetAll = () => {
+    parseRequest.current++;
+    sourceFileRef.current = null;
+    setColumnReview(null);
+    setColumnMappingDirty(false);
+    setParsing(false);
     setFileName(null);
     setHeaderError(null);
     setAiNotice(null);
@@ -138,6 +150,8 @@ export function DataImport() {
 
   const handleFile = async (file: File) => {
     resetAll();
+    sourceFileRef.current = file;
+    const token = ++parseRequest.current;
     setFileName(file.name);
     setParsing(true);
     const documentKind = detectDocumentKind(file);
@@ -158,6 +172,7 @@ export function DataImport() {
             resumable: resumeAvailableRef.current,
           },
         });
+        if (parseRequest.current !== token) { safeFinishJob(job.id, 'interrupted', 'تم استبدال الملف قبل بدء التحليل'); return; }
         jobId = job.id;
         activeJobIdRef.current = job.id;
         activeBranchIdRef.current = currentBranchId;
@@ -169,6 +184,7 @@ export function DataImport() {
             file,
             documentKind: documentKind || 'spreadsheet',
           });
+          if (parseRequest.current !== token) { safeFinishJob(job.id, 'interrupted', 'تم إيقاف تحليل الملف'); return; }
           resumeAvailableRef.current = true;
         } catch (checkpointErr) {
           console.warn('Import checkpoint create failed:', checkpointErr);
@@ -192,6 +208,7 @@ export function DataImport() {
       // الوكيل" محلياً (تطبيع + تشابه) بدل ما نكتشف الاسم الغلط بعد فشل
       // كل صف في السيرفر واحداً واحداً
       const fetchedAgents = user ? await fetchImportAgents(user, currentBranchId) : [];
+      if (parseRequest.current !== token) return;
       setAgents(fetchedAgents);
 
       if (documentKind) {
@@ -203,6 +220,7 @@ export function DataImport() {
           documentKind,
           fetchedAgents,
           (progress) => {
+            if (parseRequest.current !== token) return;
             setAiExtractionProgress(progress);
             safeUpdateJob(jobId, {
               stage: 'استخراج الصفحات',
@@ -220,6 +238,7 @@ export function DataImport() {
           },
           {
             startPage: 1,
+            shouldContinue: () => parseRequest.current === token,
             existingRows: [],
             onCheckpoint: async (checkpoint) => {
               if (!jobId) return;
@@ -236,6 +255,7 @@ export function DataImport() {
             },
           },
         );
+        if (parseRequest.current !== token) return;
         if (extraction.error) {
           setHeaderError(extraction.error);
           setStage('idle');
@@ -258,7 +278,7 @@ export function DataImport() {
 
           if (extraction.partial && extraction.capacityExhausted) {
             setAiNotice(
-              `تم استخراج ${extraction.processedPages} من ${extraction.totalPages} صفحة و${extraction.rows.length} سجل بنجاح، ثم انتهت الحصة المتاحة لدى كل نماذج ومزودي الذكاء الاصطناعي. يمكنك استيراد الجزء المستخرج الآن بأمان، وإعادة المحاولة لاحقاً للباقي.`
+              `تم استخراج ${extraction.processedPages} من ${extraction.totalPages} صفحة و${extraction.rows.length} سجل للمراجعة، ثم انتهت الحصة المتاحة لدى كل نماذج ومزودي الذكاء الاصطناعي. يمكنك استيراد الجزء المقروء بعد مراجعة صفوفه واعتمادها، وإعادة المحاولة لاحقاً للباقي.`
             );
           } else if (extraction.pageLimitReached) {
             setAiNotice(
@@ -270,7 +290,7 @@ export function DataImport() {
             );
           } else {
             setAiNotice(
-              `تم استخراج بيانات الملف بالكامل بواسطة الذكاء الاصطناعي (${extraction.processedPages} صفحة، ${extraction.rows.length} سجل). راجع الصفوف أدناه بعناية قبل الاستيراد.`
+              `انتهت قراءة صفحات الملف (${extraction.processedPages} صفحة، ${extraction.rows.length} سجل مقترح). افتح مراجعة كل صف وتأكد من بياناته ومصدرها ثم اعتمده قبل الاستيراد.`
             );
           }
           safeUpdateCheckpoint(jobId, {
@@ -314,10 +334,12 @@ export function DataImport() {
         return;
       }
 
-      const { rows, headerError: hErr, usedAIMapping: aiUsed } = await parseWorkbookFile(file, fetchedAgents);
+      const { rows, headerError: hErr, usedAIMapping: aiUsed, columnReview: review } = await parseWorkbookFile(file, fetchedAgents);
+      if (parseRequest.current !== token) return;
+      setColumnReview(review ?? null);
       if (hErr) {
         setHeaderError(hErr);
-        setStage('idle');
+        setStage(review ? 'parsed' : 'idle');
         safeFinishJob(jobId, 'failed', hErr, 0, 0, { file_name: file.name });
       } else {
         setParsedRows(rows);
@@ -344,12 +366,35 @@ export function DataImport() {
         setStage('parsed');
       }
     } catch (err: unknown) {
+      if (parseRequest.current !== token) return;
       const message = friendlyError(err, 'تعذر قراءة الملف. تأكد أنه ملف صحيح غير تالف');
       setHeaderError(message);
       safeFinishJob(jobId, 'failed', message, 0, 0, { file_name: file.name });
     } finally {
-      setParsing(false);
+      if (parseRequest.current === token) setParsing(false);
     }
+  };
+
+  const applyColumnMapping = async (mapping: ColumnReview['mapping']) => {
+    const file = sourceFileRef.current, review = columnReview;
+    if (!file || !review || parsing) return;
+    const token = ++parseRequest.current;
+    setParsing(true);
+    try {
+      const result = await parseWorkbookFile(file, agents, { columnMapping: mapping, sheetName: review.sheetName, headerRowNumber: review.headerRowNumber });
+      if (parseRequest.current !== token || sourceFileRef.current !== file) return;
+      setHeaderError(result.headerError);
+      setColumnReview(result.columnReview ?? review);
+      setColumnMappingDirty(false);
+      setParsedRows(result.rows);
+      setExcludedRows(new Set());
+      safeUpdateCheckpoint(activeJobIdRef.current, { phase: 'parsed', parsed_rows: result.rows, excluded_rows: [] });
+      if (!result.headerError) {
+        setAiNotice('تم اعتماد توزيع الأعمدة وإعادة فحص الصفوف من الملف الأصلي. لم يتم استيراد أي بيانات بعد.');
+        safeUpdateJob(activeJobIdRef.current, { status: 'ready', stage: 'جاهزة للاستيراد', message: `تم اعتماد الأعمدة وفحص ${result.rows.length} صف`, progress_current: result.rows.length, progress_total: result.rows.length });
+      }
+    } catch (error) { if (parseRequest.current === token) setHeaderError(friendlyError(error, 'تعذر إعادة فحص توزيع الأعمدة')); }
+    finally { if (parseRequest.current === token) setParsing(false); }
   };
 
   const resumeFromCheckpoint = async (jobId: string) => {
@@ -381,6 +426,17 @@ export function DataImport() {
         done: completed.size,
         total: (checkpoint.parsed_rows || []).filter((row) => !(checkpoint.excluded_rows || []).includes(row.rowNumber)).length,
       });
+
+      if (checkpoint.document_kind === 'spreadsheet' && (!checkpoint.parsed_rows.length || checkpoint.parsed_rows.some(row => row.review?.source === 'columns' && !row.review.confirmed))) {
+        const file = await downloadCheckpointFile(checkpoint);
+        sourceFileRef.current = file;
+        const result = await parseWorkbookFile(file, fetchedAgents);
+        setColumnReview(result.columnReview ?? null);
+        setHeaderError(result.headerError);
+        setParsedRows(result.rows);
+        setStage('parsed');
+        return;
+      }
 
       const canContinueDocument =
         (checkpoint.document_kind === 'pdf' || checkpoint.document_kind === 'image') &&
@@ -622,7 +678,10 @@ export function DataImport() {
   };
 
   const startImport = async () => {
-    const rowsToImport = parsedRows.filter((r) => !excludedRows.has(r.rowNumber));
+    if (importBusy.current || parsing || columnReview?.needsConfirmation || columnMappingDirty || !validRowsCount) return;
+    importBusy.current = true;
+    setStage('importing');
+    const rowsToImport = activeRows;
     const jobId = activeJobIdRef.current;
     const branchId = activeBranchIdRef.current ?? currentBranchId;
 
@@ -766,7 +825,7 @@ export function DataImport() {
       );
       setHeaderError(message);
       setStage('parsed');
-    }
+    } finally { importBusy.current = false; }
   };
 
   const retryFailedRows = () => {
@@ -800,10 +859,12 @@ export function DataImport() {
     setEditingRow(null);
   };
 
-  const handleAgentQuickSelect = (row: ParsedRow, agentName: string) => {
+  const handleAgentQuickSelect = (row: ParsedRow, agentId: string) => {
+    const agent = agents.find(item => item.id === agentId);
+    if (!agent) return;
     const updated = revalidateRow({
       ...row,
-      raw: { ...row.raw, agent_name: agentName },
+      raw: { ...row.raw, agent_name: agent.name, __agent_id: agent.id },
     }, agents);
     setParsedRows((prev) => {
       const next = prev.map((item) => item.rowNumber === row.rowNumber ? updated : item);
@@ -822,7 +883,9 @@ export function DataImport() {
     });
   };
 
-  const visibleRows = showErrorsOnly ? parsedRows.filter((r) => r.payload === null) : parsedRows;
+  const activeByNumber = new Map(activeRows.map(row => [row.rowNumber, row]));
+  const displayedRows = parsedRows.map(row => activeByNumber.get(row.rowNumber) ?? row);
+  const visibleRows = showErrorsOnly ? displayedRows.filter(row => row.payload === null) : displayedRows;
 
   return (
     <div className="workspace-page workspace-page-import space-y-6 animate-fadeIn">
@@ -929,6 +992,8 @@ export function DataImport() {
           </div>
         )}
 
+        {stage === 'parsed' && columnReview && <ImportColumnReview key={JSON.stringify(columnReview)} review={columnReview} loading={parsing} onDirty={() => setColumnMappingDirty(true)} onApply={mapping => void applyColumnMapping(mapping)} />}
+
         {stage === 'parsed' && (
           <div className="space-y-4">
             {aiNotice && (
@@ -965,7 +1030,7 @@ export function DataImport() {
                   <p className="text-xl font-bold text-success-700">{validRowsCount}</p>
                 </div>
                 <div className="rounded-lg bg-white border border-error-200 p-3">
-                  <p className="text-xs text-error-600">يحتاج تصحيح</p>
+                  <p className="text-xs text-error-600">يحتاج مراجعة</p>
                   <p className="text-xl font-bold text-error-600">{invalidRowsCount}</p>
                 </div>
                 <div className="rounded-lg bg-white border border-warning-200 p-3">
@@ -983,7 +1048,7 @@ export function DataImport() {
               <div className="flex justify-end">
               <button
                 onClick={startImport}
-                disabled={validRowsCount === 0}
+                disabled={validRowsCount === 0 || parsing || !!columnReview?.needsConfirmation || columnMappingDirty}
                 className="btn btn-primary flex-shrink-0"
               >
                 <PlayCircle className="w-4 h-4" />
@@ -1045,7 +1110,7 @@ export function DataImport() {
                               >
                                 <option value="">اختر الوكيل الصحيح</option>
                                 {agents.map((agent) => (
-                                  <option key={agent.id} value={agent.name}>{agent.name}</option>
+                                  <option key={agent.id} value={agent.id}>{agent.name}{agents.filter(other => other.name === agent.name).length > 1 ? ` (${agent.id.slice(0, 8)})` : ''}</option>
                                 ))}
                               </select>
                             ) : (
@@ -1071,9 +1136,9 @@ export function DataImport() {
                               <button
                                 onClick={() => setEditingRow(row)}
                                 className="btn btn-ghost btn-sm"
-                                title="تعديل الصف"
+                                title="مراجعة كل بيانات الصف" aria-label={`مراجعة بيانات الصف ${row.rowNumber}`}
                               >
-                                <Pencil className="w-4 h-4" />
+                                <Pencil className="w-4 h-4" /><span className="text-xs">مراجعة</span>
                               </button>
                               <button
                                 onClick={() => toggleExcludeRow(row.rowNumber)}

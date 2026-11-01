@@ -3,8 +3,10 @@ import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { supabase, POLICY_TYPE_LABELS, PAYMENT_METHOD_LABELS, MARITAL_STATUS_LABELS, type User } from '../../../lib/supabase';
 import { fetchAgentsForCurrentUser } from '../../Customers/services/customersService';
-import { IMPORT_COLUMNS, type ImportColumnKey, type ParsedRow, type ImportRowPayload, type RowResult, type ImportSummary } from '../types';
+import { IMPORT_COLUMNS, type ImportColumnKey, type ImportColumnReview, type ParsedRow, type ImportRowPayload, type RowResult, type ImportSummary } from '../types';
 import { matchColumnsWithAI } from './aiColumnMatcher';
+import { nationalIdBirthDate, normalizeDigits, readCalendarDate, readDecimal } from '../../../lib/ai/extractionValues';
+import { validateExtractedValue } from '../../../lib/ai/extractionSemantics';
 
 export interface ImportAgent {
   id: string;
@@ -183,23 +185,17 @@ export interface AgentMatchResult {
   agent: ImportAgent | null;
   suggestions: Array<ImportAgent & { matchScore?: number }>;
   confidence: number;
-  matchType: 'exact' | 'auto_fuzzy' | 'suggestion' | 'none';
+  matchType: 'exact' | 'suggestion' | 'none';
 }
 
-const FUZZY_AUTO_MATCH_THRESHOLD = 0.88;
-const FUZZY_AUTO_MATCH_MARGIN = 0.08;
 const FUZZY_SUGGESTION_THRESHOLD = 0.52;
 
-// مطابقة متعددة المراحل:
-// 1) تطابق كامل بعد التطبيع.
-// 2) تطابق تقريبي عالي الثقة فقط لو أفضل نتيجة >= 88% وبفارق واضح عن
-//    ثاني أفضل نتيجة؛ وقتها نعتمد الاسم الرسمي تلقائياً.
-// 3) غير ذلك نعرض أقرب المرشحين للمستخدم ولا نخمن مالك الوثيقة.
+// Similar names are suggestions only. Never assign policy ownership by similarity.
 export function matchAgentName(inputName: string, agents: ImportAgent[]): AgentMatchResult {
   const normalizedInput = normalizeArabicForMatch(inputName);
 
-  const exact = agents.find((a) => normalizeArabicForMatch(a.name) === normalizedInput);
-  if (exact) return { agent: exact, suggestions: [], confidence: 1, matchType: 'exact' };
+  const exact = agents.filter((a) => normalizeArabicForMatch(a.name) === normalizedInput);
+  if (exact.length === 1) return { agent: exact[0], suggestions: [], confidence: 1, matchType: 'exact' };
 
   const scored = agents
     .map((a) => ({
@@ -209,20 +205,6 @@ export function matchAgentName(inputName: string, agents: ImportAgent[]): AgentM
     .sort((x, y) => y.score - x.score);
 
   const best = scored[0];
-  const second = scored[1];
-  if (
-    best &&
-    best.score >= FUZZY_AUTO_MATCH_THRESHOLD &&
-    (!second || best.score - second.score >= FUZZY_AUTO_MATCH_MARGIN)
-  ) {
-    return {
-      agent: best.agent,
-      suggestions: [],
-      confidence: best.score,
-      matchType: 'auto_fuzzy',
-    };
-  }
-
   const suggestions = scored
     .filter((item) => item.score >= FUZZY_SUGGESTION_THRESHOLD)
     .slice(0, 5)
@@ -302,11 +284,13 @@ export function buildParsedRow(
   agents: ImportAgent[],
   nativeDates: DateNativeOverrides = {}
 ): ParsedRow {
+  raw = { ...raw };
   const get = (key: ImportColumnKey) => raw[key];
   const errors: string[] = [];
 
   const customerName = normalizeText(get('customer_name'));
   if (!customerName) errors.push('اسم العميل مطلوب');
+  else if (!/[\p{L}]/u.test(customerName)) errors.push('اسم العميل يجب أن يكون اسم شخص، وليس رقمًا');
 
   const agentNameInput = normalizeText(get('agent_name'));
   let agentName = agentNameInput;
@@ -318,7 +302,8 @@ export function buildParsedRow(
     // السيرفر لكل صف. لو الاسم مطابق (حتى مع فروق تشكيل/همزة بسيطة)،
     // بنستبدله باسمه الرسمي المسجّل في النظام لضمان نجاح المطابقة الصارمة
     // في import_policy_row
-    const { agent, suggestions } = matchAgentName(agentNameInput, agents);
+    const chosen = agents.find(agent => agent.id === raw.__agent_id && normalizeArabicForMatch(agent.name) === normalizeArabicForMatch(agentNameInput));
+    const { agent, suggestions } = chosen ? { agent: chosen, suggestions: [] } : matchAgentName(agentNameInput, agents);
     if (agent) {
       agentName = agent.name;
       agentId = agent.id;
@@ -332,6 +317,13 @@ export function buildParsedRow(
   // لو مفيش قائمة وكلاء متاحة (فشل الجلب)، نتجاوز التحقق المحلي بالكامل
   // ونسيب المطابقة النهائية للسيرفر زي السلوك القديم تماماً
 
+  for (const key of ['national_id', 'phone'] as const) {
+    const value = get(key);
+    if (!normalizeText(value)) continue;
+    const checked = validateExtractedValue({ name: key, label: key, inputType: 'text', required: false }, value);
+    if (checked.error) errors.push(`${key === 'national_id' ? 'الرقم القومي' : 'الهاتف'}: ${checked.error}`);
+    else raw[key] = checked.value;
+  }
   const policyNumber = normalizeDigitsText(get('policy_number'));
   if (!policyNumber) errors.push('رقم الوثيقة مطلوب');
 
@@ -378,6 +370,10 @@ export function buildParsedRow(
     if (!birthDate) errors.push('تاريخ الميلاد غير صحيح');
   }
 
+  const identityBirth = nationalIdBirthDate(normalizeDigitsText(get('national_id')));
+  if (birthDate && identityBirth && dateToDbString(birthDate) !== identityBirth) errors.push('تاريخ الميلاد لا يطابق الرقم القومي؛ راجع القيمتين في المصدر');
+  if (startDate) raw.start_date = dateToDbString(startDate);
+  if (birthDate) raw.birth_date = dateToDbString(birthDate);
   const clientError = errors.length > 0 ? errors.join(' — ') : null;
 
   let payload: ImportRowPayload | null = null;
@@ -408,7 +404,10 @@ export function buildParsedRow(
 // تُستدعى من واجهة المعاينة بعد ما المستخدم يعدّل أي خلية يدوياً في صف،
 // عشان نعيد التحقق منه فوراً من غير الحاجة لإعادة رفع الملف كله من الأول
 export function revalidateRow(row: ParsedRow, agents: ImportAgent[] = []): ParsedRow {
-  return buildParsedRow(row.rowNumber, row.raw, agents);
+  const result = { ...buildParsedRow(row.rowNumber, { ...row.raw }, agents), review: row.review, sourceIssues: row.sourceIssues };
+  const sourceErrors = Object.entries(row.sourceIssues ?? {}).filter(([key, issue]) => String(row.raw[key]) === issue.value).map(([, issue]) => issue.reason);
+  if (sourceErrors.length) { result.clientError = [result.clientError, ...sourceErrors].filter(Boolean).join(' — '); result.payload = null; }
+  return applyImportReview(result);
 }
 
 function buildReverseMap(labels: Record<string, string>): Map<string, string> {
@@ -457,7 +456,7 @@ function normalizeHeaderForMatch(value: any): string {
     .replace(/[ة]/g, 'ه') // التاء المربوطة/الهاء في عناوين الملفات
     .replace(/ـ/g, '') // التطويل
     .replace(/\s+/g, ' ')
-    .trim();
+    .trim().toLowerCase();
 }
 
 const IMPORT_HEADER_ALIASES: Partial<Record<ImportColumnKey, string[]>> = {
@@ -474,126 +473,50 @@ const IMPORT_HEADER_ALIASES: Partial<Record<ImportColumnKey, string[]>> = {
   sum_assured: ['مبلغ التامين', 'مبلغ التأمين الكلي', 'راس المال', 'رأس المال', 'sum assured', 'sum_assured'],
   premium_amount: ['القسط الصافي', 'صافي القسط', 'قيمة القسط', 'premium', 'net premium', 'premium amount'],
   payment_method: ['دورية السداد', 'طريقه السداد', 'طريقة الدفع', 'دورية الدفع', 'payment method', 'frequency'],
-  start_date: ['تاريخ البدء', 'تاريخ السريان', 'تاريخ بداية الوثيقة', 'تاريخ الاصدار', 'تاريخ الإصدار', 'start date', 'effective date'],
+  start_date: ['تاريخ البدء', 'تاريخ السريان', 'تاريخ بداية الوثيقة', 'start date', 'effective date'],
   notes: ['ملاحظة', 'بيان', 'remarks', 'notes'],
 };
 
-function findHeaderAliasIndex(headerRow: string[], key: ImportColumnKey): number {
-  const aliases = [IMPORT_COLUMNS.find((c) => c.key === key)?.header, ...(IMPORT_HEADER_ALIASES[key] || [])]
-    .filter(Boolean)
-    .map(normalizeHeaderForMatch);
-  return headerRow.findIndex((header) => aliases.includes(normalizeHeaderForMatch(header)));
-}
-
-const ARABIC_INDIC_DIGITS: Record<string, string> = {
-  '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
-  '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9'
-};
-
-function toEnglishDigits(value: string): string {
-  return value.replace(/[٠-٩]/g, (d) => ARABIC_INDIC_DIGITS[d] ?? d);
-}
-
-function parseFlexibleNumber(value: any): number | null {
-  if (value === null || value === undefined || value === '') return null;
-  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-  const cleaned = toEnglishDigits(String(value)).replace(/[,\s]/g, '');
-  if (cleaned === '') return null;
-  const n = Number(cleaned);
-  return Number.isFinite(n) ? n : null;
-}
-
-function excelSerialToDate(serial: number): Date {
-  // نفس منطق SheetJS الداخلي لتحويل الرقم التسلسلي لتاريخ Excel لكائن Date
-  const utcDays = Math.floor(serial - 25569);
-  const utcValue = utcDays * 86400;
-  return new Date(utcValue * 1000);
-}
-
-function parseFlexibleDate(value: any): Date | null {
-  if (value === null || value === undefined || value === '') return null;
-  if (value instanceof Date && !isNaN(value.getTime())) return value;
+function toEnglishDigits(value: string): string { return normalizeDigits(value); }
+function parseFlexibleNumber(value: unknown): number | null { return readDecimal(value); }
+function parseFlexibleDate(value: unknown): Date | null {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
   if (typeof value === 'number') {
-    const d = excelSerialToDate(value);
-    return isNaN(d.getTime()) ? null : d;
+    const parsed = XLSX.SSF.parse_date_code(value);
+    if (!parsed) return null;
+    const iso = readCalendarDate(`${parsed.y}-${parsed.m}-${parsed.d}`);
+    return iso ? new Date(`${iso}T12:00:00`) : null;
   }
-  const str = toEnglishDigits(String(value)).trim();
-  if (!str) return null;
-
-  // yyyy-mm-dd أو yyyy/mm/dd
-  let m = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
-  if (m) {
-    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-    return isNaN(d.getTime()) ? null : d;
-  }
-  // dd-mm-yyyy أو dd/mm/yyyy
-  m = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
-  if (m) {
-    const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
-    return isNaN(d.getTime()) ? null : d;
-  }
-  const fallback = new Date(str);
-  return isNaN(fallback.getTime()) ? null : fallback;
+  const iso = readCalendarDate(value);
+  return iso ? new Date(`${iso}T12:00:00`) : null;
 }
 
 function dateToDbString(d: Date): string {
   return format(d, 'yyyy-MM-dd');
 }
 
-// ===================================================================
-// كشف عمود/أعمدة "القسط" بمرونة — ملفات العملاء الحقيقية غالباً مش
-// موافقة لنموذج الاستيراد الرسمي بالظبط، وممكن يكون فيها أكتر من عمود
-// بيمثل القسط (صافي / إجمالي / قبل الرسوم / بعد الرسوم...). القاعدة:
-// - لو فيه عمود بيدل على "القسط الصافي" (أي صياغة تحتوي كلمتي "قسط" و
-//   "صافي" معاً، زي "القسط الصافي" أو "قيمة القسط الصافي" أو "صافي
-//   القسط")، بناخد قيمته دايماً حتى لو كان فيه أعمدة أقساط تانية
-//   (إجمالي/قبل الرسوم/بعد الرسوم...) بنفس الملف. مفيش اختيار لأي نوع
-//   قسط تاني إلا لو المستخدم غيّره يدويًا أثناء مراجعة بيانات الاستيراد.
-// - غير كده (لو مفيش عمود "صافي" واضح)، بناخد أقل قيمة صحيحة (أكبر من
-//   صفر) بين كل الأعمدة اللي اسمها يحتوي كلمة "قسط" (مع استبعاد أعمدة
-//   التواريخ زي "تاريخ استحقاق القسط" اللي بتحتوي كلمة "قسط" برضو لكنها
-//   مش قيمة مالية).
-// - القيمة النهائية دايماً بيتم اقتطاع كسورها العشرية (بدون أي تقريب)،
-//   فتُحفظ كجزء صحيح فقط (مثال: 5986.75 → 5986).
-const PREMIUM_KEYWORD = 'قسط';
-const PREMIUM_DATE_EXCLUSION_KEYWORD = 'تاريخ';
-const PREMIUM_NET_KEYWORD = 'صافي';
-
-function findPremiumColumnIndices(headerRow: string[]): number[] {
-  return headerRow.reduce<number[]>((acc, h, idx) => {
-    if (h.includes(PREMIUM_KEYWORD) && !h.includes(PREMIUM_DATE_EXCLUSION_KEYWORD)) {
-      acc.push(idx);
-    }
-    return acc;
-  }, []);
+/** Review flags are persisted in checkpoints, and are also enforced at the send boundary. */
+export function applyImportReview(row: ParsedRow): ParsedRow {
+  if (row.review && !row.review.confirmed) return { ...row, payload: null,
+    clientError: [row.clientError, row.review.source === 'columns' ? 'راجع توزيع الأعمدة واعتمده أولًا' : 'راجع بيانات المستند ومصدر كل خانة ثم اعتمد الصف'].filter(Boolean).join(' — ') };
+  return row;
 }
 
-// عمود "القسط الصافي" بأي صياغة تحتوي الكلمتين معاً، مش مطابقة حرفية
-// لعنوان ثابت واحد، عشان نستوعب "القسط الصافي"/"قيمة القسط الصافي"/
-// "صافي القسط" وغيرها من الصياغات المشابهة
-function isNetPremiumHeader(h: string): boolean {
-  return h.includes(PREMIUM_KEYWORD) && h.includes(PREMIUM_NET_KEYWORD) && !h.includes(PREMIUM_DATE_EXCLUSION_KEYWORD);
-}
-
-// اقتطاع الكسور العشرية بدون أي تقريب (الاحتفاظ بالجزء الصحيح فقط)
-function truncateToInteger(value: number | null): number | null {
-  if (value === null) return null;
-  return Math.trunc(value);
-}
-
-function extractPremiumAmount(
-  rowFormatted: any[],
-  premiumColumnIndices: number[],
-  premiumNetIndex: number
-): number | null {
-  if (premiumNetIndex !== -1) {
-    return truncateToInteger(parseFlexibleNumber(rowFormatted[premiumNetIndex]));
+export function validateFileDuplicates(rows: ParsedRow[]): ParsedRow[] {
+  const groups = new Map<string, ParsedRow[]>();
+  for (const row of rows) {
+    const key = normalizeDigitsText(row.raw.policy_number).toLowerCase();
+    if (!key) continue;
+    const group = groups.get(key) ?? [];
+    group.push(row);
+    groups.set(key, group);
   }
-  const values = premiumColumnIndices
-    .map((idx) => parseFlexibleNumber(rowFormatted[idx]))
-    .filter((v): v is number => v !== null && v > 0);
-  if (values.length === 0) return null;
-  return truncateToInteger(Math.min(...values));
+  const issues = new Map([...groups].filter(([, group]) => group.length > 1).map(([key, group]) => [key, `رقم الوثيقة مكرر داخل الملف (الصفوف: ${group.slice(0, 10).map(item => item.rowNumber).join('، ')}${group.length > 10 ? `، و${group.length - 10} صفوف أخرى` : ''})`]));
+  return rows.map(row => {
+    const issue = issues.get(normalizeDigitsText(row.raw.policy_number).toLowerCase());
+    if (!issue) return row;
+    return { ...row, payload: null, clientError: [row.clientError, issue].filter(Boolean).join(' — ') };
+  });
 }
 
 export interface ParseResult {
@@ -601,190 +524,102 @@ export interface ParseResult {
   headerError: string | null;
   usedAIMapping?: boolean;
   aiCapacityExhausted?: boolean;
+  columnReview?: ImportColumnReview;
+}
+export interface WorkbookMappingOptions { columnMapping: ImportColumnReview['mapping']; sheetName: string; headerRowNumber: number }
+
+function aliasIndices(headers: string[], key: ImportColumnKey): number[] {
+  const aliases = [key, IMPORT_COLUMNS.find(column => column.key === key)?.header, ...(IMPORT_HEADER_ALIASES[key] ?? [])].filter(Boolean).map(normalizeHeaderForMatch);
+  return headers.flatMap((header, index) => aliases.includes(normalizeHeaderForMatch(header)) ? [index] : []);
+}
+function netPremiumIndices(headers: string[]): number[] {
+  return headers.flatMap((header, index) => {
+    const text = normalizeHeaderForMatch(header);
+    return /قسط|premium/.test(text) && /صافي|net/.test(text) && !/تاريخ|عدد|اجمالي|مجموع|سنوي|مسدد|مدفوع|متبقي|date|count|total|paid|balance/.test(text) ? [index] : [];
+  });
 }
 
-export async function parseWorkbookFile(file: File, agents: ImportAgent[] = []): Promise<ParseResult> {
-  if (!IMPORT_FILE_EXTENSION_RE.test(file.name)) {
-    return { rows: [], headerError: 'نوع الملف غير مسموح. استخدم Excel أو CSV فقط.' };
+export async function parseWorkbookFile(file: File, agents: ImportAgent[] = [], options?: WorkbookMappingOptions): Promise<ParseResult> {
+  if (!IMPORT_FILE_EXTENSION_RE.test(file.name)) return { rows: [], headerError: 'نوع الملف غير مسموح. استخدم Excel أو CSV فقط.' };
+  if (file.size > MAX_IMPORT_FILE_BYTES) return { rows: [], headerError: 'حجم الملف كبير جداً. الحد الأقصى المسموح به 10 ميجابايت.' };
+  const workbook = /\.csv$/i.test(file.name)
+    ? XLSX.read(await file.text(), { type: 'string', raw: true, cellDates: true, cellNF: true })
+    : XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true, cellNF: true });
+  if (workbook.SheetNames.length > MAX_IMPORT_SHEETS) return { rows: [], headerError: `عدد أوراق الملف يتجاوز الحد المسموح (${MAX_IMPORT_SHEETS}).` };
+  // Detect a header below a title, or on the data sheet after an instructions sheet.
+  const candidates = workbook.SheetNames.flatMap(sheetName => {
+    const values: unknown[][] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: false, defval: '', blankrows: true });
+    return values.slice(0, 25).map((row, index) => ({ sheetName, index, values, score: IMPORT_COLUMNS.reduce((score, column) => score + (aliasIndices(row.map(normalizeHeaderCell), column.key).length ? column.required ? 3 : 1 : 0), 0) }));
+  }).sort((a, b) => b.score - a.score);
+  const candidate = options ? candidates.find(item => item.sheetName === options.sheetName && item.index === options.headerRowNumber - 1) : candidates[0];
+  if (!candidate) return { rows: [], headerError: 'الملف لا يحتوي على ورقة بيانات واضحة' };
+  const { sheetName, index: headerIndex, values: formatted } = candidate;
+  if (formatted.length - headerIndex - 1 > MAX_IMPORT_ROWS) return { rows: [], headerError: `عدد الصفوف يتجاوز الحد المسموح (${MAX_IMPORT_ROWS}).` };
+  const headers = (formatted[headerIndex] ?? []).map(normalizeHeaderCell);
+  if (!headers.some(Boolean)) return { rows: [], headerError: 'الملف فارغ' };
+  const mapping: ImportColumnReview['mapping'] = {};
+  const warnings: string[] = [];
+  for (const column of IMPORT_COLUMNS) {
+    const indices = column.key === 'premium_amount' && netPremiumIndices(headers).length ? netPremiumIndices(headers) : aliasIndices(headers, column.key);
+    if (indices.length === 1) mapping[column.key] = indices[0];
+    else if (indices.length > 1) warnings.push(`أكثر من عمود يناسب «${column.header}»؛ اختر المصدر بنفسك`);
   }
-  if (file.size > MAX_IMPORT_FILE_BYTES) {
-    return { rows: [], headerError: 'حجم الملف كبير جداً. الحد الأقصى المسموح به 10 ميجابايت.' };
-  }
-
-  // دعم CSV بالإضافة لـ Excel — نفس مسار القراءة والتحقق تماماً بعد هذه
-  // النقطة، فورقة XLSX الناتجة من CSV تُعامَل بنفس الطريقة تماماً
-  const isCsv = /\.csv$/i.test(file.name);
-  const workbook = isCsv
-    ? XLSX.read(await file.text(), { type: 'string', cellDates: true })
-    : XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
-
-  if (workbook.SheetNames.length > MAX_IMPORT_SHEETS) {
-    return { rows: [], headerError: `عدد أوراق الملف يتجاوز الحد المسموح (${MAX_IMPORT_SHEETS}).` };
-  }
-
-  const sheetName = workbook.SheetNames[0];
-  if (!sheetName) {
-    return { rows: [], headerError: 'الملف لا يحتوي على أي ورقة بيانات' };
-  }
-  const sheet = workbook.Sheets[sheetName];
-  const aoa: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '', blankrows: false });
-
-  if (aoa.length === 0) {
-    return { rows: [], headerError: 'الملف فارغ' };
-  }
-  if (aoa.length - 1 > MAX_IMPORT_ROWS) {
-    return { rows: [], headerError: `عدد الصفوف يتجاوز الحد المسموح (${MAX_IMPORT_ROWS}).` };
-  }
-
-  const headerRow = aoa[0].map(normalizeHeaderCell);
-  const columnIndexByKey = new Map<ImportColumnKey, number>();
-  const missingHeaders: string[] = [];
-
-  // ===== الطبقة الأولى (Primary Import Engine) — كما هي بدون أي تعديل =====
-  // مطابقة حرفية صارمة لعناوين الأعمدة بنموذج الاستيراد الرسمي بالضبط.
-  // عمود القسط بيتم اكتشافه بمرونة (أسفل)، مش بمطابقة عنوان واحد ثابت،
-  // عشان نقدر نستوعب ملفات فيها أكتر من عمود قسط أو تسمية مختلفة.
-  // الأعمدة الاختيارية (required: false) لو عمودها بالكامل مش موجود في
-  // ملف الإكسل (مش بس القيمة فاضية)، بنتجاهل غيابها هنا من غير ما نعتبرها
-  // "عمود ناقص" — بيفضل غير مربوط بـ columnIndexByKey فيرجع فاضي لكل
-  // الصفوف تلقائياً (نفس معاملة الخلية الفاضية بالظبط في التحقق أسفل).
-  // الأعمدة الإلزامية فقط هي اللي بيتسبب غيابها في خطأ "الأعمدة الناقصة"
-  IMPORT_COLUMNS.forEach((col) => {
-    if (col.key === 'premium_amount') return;
-    const idx = findHeaderAliasIndex(headerRow, col.key);
-    if (idx === -1) {
-      if (col.required) missingHeaders.push(col.header);
-    } else {
-      columnIndexByKey.set(col.key, idx);
-    }
-  });
-
-  let premiumColumnIndices = findPremiumColumnIndices(headerRow);
-  const premiumNetIndex = headerRow.findIndex(isNetPremiumHeader);
-
-  const strictMatchOk = missingHeaders.length === 0 && premiumColumnIndices.length > 0;
+  const samples = formatted.slice(headerIndex + 1).filter(row => row.some(cell => normalizeText(cell))).slice(0, 5).map(row => headers.map((_, i) => normalizeText(row[i])));
   let usedAIMapping = false;
-  let aiFailureType: 'capacity_exhausted' | 'gateway_rate_limited' | 'all_providers_failed' | 'unavailable' | undefined;
-
-  // ===== الطبقة الثانية (AI Enhancement Layer) — تُستدعى فقط لو فشلت =====
-  // المطابقة الحرفية الصارمة أعلاه. لا تُستبدل الطبقة الأولى ولا تُشغَّل
-  // على الملفات المطابقة للنموذج بالضبط (صفر تأثير على الأداء فى الحالة
-  // الطبيعية). أي فشل أو عدم توفر للذكاء الاصطناعي يرجعنا تلقائياً لنفس
-  // رسائل الخطأ القديمة بالضبط أدناه، دون فقد أي بيانات أو تعطيل المستخدم
-  if (!strictMatchOk) {
-    const sampleRows = aoa.slice(1, 4);
-    const aiAttempt = await matchColumnsWithAI(headerRow, sampleRows);
-    aiFailureType = aiAttempt.failureType;
-    const aiMapping = aiAttempt.mapping;
-
-    if (aiMapping) {
-      IMPORT_COLUMNS.forEach((col) => {
-        if (col.key === 'premium_amount' || columnIndexByKey.has(col.key)) return;
-        const mappedHeader = aiMapping[col.key];
-        if (!mappedHeader) return;
-        const idx = headerRow.findIndex((h) => h === mappedHeader);
-        if (idx !== -1) columnIndexByKey.set(col.key, idx);
-      });
-
-      if (premiumColumnIndices.length === 0 && aiMapping.premium_amount) {
-        const idx = headerRow.findIndex((h) => h === aiMapping.premium_amount);
-        if (idx !== -1) premiumColumnIndices = [idx];
-      }
-
-      const stillMissingRequired = IMPORT_COLUMNS
-        .filter((col) => col.key !== 'premium_amount' && col.required && !columnIndexByKey.has(col.key))
-        .map((col) => col.header);
-
-      if (stillMissingRequired.length === 0 && premiumColumnIndices.length > 0) {
-        usedAIMapping = true;
-      }
+  let aiFailureType: string | undefined;
+  if (options) {
+    for (const column of IMPORT_COLUMNS) mapping[column.key] = options.columnMapping[column.key] ?? null;
+  } else if (IMPORT_COLUMNS.some(column => column.required && mapping[column.key] == null)) {
+    const attempt = await matchColumnsWithAI(headers, samples);
+    aiFailureType = attempt.failureType;
+    const occupied = new Set(Object.values(mapping));
+    for (const column of IMPORT_COLUMNS) {
+      if (mapping[column.key] != null || !attempt.mapping?.[column.key]) continue;
+      const matches = headers.flatMap((header, index) => header === attempt.mapping?.[column.key] ? [index] : []);
+      const chosen = matches.length === 1 ? matches[0] : null;
+      if (chosen !== null && !occupied.has(chosen)) { mapping[column.key] = chosen; occupied.add(chosen); usedAIMapping = true; }
     }
   }
-
-  if (!strictMatchOk && !usedAIMapping) {
-    const aiCapacityExhausted =
-      aiFailureType === 'capacity_exhausted' || aiFailureType === 'gateway_rate_limited';
-
-    if (aiCapacityExhausted) {
-      return {
-        rows: [],
-        headerError: 'الملف يحتاج الذكاء الاصطناعي لفهم أسماء الأعمدة غير القياسية، لكن كل الحصص المتاحة انتهت أو متوقفة مؤقتاً. لم يتم حفظ أي بيانات. يمكنك إعادة المحاولة لاحقاً أو استخدام نموذج Excel الرسمي.',
-        aiCapacityExhausted: true,
-      };
-    }
-
-    if (missingHeaders.length > 0) {
-      return {
-        rows: [],
-        headerError: `الملف لا يطابق نموذج الاستيراد. الأعمدة الناقصة: ${missingHeaders.join('، ')}`
-      };
-    }
-    return {
-      rows: [],
-      headerError: 'الملف لا يحتوي على أي عمود يمثل قيمة القسط الصافي (مثال: "قيمة القسط الصافي" أو "القسط الصافي")'
-    };
+  const premiumIndex = mapping.premium_amount;
+  if (!options && premiumIndex != null && !netPremiumIndices(headers).includes(premiumIndex)) warnings.push('عنوان القسط لا يثبت أنه القسط الصافي لكل دفعة؛ راجع العمود قبل اعتماده');
+  const used = new Map<number, string>();
+  const issues: string[] = [];
+  for (const column of IMPORT_COLUMNS) {
+    const index = mapping[column.key];
+    if (index == null) { if (column.required) issues.push(`اختر عمود «${column.header}»`); continue; }
+    if (!Number.isInteger(index) || index < 0 || index >= headers.length) { issues.push(`مصدر «${column.header}» غير صالح`); continue; }
+    if (used.has(index)) issues.push(`العمود «${headers[index]}» مستخدم لأكثر من خانة`);
+    used.set(index, column.key);
   }
-
-  // نعيد القراءة raw:true عشان نقدر نميّز خلايا التاريخ/الرقم الحقيقية عن النصوص
-  const aoaRaw: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '', blankrows: false });
-
+  const review: ImportColumnReview = { headers, samples, mapping, warnings: options ? [] : warnings, sheetName, headerRowNumber: headerIndex + 1, needsConfirmation: !options && (usedAIMapping || warnings.length > 0 || issues.length > 0) };
+  if (issues.length) return { rows: [], headerError: issues.join(' — '), usedAIMapping, columnReview: review, aiCapacityExhausted: aiFailureType === 'capacity_exhausted' || aiFailureType === 'gateway_rate_limited' };
+  const rawRows: unknown[][] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: true, defval: '', blankrows: true });
   const rows: ParsedRow[] = [];
-
-  for (let r = 1; r < aoa.length; r++) {
-    const rowFormatted = aoa[r];
-    const rowRaw = aoaRaw[r] ?? rowFormatted;
-    const rowNumber = r + 1; // رقم الصف كما يظهر فعلياً في Excel (1 = صف العناوين)
-
-    const isEmptyRow = rowFormatted.every((cell) => normalizeText(cell) === '');
-    if (isEmptyRow) continue;
-
-    const get = (key: ImportColumnKey) => rowFormatted[columnIndexByKey.get(key)!];
-    const getRaw = (key: ImportColumnKey) => rowRaw[columnIndexByKey.get(key)!];
-
-    const raw: Record<string, any> = {};
-    IMPORT_COLUMNS.forEach((col) => {
-      if (col.key === 'premium_amount') return;
-      raw[col.key] = get(col.key);
-    });
-
-    const premiumAmount = extractPremiumAmount(rowFormatted, premiumColumnIndices, premiumNetIndex);
-    raw['premium_amount'] = premiumAmount;
-
-    const startDateRaw = getRaw('start_date');
-    const birthDateRaw = getRaw('birth_date');
-
-    const row = buildParsedRow(rowNumber, raw, agents, {
-      start_date: startDateRaw === '' ? undefined : startDateRaw,
-      birth_date: birthDateRaw === '' ? undefined : birthDateRaw,
-    });
-
-    rows.push(row);
-  }
-
-  // Dry Run على مستوى الملف كله: رقم الوثيقة لازم يكون فريدًا، فبدل ما
-  // نبدأ الاستيراد ونكتشف التعارض صفًا بعد صف، نوقف النسخ المكررة قبل أي
-  // كتابة لقاعدة البيانات ونوضح أرقام الصفوف المتعارضة للمستخدم.
-  const policyRows = new Map<string, ParsedRow[]>();
-  for (const row of rows) {
-    const policyNumber = normalizeDigitsText(row.raw['policy_number']);
-    if (!policyNumber) continue;
-    const key = policyNumber.toLowerCase();
-    const bucket = policyRows.get(key) || [];
-    bucket.push(row);
-    policyRows.set(key, bucket);
-  }
-
-  for (const duplicateRows of policyRows.values()) {
-    if (duplicateRows.length < 2) continue;
-    const rowNumbers = duplicateRows.map((r) => r.rowNumber).join('، ');
-    for (const row of duplicateRows) {
-      const duplicateError = `رقم الوثيقة مكرر داخل الملف (الصفوف: ${rowNumbers})`;
-      row.clientError = row.clientError ? `${row.clientError} — ${duplicateError}` : duplicateError;
-      row.payload = null;
+  for (let index = headerIndex + 1; index < formatted.length; index++) {
+    if (!formatted[index].some(cell => normalizeText(cell))) continue;
+    const raw: Record<string, unknown> = {};
+    const sourceIssues: NonNullable<ParsedRow['sourceIssues']> = {};
+    for (const column of IMPORT_COLUMNS) {
+      const source = mapping[column.key];
+      const native = source == null ? '' : rawRows[index]?.[source];
+      const display = source == null ? '' : formatted[index]?.[source];
+      // Native numeric cells are authoritative; display formatting must not change a monetary value.
+      raw[column.key] = ['national_id', 'phone', 'policy_number'].includes(column.key) && typeof native === 'number' ? String(native) : ['premium_amount', 'sum_assured'].includes(column.key) && typeof native === 'number' ? native : display;
+      const format = source == null ? '' : workbook.Sheets[sheetName][XLSX.utils.encode_cell({ r: index, c: source })]?.z;
+      if (['premium_amount', 'sum_assured'].includes(column.key) && typeof format === 'string' && format.includes('%')) sourceIssues[column.key] = { value: String(raw[column.key]), reason: `«${column.header}» خلية نسبة مئوية وليست مبلغًا؛ أدخل المبلغ الصحيح من المصدر` };
+      if (['national_id', 'phone', 'policy_number'].includes(column.key) && (typeof native === 'number' && (!Number.isSafeInteger(native) || Math.abs(native) >= 1e15) || /^[+-]?\d+(?:\.\d+)?e[+-]?\d+$/i.test(String(raw[column.key])))) sourceIssues[column.key] = { value: String(raw[column.key]), reason: `«${column.header}» مخزّن كرقم غير دقيق أو صيغة علمية؛ أعد إدخاله من المصدر كنص` };
     }
+    const amount = readDecimal(raw.premium_amount);
+    // Keep the existing import-only truncation rule. Only the source selection changed.
+    if (amount !== null) raw.premium_amount = Math.trunc(amount);
+    if (sourceIssues.premium_amount) sourceIssues.premium_amount.value = String(raw.premium_amount);
+    const native = (key: ImportColumnKey) => mapping[key] == null ? undefined : rawRows[index]?.[mapping[key]!];
+    const row = buildParsedRow(index + 1, raw, agents, { start_date: native('start_date'), birth_date: native('birth_date') });
+    if (review.needsConfirmation) row.review = { source: 'columns', confirmed: false };
+    row.sourceIssues = sourceIssues;
+    rows.push(revalidateRow(row, agents));
   }
-
-  return { rows, headerError: null, usedAIMapping };
+  return { rows: validateFileDuplicates(rows), headerError: null, usedAIMapping, columnReview: review };
 }
 
 // ===================================================================
@@ -833,6 +668,7 @@ export async function importRows(
   onRowDone: (result: RowResult, doneCount: number, totalCount: number) => void,
   resume: ImportRowsResumeOptions = {},
 ): Promise<ImportSummary> {
+  rows = validateFileDuplicates(rows.map(row => row.review && !row.review.confirmed ? applyImportReview(row) : row));
   const completed = resume.completedRowNumbers || new Set<number>();
   const alreadyCompleted: RowResult[] = rows
     .filter((r) => completed.has(r.rowNumber))

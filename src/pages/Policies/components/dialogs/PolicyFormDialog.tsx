@@ -140,7 +140,7 @@ export function PolicyFormDialog({
 
           <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="modal-form-scroll p-4 md:p-5 space-y-4">
             <FormReview errors={errors} formRef={formRef} />
-            {!editingPolicy && <ExtractPolicyDataButton formRef={formRef} setValue={setValue} />}
+            {!editingPolicy && <ExtractPolicyDataButton formRef={formRef} setValue={setValue} expectedCustomerName={selectedCustomer?.name} />}
 
             {/* ===== مجموعة: هوية الوثيقة ===== */}
             <div className="form-section">

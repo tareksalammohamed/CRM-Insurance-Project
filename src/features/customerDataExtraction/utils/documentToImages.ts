@@ -14,7 +14,7 @@ import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
-const MAX_DIMENSION = 1600;
+const MAX_DIMENSION = 2000;
 const DEFAULT_MAX_PDF_PAGES = 4;
 // هامش أمان تحت حد الـ 1 ميجابايت الفعلي المفروض فى ai-gateway، لتجنب أي
 // فارق تقريب بسيط بين الحسابين
@@ -95,6 +95,8 @@ async function imageFileToDataUrl(file: File): Promise<string> {
   const ctx = canvas.getContext('2d');
   if (!ctx) return original;
 
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
   ctx.drawImage(img, 0, 0, width, height);
   return compressCanvasToDataUrl(canvas, TARGET_MAX_BYTES);
 }
@@ -115,31 +117,35 @@ async function pdfFileToDataUrls(
     throw new Error('ملف الـ PDF غير مدعوم أو تالف');
   });
 
-  const totalPages = pdf.numPages;
-  const firstPage = Math.min(Math.max(1, startPage), totalPages);
-  const lastPage = Math.min(totalPages, firstPage + Math.max(1, maxPages) - 1);
-  const urls: string[] = [];
+  try {
+    const totalPages = pdf.numPages;
+    if (startPage > totalPages) throw new Error('رقم الصفحة يتجاوز صفحات المستند');
+    const firstPage = Math.min(Math.max(1, startPage), totalPages);
+    const lastPage = Math.min(totalPages, firstPage + Math.max(1, maxPages) - 1);
+    const urls: string[] = [];
 
-  for (let pageNumber = firstPage; pageNumber <= lastPage; pageNumber++) {
-    const page = await pdf.getPage(pageNumber);
-    const baseViewport = page.getViewport({ scale: 1 });
-    const scale = Math.min(1, MAX_DIMENSION / Math.max(baseViewport.width, baseViewport.height)) || 1;
-    const viewport = page.getViewport({ scale });
+    for (let pageNumber = firstPage; pageNumber <= lastPage; pageNumber++) {
+      const page = await pdf.getPage(pageNumber);
+      const baseViewport = page.getViewport({ scale: 1 });
+      const scale = Math.min(3, MAX_DIMENSION / Math.max(baseViewport.width, baseViewport.height)) || 1;
+      const viewport = page.getViewport({ scale });
 
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(viewport.width);
-    canvas.height = Math.round(viewport.height);
-    const ctx = canvas.getContext('2d');
-    if (!ctx) continue;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(viewport.width);
+      canvas.height = Math.round(viewport.height);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('تعذر تجهيز صفحة المستند للقراءة');
 
-    await page.render({ canvasContext: ctx, viewport }).promise;
-    urls.push(compressCanvasToDataUrl(canvas, TARGET_MAX_BYTES));
-  }
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      urls.push(compressCanvasToDataUrl(canvas, TARGET_MAX_BYTES));
+      page.cleanup();
+    }
 
-  if (urls.length === 0) {
-    throw new Error('تعذر قراءة صفحات ملف الـ PDF');
-  }
-  return { urls, totalPages };
+    if (urls.length === 0) {
+      throw new Error('تعذر قراءة صفحات ملف الـ PDF');
+    }
+    return { urls, totalPages };
+  } finally { await pdf.destroy(); }
 }
 
 export type ExtractionFileKind = 'image' | 'pdf';
