@@ -40,11 +40,12 @@ export function DocumentExtractButton({ formRef, label, extract, setFieldValue }
       const result = await extract(source.images, fields);
       if (request.current !== token || formRef.current !== form || !form.isConnected) return;
       if (formContext(form) !== context) throw new Error('تم تغيير العميل أو سياق النموذج أثناء الاستخراج؛ أعد القراءة للسجل المطلوب');
-      if (!Object.keys(result.fields).length) throw new Error(result.warnings?.join(' ') || 'لم تُقرأ بيانات مطابقة بوضوح؛ جرّب صورة أوضح للسجل المطلوب');
+      const limitNote = source.truncated ? `تمت قراءة أول ${source.images.length} صفحات من ${source.totalPages}. بقية الصفحات لم تُحلل؛ ارفع الصفحات المطلوبة كملف مستقل إذا كانت البيانات فيها.` : undefined;
+      if (!Object.keys(result.fields).length) throw new Error([result.warnings?.join(' ') || 'لم تُقرأ بيانات مطابقة بوضوح؛ جرّب صورة أوضح للسجل المطلوب', limitNote].filter(Boolean).join(' '));
       // Capture what is actually on screen now; applying rechecks it once again.
       const current = new Map(extractFormFieldSchema(form).map(field => [field.name, field]));
       setReview({ context, form, fields: fields.filter(field => current.has(field.name)).map(field => current.get(field.name)!), result,
-        note: source.truncated ? `تمت قراءة أول ${source.images.length} صفحات من ${source.totalPages}. بقية الصفحات لم تُحلل.` : undefined });
+        note: limitNote });
     } catch (error) {
       if (request.current === token) setMessage({ error: true, text: error instanceof Error ? error.message : 'تعذر استخراج البيانات' });
     } finally { if (request.current === token) setLoading(false); }

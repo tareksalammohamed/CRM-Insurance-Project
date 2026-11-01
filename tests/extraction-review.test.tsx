@@ -57,3 +57,11 @@ it('ignores a result after its form is unmounted', async () => {
   await act(async () => resolve(proposal));
   expect(app.write).not.toHaveBeenCalled(); expect(screen.queryByRole('dialog')).toBeNull();
 });
+
+it('discloses unread PDF pages even when the analyzed pages returned no matching fields', async () => {
+  mocked.images.mockResolvedValue({ images: ['p1'], totalPages: 6, truncated: true });
+  const app = mount({ fields: {} }); app.choose();
+  expect((await screen.findByRole('alert')).textContent).toContain('أول 1 صفحات من 6');
+  expect(screen.getByRole('alert').textContent).toContain('بقية الصفحات لم تُحلل');
+  expect(app.write).not.toHaveBeenCalled();
+});
