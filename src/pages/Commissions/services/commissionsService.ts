@@ -10,6 +10,7 @@ export interface RawYear1Payment {
     policy: {
       id: string;
       policy_number: string;
+      start_date: string;
       payment_method: string;
       sum_assured: number | null;
       owner_id: string;
@@ -26,6 +27,7 @@ export interface RawYear2Payment {
   policy: {
     id: string;
     policy_number: string;
+    start_date: string;
     payment_method: string;
     sum_assured: number | null;
     owner_id: string;
@@ -53,7 +55,7 @@ export async function fetchCommissionSourceData(
   const rangeEndMonth = format(startOfMonth(selectedMonthDate), 'yyyy-MM-dd');
 
   const result = await dalRead(
-    `commissions:source:${ownerId}:${rangeStartMonth}:${rangeEndMonth}:${branchId ?? 'none'}`,
+    `commissions:source:policy-issue-v2:${ownerId}:${rangeStartMonth}:${rangeEndMonth}:${branchId ?? 'none'}`,
     async () => {
       // Filter ownership on the server and page through all matched payments.
       // This avoids downloading the whole branch and silently hitting the API row cap.
@@ -62,7 +64,7 @@ export async function fetchCommissionSourceData(
         for (let offset = 0; ; offset += 500) {
           let query = supabase.from('payments').select(`id, amount, paid_at,
             installment:installment_id!inner(policy:policy_id!inner(
-              id, policy_number, payment_method, sum_assured, owner_id, branch_id,
+              id, policy_number, start_date, payment_method, sum_assured, owner_id, branch_id,
               customer:customer_id(name)))`)
             .eq('is_cancelled', false).eq('installment.policy.owner_id', ownerId)
             .gte('payment_month', rangeStartMonth).lte('payment_month', rangeEndMonth)
@@ -78,7 +80,7 @@ export async function fetchCommissionSourceData(
         const rows: RawYear2Payment[] = [];
         for (let offset = 0; ; offset += 500) {
           let query = supabase.from('year2_payments').select(`id, amount, payment_date,
-            policy:policy_id!inner(id, policy_number, payment_method, sum_assured, owner_id, branch_id,
+            policy:policy_id!inner(id, policy_number, start_date, payment_method, sum_assured, owner_id, branch_id,
               customer:customer_id(name))`)
             .eq('is_cancelled', false).eq('policy.owner_id', ownerId)
             .gte('payment_month', rangeStartMonth).lte('payment_month', rangeEndMonth)

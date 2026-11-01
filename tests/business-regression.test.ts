@@ -24,7 +24,7 @@ describe('existing insurance business rules (unchanged)', () => {
   });
   it.each(['monthly', 'quarterly', 'semi_annual', 'annual'])('preserves year-one and renewal commission for %s', (method) => {
     const count = { monthly: 12, quarterly: 4, semi_annual: 2, annual: 1 }[method]!;
-    const policy = { payment_method: method, sum_assured: 120000, policy_number: '123456789', customer: { name: 'عميل' } };
+    const policy = { start_date: '2026-01-01', payment_method: method, sum_assured: 120000, policy_number: '123456789', customer: { name: 'عميل' } };
     const year1 = [{ id: 'one', paid_at: '2026-10-15T12:00:00', installment: { policy } }] as RawYear1Payment[];
     const year2 = [{ id: 'two', payment_date: '2026-09-16', policy }] as RawYear2Payment[];
     const { rows } = computeCommissionRows(year1, year2, '2026-10');
@@ -33,7 +33,7 @@ describe('existing insurance business rules (unchanged)', () => {
     expect(computeSummary(rows).totalMonth).toBeCloseTo(2700 / count);
   });
   it('preserves the 15/16 commission boundary across December', () => {
-    const policy = { payment_method: 'annual', sum_assured: 100000, policy_number: '123' };
+    const policy = { start_date: '2026-01-01', payment_method: 'annual', sum_assured: 100000, policy_number: '123' };
     const payments = [15, 16].map((day) => ({ id: `${day}`, paid_at: `2026-12-${day}T12:00:00`, installment: { policy } })) as RawYear1Payment[];
     expect(computeCommissionRows(payments, [], '2026-12').rows).toHaveLength(1);
     expect(computeCommissionRows(payments, [], '2027-01').rows[0]).toMatchObject({ dueDay: 12, amount: 2200 });

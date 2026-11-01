@@ -1,4 +1,4 @@
-import { cairoDate, percentToRate, rateForDate, type CommissionRate } from '../../../features/commissionSettings/rates';
+import { percentToRate, rateForPolicyIssueDate, type CommissionRate } from '../../../features/commissionSettings/rates';
 import { format } from 'date-fns';
 import type { RawYear1Payment, RawYear2Payment } from '../services/commissionsService';
 import type { CommissionRow, CommissionsSummary } from '../types';
@@ -68,7 +68,7 @@ export function computeCommissionRows(
       continue;
     }
 
-    const commissionAmount = (Number(policy.sum_assured) * percentToRate(rateForDate(cairoDate(new Date(payment.paid_at)), rates).year1_percent)) / installmentsCount;
+    const commissionAmount = (Number(policy.sum_assured) * percentToRate(rateForPolicyIssueDate(policy.start_date, rates, policy.policy_number).year1_percent)) / installmentsCount;
 
     rows.push({
       id: `y1-${payment.id}`,
@@ -98,7 +98,7 @@ export function computeCommissionRows(
       continue;
     }
 
-    const commissionAmount = (Number(policy.sum_assured) * percentToRate(rateForDate(payment.payment_date, rates).renewal_percent)) / installmentsCount;
+    const commissionAmount = (Number(policy.sum_assured) * percentToRate(rateForPolicyIssueDate(policy.start_date, rates, policy.policy_number).renewal_percent)) / installmentsCount;
 
     rows.push({
       id: `y2-${payment.id}`,

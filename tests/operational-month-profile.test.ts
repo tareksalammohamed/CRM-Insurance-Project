@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({ filters: [] as [string, string, unknown][], commissions: vi.fn() }));
 vi.mock('../src/lib/dataAccessLayer', () => ({ dalRead: async (_key: string, read: () => Promise<unknown>) => ({ data: await read(), status: 'online' }) }));
+vi.mock('../src/features/commissionSettings/service', () => ({ fetchCommissionRates: async () => [{ effective_from: '1900-01-01', year1_percent: 2.2, renewal_percent: 0.05 }] }));
 vi.mock('../src/lib/myBranches', () => ({ fetchMyBranches: async () => [] }));
 vi.mock('../src/lib/branchHierarchy', () => ({ fetchUserSubtreeIdsBranchAware: async () => ['u'] }));
 vi.mock('../src/pages/Commissions/services/commissionsService', () => ({ fetchCommissionSourceData: state.commissions }));
