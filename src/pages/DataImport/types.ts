@@ -22,7 +22,26 @@ export type ImportColumnKey = (typeof IMPORT_COLUMNS)[number]['key'];
 
 export type RawImportRow = Record<ImportColumnKey, string>;
 
+export interface ImportRowReview {
+  source: 'document' | 'columns';
+  page?: number;
+  confirmed?: boolean;
+  fields?: Record<string, { evidence?: string; sourceLabel?: string; confidence?: string; issue?: string }>;
+}
+
+export interface ImportColumnReview {
+  headers: string[];
+  samples: string[][];
+  mapping: Partial<Record<ImportColumnKey, number | null>>;
+  warnings: string[];
+  sheetName: string;
+  headerRowNumber: number;
+  needsConfirmation: boolean;
+}
+
 export interface ParsedRow {
+  review?: ImportRowReview;
+  sourceIssues?: Record<string, { value: string; reason: string }>;
   rowNumber: number; // رقم الصف في ملف Excel (بما فيه صف العناوين، عشان يطابق ما يراه المستخدم فعلياً في الملف)
   raw: Record<string, any>;
   // بيانات جاهزة للإرسال لدالة import_policy_row، أو null لو الصف فشل في التحقق قبل الإرسال أصلاً
