@@ -1,5 +1,6 @@
 import { PageHeader } from '../../components/layout/PageHeader';
 import { CommissionDetails } from './components/CommissionDetails';
+import { InvalidPolicyIssueDateError } from '../../features/commissionSettings/rates';
 import { useCommissionRates } from '../../features/commissionSettings/useCommissionRates';
 import { useRequestGuard } from '../../hooks/useRequestGuard';
 import { LoadNotice } from '../../components/feedback/LoadNotice';
@@ -34,6 +35,7 @@ export function Commissions() {
     `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   );
   const [rows, setRows] = useState<CommissionRow[]>([]);
+  const [calculationError, setCalculationError] = useState<string | null>(null);
   const [missingSumAssuredCount, setMissingSumAssuredCount] = useState(0);
   const [loading, setLoading] = useState(true);
   // أول تحميل فقط (لسه مفيش بيانات) يستحق شاشة تحميل كاملة — تغيير الشهر
@@ -44,6 +46,7 @@ export function Commissions() {
     if (!user || !ratesQuery.data || !/^\d{4}-\d{2}$/.test(selectedMonth)) return;
     const request = guard.start();
     setLoading(true);
+    setCalculationError(null);
     try {
       const [year, month] = selectedMonth.split('-').map(Number);
       const selectedMonthDate = new Date(year, month - 1, 1);
@@ -65,7 +68,9 @@ export function Commissions() {
     } catch (error) {
       if (!guard.isCurrent(request)) return;
       console.error('Error loading commissions:', error);
-      setLoadMessage('تعذّر تحميل العمولات؛ أعد المحاولة.');
+      const message = error instanceof InvalidPolicyIssueDateError ? error.message : 'تعذّر تحميل العمولات؛ أعد المحاولة.';
+      setLoadMessage(message);
+      setCalculationError(message);
       setRows([]);
       setMissingSumAssuredCount(0);
     } finally {
@@ -103,7 +108,7 @@ export function Commissions() {
       } />
 
       <LoadNotice message={ratesQuery.isError ? 'تعذّر تحميل نسب العمولات. لا يمكن تأكيد الحساب قبل إعادة تحميلها.' : loadMessage} loading={ratesQuery.isFetching} onRetry={() => { void ratesQuery.refetch(); void loadCommissions(); }} />
-      {ratesQuery.isError ? <p className="card text-secondary-600">الحساب متوقف لحين تحميل النسب المعتمدة.</p> : <>
+      {ratesQuery.isError || calculationError ? <p className="card text-secondary-600">الحساب متوقف لحين تأكيد بيانات الوثائق والنسب المعتمدة.</p> : <>
       {/* تنبيه: وثائق مسدد عليها أقساط الشهر ده (سنة أولى أو تجديد) بس
           "مبلغ التأمين" فيها لسه مش متسجل، فمش ممكن تُحسب عمولتها لحد ما يتضاف */}
       {!loading && missingSumAssuredCount > 0 && (

@@ -5,10 +5,26 @@ export interface CommissionRate {
 }
 export const LEGACY_COMMISSION_RATE: CommissionRate = { effective_from: '1900-01-01', year1_percent: 2.2, renewal_percent: 0.05 };
 
-/** Rates are chosen by the actual payment date, never by payout month. */
+/** Select a dated version. Commission callers pass the official policy start date. */
 export function rateForDate(date: string, rates: readonly CommissionRate[]): CommissionRate {
   return rates.reduce((selected, rate) => rate.effective_from <= date && rate.effective_from >= selected.effective_from ? rate : selected, LEGACY_COMMISSION_RATE);
 }
+export class InvalidPolicyIssueDateError extends Error {
+  constructor(policyNumber: string) {
+    super(`تعذر تحديد نسبة عمولة الوثيقة ${policyNumber} لأن تاريخ بدايتها غير صحيح؛ راجعه من صفحة الوثيقة.`);
+    this.name = 'InvalidPolicyIssueDateError';
+  }
+}
+
+/** Historical imports use the original date, never database insertion or payment time. */
+export function rateForPolicyIssueDate(startDate: string, rates: readonly CommissionRate[], policyNumber: string): CommissionRate {
+  const parsed = new Date(`${startDate}T00:00:00Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== startDate) {
+    throw new InvalidPolicyIssueDateError(policyNumber);
+  }
+  return rateForDate(startDate, rates);
+}
+
 export function cairoDate(date: Date): string {
   const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
   const value = (type: string) => parts.find(p => p.type === type)?.value;

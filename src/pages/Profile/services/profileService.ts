@@ -1,6 +1,7 @@
 import { supabase, supabaseUrl, supabaseAnonKey } from '../../../lib/supabase';
 import { format, startOfMonth, endOfMonth, startOfYear } from 'date-fns';
 import { fetchCommissionSourceData } from '../../Commissions/services/commissionsService';
+import { fetchCommissionRates } from '../../../features/commissionSettings/service';
 import { computeCommissionRows, computeSummary } from '../../Commissions/business/commissionsCalculator';
 import type { ProfileFormData } from '../types';
 import type { ProfilePerformanceStats } from '../types';
@@ -30,7 +31,7 @@ export async function fetchProfilePerformanceStats(userId: string, role?: UserRo
   const paymentReadEnd = monthStartStr > todayStr ? monthStartStr : todayStr;
 
   const result = await dalRead(
-    `profile:performanceStats:closing-v1:${userId}:${role ?? 'none'}:${todayStr}:${monthStartStr}`,
+    `profile:performanceStats:commission-issue-v2:${userId}:${role ?? 'none'}:${todayStr}:${monthStartStr}`,
     async () => {
       // التارجت الخاص بصاحب الدرجة الوظيفية (مراقب/مشرف/قائد مجموعة...) بيتحقق
       // بإنتاجه الشخصي + إنتاج فريقه معًا، فكل المؤشرات هنا (عدا العمولات)
@@ -113,8 +114,9 @@ export async function fetchProfilePerformanceStats(userId: string, role?: UserRo
       // بنفس منطق حساب العمولات المستخدم في صفحة العمولات بالضبط، لضمان
       // تطابق الرقمين
       const targetMonth = format(today, 'yyyy-MM');
-      const { year1Payments, year2Payments } = await fetchCommissionSourceData(userId, today);
-      const { rows: commissionRows } = computeCommissionRows(year1Payments, year2Payments, targetMonth);
+      const [source, rates] = await Promise.all([fetchCommissionSourceData(userId, today), fetchCommissionRates()]);
+      if (source.loadMessage) throw new Error('تعذر تأكيد بيانات سداد العمولات');
+      const { rows: commissionRows } = computeCommissionRows(source.year1Payments, source.year2Payments, targetMonth, rates);
       const commissionsThisMonth = computeSummary(commissionRows).totalMonth;
 
       return {
@@ -127,6 +129,7 @@ export async function fetchProfilePerformanceStats(userId: string, role?: UserRo
     },
     { emptyValue: EMPTY_PROFILE_STATS },
   );
+  if (result.status === 'error' || result.status === 'offline-empty') throw new Error('تعذر تأكيد مؤشرات الأداء والعمولات');
   return result.data;
 }
 
