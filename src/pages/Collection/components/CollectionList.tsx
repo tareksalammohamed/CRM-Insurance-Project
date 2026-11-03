@@ -17,7 +17,7 @@ interface CollectionListProps {
   onPayGroup: (members: InstallmentWithRelations[]) => void;
   onCancelGroup: (members: InstallmentWithRelations[]) => void;
   onCancel: (installment: InstallmentWithRelations) => void;
-  onMore: (installment: InstallmentWithRelations, anchor: ActionMenuAnchor) => void;
+  onMore: (installment: InstallmentWithRelations, anchor: ActionMenuAnchor, members?: InstallmentWithRelations[]) => void;
   page: number;
   totalPages: number;
   onPageChange: (updater: (p: number) => number) => void;
