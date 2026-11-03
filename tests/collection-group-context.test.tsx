@@ -42,5 +42,5 @@ it('distinguishes a partially paid due-date group from its lifetime paid count a
   expect(expand.getAttribute('aria-expanded')).toBe('true');
   expect(members).toEqual(before);
   fireEvent.click(screen.getByRole('button', { name: 'إجراءات إضافية للوثائق المجمعة' }));
-  expect(more).toHaveBeenCalledWith(members[0], { top: 0, left: 0, right: 0, bottom: 0 });
+  expect(more).toHaveBeenCalledWith(members[0], { top: 0, left: 0, right: 0, bottom: 0 }, expect.arrayContaining(members));
 });
