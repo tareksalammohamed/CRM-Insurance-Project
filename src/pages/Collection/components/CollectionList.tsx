@@ -72,7 +72,7 @@ function CollectionListImpl({
       <div className="col-list">
         {entries.map((entry) =>
           entry.kind === 'group' ? (
-            <CollectionGroupCard key={entry.key} members={entry.members} onPayGroup={onPayGroup} onCancelGroup={onCancelGroup} />
+            <CollectionGroupCard key={entry.key} members={entry.members} onPayGroup={onPayGroup} onCancelGroup={onCancelGroup} onMore={onMore} />
           ) : (
             <CollectionCard
               key={entry.key}
