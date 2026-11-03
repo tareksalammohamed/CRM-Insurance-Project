@@ -32,6 +32,7 @@ import { CollectionSearch } from './components/CollectionSearch';
 import { CollectionFilters } from './components/CollectionFilters';
 import { CollectionList } from './components/CollectionList';
 import { MoreMenuDialog } from './components/dialogs/MoreMenuDialog';
+import { CollectionGroupMoreMenuDialog } from './components/dialogs/CollectionGroupMoreMenuDialog';
 import { PolicyInstallmentsDialog } from './components/dialogs/PolicyInstallmentsDialog';
 
 // السنة الأولى تبقى مستقلة تماماً بحساباتها، والقسم الآخر يستمر في
@@ -157,9 +158,11 @@ export function Collection() {
   const [promiseInstallment, setPromiseInstallment] = useState<InstallmentWithRelations | null>(null);
   const [moreMenuInstallment, setMoreMenuInstallment] = useState<InstallmentWithRelations | null>(null);
   const [moreMenuAnchor, setMoreMenuAnchor] = useState<ActionMenuAnchor | null>(null);
+  const [moreMenuGroup, setMoreMenuGroup] = useState<InstallmentWithRelations[] | null>(null);
   const closeMoreMenu = () => {
     setMoreMenuAnchor(null);
     setMoreMenuInstallment(null);
+    setMoreMenuGroup(null);
   };
 
   if (yearMode === 'year1' && !financialReady) return <OperationalMonthNotice period={operationalMonth} />;
@@ -275,9 +278,10 @@ export function Collection() {
               onPayGroup={handleOpenGroupPayment}
               onCancelGroup={handleOpenCancelGroup}
               onCancel={handleOpenCancel}
-              onMore={(installment, anchor) => {
+              onMore={(installment, anchor, members) => {
                 setMoreMenuAnchor(anchor);
                 setMoreMenuInstallment(installment);
+                setMoreMenuGroup(members && members.length > 1 ? members : null);
               }}
               page={page}
               totalPages={totalPages}
@@ -325,7 +329,16 @@ export function Collection() {
         customerId={promiseInstallment.policy.customer_id} customerName={promiseInstallment.policy.customer?.name || ''}
         context={{ policyId: promiseInstallment.policy_id, policyNumber: promiseInstallment.policy.policy_number, installmentId: promiseInstallment.id, installmentNumber: promiseInstallment.installment_number }}
         onClose={() => setPromiseInstallment(null)} />}
-      {moreMenuInstallment && (
+      {moreMenuGroup && moreMenuAnchor ? (
+        <CollectionGroupMoreMenuDialog
+          members={moreMenuGroup}
+          anchor={moreMenuAnchor}
+          onClose={closeMoreMenu}
+          onPayGroup={(members) => { handleOpenGroupPayment(members); closeMoreMenu(); }}
+          onCancelGroup={(members) => { handleOpenCancelGroup(members); closeMoreMenu(); }}
+          onOpenPolicyHistory={(member) => { handleOpenPolicyDetails(member.policy); closeMoreMenu(); }}
+        />
+      ) : moreMenuInstallment && (
         <MoreMenuDialog
           installment={moreMenuInstallment}
           onClose={closeMoreMenu}
