@@ -33,6 +33,7 @@ import { CollectionFilters } from './components/CollectionFilters';
 import { CollectionList } from './components/CollectionList';
 import { MoreMenuDialog } from './components/dialogs/MoreMenuDialog';
 import { CollectionGroupMoreMenuDialog } from './components/dialogs/CollectionGroupMoreMenuDialog';
+import { CollectionGroupMoreMenuDialog } from './components/dialogs/CollectionGroupMoreMenuDialog';
 import { PolicyInstallmentsDialog } from './components/dialogs/PolicyInstallmentsDialog';
 
 // السنة الأولى تبقى مستقلة تماماً بحساباتها، والقسم الآخر يستمر في
