@@ -155,7 +155,7 @@ function CollectionGroupCardImpl({ members, onPayGroup, onCancelGroup, onMore }:
         </div>
       )}
 
-      <div className="col-row-actions">
+      <div className="col-row-actions flex-wrap">
         <button
           type="button"
           onClick={(e) => {
