@@ -54,8 +54,8 @@ export function CollectionGroupMoreMenuDialog({ members, anchor, onClose, onPayG
       {paid.length > 0 && <button type="button" onClick={() => { onCancelGroup(paid); onClose(); }} className="dropdown-item w-full text-error-600">
         <XCircle className="w-4 h-4" /><span>إلغاء سداد كل الوثائق المسددة ({paid.length})</span>
       </button>}
-      <button type="button" onClick={() => { setShowFollowup(true); onClose(); }} className="dropdown-item w-full">
-        <CalendarClock className="w-4 h-4" /><span>إضافة متابعة / وعد سداد للعميل</span>
+      <button type="button" onClick={() => setShowFollowup(true)} className="dropdown-item w-full">
+        <CalendarClock className="w-4 h-4" /><span>إضافة متابعة للعميل</span>
       </button>
     </AppBottomSheet>
 
