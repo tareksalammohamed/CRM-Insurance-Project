@@ -27,7 +27,8 @@ it('distinguishes a partially paid due-date group from its lifetime paid count a
   const before = structuredClone(members);
   const pay = vi.fn();
   const cancel = vi.fn();
-  render(<CollectionGroupCard members={members} onPayGroup={pay} onCancelGroup={cancel} />);
+  const more = vi.fn();
+  render(<CollectionGroupCard members={members} onPayGroup={pay} onCancelGroup={cancel} onMore={more} />);
   expect(screen.getByText('مسدد جزئيًا — 1 وثيقة غير مسددة')).toBeTruthy();
   expect(screen.getByText('المسدد لكل المجموعة — سنة أولى')).toBeTruthy();
   expect(screen.getByText('7')).toBeTruthy();
@@ -40,4 +41,6 @@ it('distinguishes a partially paid due-date group from its lifetime paid count a
   fireEvent.click(expand);
   expect(expand.getAttribute('aria-expanded')).toBe('true');
   expect(members).toEqual(before);
+  fireEvent.click(screen.getByRole('button', { name: 'إجراءات إضافية للوثائق المجمعة' }));
+  expect(more).toHaveBeenCalledWith(members[0], { top: 0, left: 0, right: 0, bottom: 0 }, expect.arrayContaining(members));
 });

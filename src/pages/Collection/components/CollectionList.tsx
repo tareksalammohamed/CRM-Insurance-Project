@@ -17,7 +17,7 @@ interface CollectionListProps {
   onPayGroup: (members: InstallmentWithRelations[]) => void;
   onCancelGroup: (members: InstallmentWithRelations[]) => void;
   onCancel: (installment: InstallmentWithRelations) => void;
-  onMore: (installment: InstallmentWithRelations, anchor: ActionMenuAnchor) => void;
+  onMore: (installment: InstallmentWithRelations, anchor: ActionMenuAnchor, members?: InstallmentWithRelations[]) => void;
   page: number;
   totalPages: number;
   onPageChange: (updater: (p: number) => number) => void;
@@ -72,7 +72,7 @@ function CollectionListImpl({
       <div className="col-list">
         {entries.map((entry) =>
           entry.kind === 'group' ? (
-            <CollectionGroupCard key={entry.key} members={entry.members} onPayGroup={onPayGroup} onCancelGroup={onCancelGroup} />
+            <CollectionGroupCard key={entry.key} members={entry.members} onPayGroup={onPayGroup} onCancelGroup={onCancelGroup} onMore={onMore} />
           ) : (
             <CollectionCard
               key={entry.key}

@@ -1,16 +1,18 @@
 import { memo, useState } from 'react';
 import { format } from 'date-fns';
 import clsx from 'clsx';
-import { Layers, Hash, UserRound, CalendarDays, CheckCircle2, ChevronDown, CheckCircle, CreditCard, ListChecks, XCircle } from 'lucide-react';
+import { Layers, Hash, UserRound, CalendarDays, CheckCircle2, ChevronDown, CheckCircle, CreditCard, ListChecks, XCircle, MoreVertical } from 'lucide-react';
 import type { InstallmentWithRelations } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getInstallmentDisplayInfo } from '../utils/installmentDisplay';
 import { PAYMENT_METHOD_LABELS } from '../../../lib/supabase';
+import type { ActionMenuAnchor } from '../../../components/ui/AppBottomSheet';
 
 interface CollectionGroupCardProps {
   members: InstallmentWithRelations[];
   onPayGroup: (members: InstallmentWithRelations[]) => void;
   onCancelGroup: (members: InstallmentWithRelations[]) => void;
+  onMore: (installment: InstallmentWithRelations, anchor: ActionMenuAnchor, members?: InstallmentWithRelations[]) => void;
 }
 
 function initialOf(name: string | undefined): string {
@@ -21,7 +23,7 @@ function initialOf(name: string | undefined): string {
 // كارت مجمّع لأقساط أكثر من وثيقة ناتجة عن التقسيم التلقائي لوثيقة "حماية
 // واستثمار" (نفس المجموعة + نفس تاريخ الاستحقاق) — بدل ما يظهروا كأقساط
 // منفصلة يضطر المستخدم يسدّدها وثيقة وثيقة، بيتجمّعوا هنا وبيتسددوا بزرار واحد.
-function CollectionGroupCardImpl({ members, onPayGroup, onCancelGroup }: CollectionGroupCardProps) {
+function CollectionGroupCardImpl({ members, onPayGroup, onCancelGroup, onMore }: CollectionGroupCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const first = members[0];
@@ -153,7 +155,19 @@ function CollectionGroupCardImpl({ members, onPayGroup, onCancelGroup }: Collect
         </div>
       )}
 
-      <div className="col-row-actions">
+      <div className="col-row-actions flex-wrap">
+        <button
+          type="button"
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            onMore(sortedMembers[0], { top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom }, sortedMembers);
+          }}
+          className="btn btn-secondary btn-sm touch-target shrink-0"
+          title="المزيد"
+          aria-label="إجراءات إضافية للوثائق المجمعة"
+        >
+          <MoreVertical className="w-4 h-4" />
+        </button>
         {allPaid ? (
           <div className="btn btn-secondary btn-sm flex-1 pointer-events-none opacity-70">
             <CheckCircle2 className="w-4 h-4" />
