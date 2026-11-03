@@ -12,7 +12,7 @@ interface CollectionGroupCardProps {
   members: InstallmentWithRelations[];
   onPayGroup: (members: InstallmentWithRelations[]) => void;
   onCancelGroup: (members: InstallmentWithRelations[]) => void;
-  onMore: (installment: InstallmentWithRelations, anchor: ActionMenuAnchor) => void;
+  onMore: (installment: InstallmentWithRelations, anchor: ActionMenuAnchor, members?: InstallmentWithRelations[]) => void;
 }
 
 function initialOf(name: string | undefined): string {
@@ -160,7 +160,7 @@ function CollectionGroupCardImpl({ members, onPayGroup, onCancelGroup, onMore }:
           type="button"
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
-            onMore(sortedMembers[0], { top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom });
+            onMore(sortedMembers[0], { top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom }, sortedMembers);
           }}
           className="btn btn-secondary btn-sm touch-target shrink-0"
           title="المزيد"
