@@ -411,7 +411,6 @@ export function PriceCalculator() {
         <PolicyBenefits
           result={result}
           pensionCashPercent={calculatedPensionCashPercent}
-          customerName={customerName.trim()}
         />
       )}
 
@@ -455,6 +454,7 @@ export function PriceCalculator() {
           containerRef={printQuoteRef}
           logoOverrideSrc={imageLogoSrc}
           pensionCashPercent={calculatedPensionCashPercent}
+          customerName={customerName.trim()}
         />
       )}
     </div>
