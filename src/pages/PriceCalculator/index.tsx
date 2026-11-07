@@ -350,6 +350,20 @@ export function PriceCalculator() {
             النتيجة تشمل القسط حسب دورية السداد ومزايا الوثيقة
           </p>
         </div>
+
+        <div className="card print:hidden space-y-2 relative">
+          <label htmlFor="price-quote-customer-name" className="input-label">اسم العميل (اختياري)</label>
+          <input
+            id="price-quote-customer-name"
+            type="text"
+            autoComplete="off"
+            maxLength={100}
+            className="input-field"
+            placeholder="اكتب اسم العميل ليظهر في العرض المطبوع أو الصورة"
+            value={customerName}
+            onChange={(event) => setCustomerName(event.target.value)}
+          />
+        </div>
       </div>
 
       {/* ===== بطاقة النتائج ===== */}
@@ -412,22 +426,6 @@ export function PriceCalculator() {
           result={result}
           pensionCashPercent={calculatedPensionCashPercent}
         />
-      )}
-
-      {result && (
-        <div className="card print:hidden space-y-2">
-          <label htmlFor="price-quote-customer-name" className="input-label">اسم العميل (اختياري)</label>
-          <input
-            id="price-quote-customer-name"
-            type="text"
-            autoComplete="off"
-            maxLength={100}
-            className="input-field"
-            placeholder="اكتب اسم العميل ليظهر في العرض المطبوع أو الصورة"
-            value={customerName}
-            onChange={(event) => setCustomerName(event.target.value)}
-          />
-        </div>
       )}
 
       {/* ===== أزرار الإجراءات: تحت النتائج ومزايا الوثيقة ===== */}
