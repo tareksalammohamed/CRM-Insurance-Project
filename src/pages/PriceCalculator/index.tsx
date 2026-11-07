@@ -108,6 +108,7 @@ export function PriceCalculator() {
   const [sumInsured, setSumInsured] = useState('');
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [result, setResult] = useState<CalculationResult | null>(null);
+  const [customerName, setCustomerName] = useState('');
   const [savingImage, setSavingImage] = useState(false);
   const [imageLogoSrc, setImageLogoSrc] = useState<string | null>(null);
   const [pensionCashPercent, setPensionCashPercent] = useState<PensionCashPercent | null>(null);
@@ -171,7 +172,7 @@ export function PriceCalculator() {
 
   function handlePrint() {
     if (result) {
-      printWithTitle(`عرض-سعر-${result.variant.label}`);
+      printWithTitle(`عرض-سعر-${result.variant.label}${customerName.trim() ? `-${customerName.trim()}` : ''}`);
     } else {
       window.print();
     }
@@ -410,7 +411,24 @@ export function PriceCalculator() {
         <PolicyBenefits
           result={result}
           pensionCashPercent={calculatedPensionCashPercent}
+          customerName={customerName.trim()}
         />
+      )}
+
+      {result && (
+        <div className="card print:hidden space-y-2">
+          <label htmlFor="price-quote-customer-name" className="input-label">اسم العميل (اختياري)</label>
+          <input
+            id="price-quote-customer-name"
+            type="text"
+            autoComplete="off"
+            maxLength={100}
+            className="input-field"
+            placeholder="اكتب اسم العميل ليظهر في العرض المطبوع أو الصورة"
+            value={customerName}
+            onChange={(event) => setCustomerName(event.target.value)}
+          />
+        </div>
       )}
 
       {/* ===== أزرار الإجراءات: تحت النتائج ومزايا الوثيقة ===== */}
