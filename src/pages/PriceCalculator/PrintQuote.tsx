@@ -53,11 +53,13 @@ export function PrintQuote({
   containerRef,
   logoOverrideSrc,
   pensionCashPercent,
+  customerName,
 }: {
   result: CalculationResult;
   forceVisible?: boolean;
   containerRef?: Ref<HTMLDivElement>;
   pensionCashPercent?: PensionCashPercent;
+  customerName?: string;
   // أثناء "حفظ كصورة" بنستبدل شعار الشركة (لو من دومين خارجي) بنسخة Base64
   // من نفس المصدر، عشان الـ canvas ميتحسبش "ملوّث" (tainted) بسبب قيود CORS
   // فيطلع الناتج صورة بيضاء بدل المحتوى الحقيقي.
@@ -200,6 +202,15 @@ export function PrintQuote({
       {/* ===== بيانات العرض ===== */}
       <div className="pq-offer-card">
         <div className="pq-offer-grid">
+          {customerName && (
+            <div className="pq-offer-item">
+              <ShieldCheck className="icon" size={12} />
+              <div>
+                <div className="label">اسم العميل</div>
+                <div className="value">{customerName}</div>
+              </div>
+            </div>
+          )}
           <div className="pq-offer-item">
             <ShieldCheck className="icon" size={12} />
             <div>
