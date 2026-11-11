@@ -340,17 +340,6 @@ export function PriceCalculator() {
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 relative">
-          <button onClick={handleCalculate} className="btn btn-primary w-full sm:w-auto min-w-[10rem]">
-            <Calculator className="w-4 h-4" />
-            احسب السعر
-          </button>
-          <p className="text-xs text-secondary-500 flex items-center gap-1.5">
-            <BadgeCheck className="w-3.5 h-3.5 text-primary-600" />
-            النتيجة تشمل القسط حسب دورية السداد ومزايا الوثيقة
-          </p>
-        </div>
-
         <div className="card print:hidden space-y-2 relative">
           <label htmlFor="price-quote-customer-name" className="input-label">اسم العميل (اختياري)</label>
           <input
@@ -363,6 +352,17 @@ export function PriceCalculator() {
             value={customerName}
             onChange={(event) => setCustomerName(event.target.value)}
           />
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 relative">
+          <button onClick={handleCalculate} className="btn btn-primary w-full sm:w-auto min-w-[10rem]">
+            <Calculator className="w-4 h-4" />
+            احسب السعر
+          </button>
+          <p className="text-xs text-secondary-500 flex items-center gap-1.5">
+            <BadgeCheck className="w-3.5 h-3.5 text-primary-600" />
+            النتيجة تشمل القسط حسب دورية السداد ومزايا الوثيقة
+          </p>
         </div>
       </div>
 
