@@ -381,6 +381,22 @@ export function PrintQuote({
         </>
       )}
 
+      {result.additionalCoveragesPremium > 0 && (
+        <>
+          <div className="pq-section-title pq-section-title-sub">التغطيات الإضافية</div>
+          <div className="pq-offer-card">
+            <div className="pq-offer-grid">
+              <div className="pq-offer-item">
+                <div><div className="label">القسط الأساسي السنوي</div><div className="value">{formatCurrency(result.baseAnnualPremium)}</div></div>
+              </div>
+              {result.additionalCoverages.accident && <div className="pq-offer-item"><div><div className="label">تغطية الحادث (2‰)</div><div className="value">{formatCurrency(result.accidentPremium)}</div></div></div>}
+              {result.additionalCoverages.permanentTotalDisability && <div className="pq-offer-item"><div><div className="label">العجز الكلي الدائم (2‰)</div><div className="value">{formatCurrency(result.permanentTotalDisabilityPremium)}</div></div></div>}
+              <div className="pq-offer-item"><div><div className="label">إجمالي الإضافات</div><div className="value">{formatCurrency(result.additionalCoveragesPremium)}</div></div></div>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* ===== جدول الأقساط ===== */}
       <div className="pq-section-title pq-section-title-sub">جدول الأقساط</div>
       <div className="pq-premium-grid">
