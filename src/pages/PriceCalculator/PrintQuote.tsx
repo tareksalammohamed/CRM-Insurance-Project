@@ -144,6 +144,14 @@ export function PrintQuote({
         .print-report .pq-offer-item .value { font-size: 11.5px; color: #14532d; font-weight: 800; }
         .print-report .pq-offer-item.pq-validity .value { color: #b45309; }
 
+        /* ===== المنافع التأمينية للتغطيات الاختيارية ===== */
+        .print-report .pq-coverage-benefits { margin-top: 7px; padding-top: 6px; border-top: 1px solid #d1fae5; }
+        .print-report .pq-coverage-benefits-title { font-size: 9.5px; font-weight: 800; color: #14532d; margin-bottom: 5px; }
+        .print-report .pq-coverage-benefits-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 10px; }
+        .print-report .pq-coverage-benefit { min-width: 0; border-right: 2px solid #16a34a; padding: 2px 7px 2px 0; break-inside: avoid; page-break-inside: avoid; }
+        .print-report .pq-coverage-benefit-title { font-size: 9px; font-weight: 800; color: #14532d; margin-bottom: 2px; }
+        .print-report .pq-coverage-benefit-text { font-size: 8.8px; line-height: 1.45; color: #374151; }
+
         /* ===== المميزات (لماذا هذه الوثيقة) ===== */
         .print-report .pq-feature-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 14px; margin-top: 2px; }
         .print-report .pq-feature { display: flex; align-items: flex-start; gap: 6px; font-size: 10px; color: #1f2937; }
@@ -392,6 +400,29 @@ export function PrintQuote({
               {result.additionalCoverages.accident && <div className="pq-offer-item"><div><div className="label">تغطية الحادث (2‰)</div><div className="value">{formatCurrency(result.accidentPremium)}</div></div></div>}
               {result.additionalCoverages.permanentTotalDisability && <div className="pq-offer-item"><div><div className="label">العجز الكلي الدائم (2‰)</div><div className="value">{formatCurrency(result.permanentTotalDisabilityPremium)}</div></div></div>}
               <div className="pq-offer-item"><div><div className="label">إجمالي الإضافات</div><div className="value">{formatCurrency(result.additionalCoveragesPremium)}</div></div></div>
+            </div>
+            <div className="pq-coverage-benefits">
+              <div className="pq-coverage-benefits-title">المنافع التأمينية للتغطيات المختارة</div>
+              <div className="pq-coverage-benefits-grid">
+                {result.additionalCoverages.accident && (
+                  <div className="pq-coverage-benefit">
+                    <div className="pq-coverage-benefit-title">الوفاة نتيجة حادث</div>
+                    <div className="pq-coverage-benefit-text">
+                      في حالة الوفاة نتيجة حادث أثناء مدة التأمين، يُصرف للمستفيدين ضعف مبلغ التأمين
+                      (2 × مبلغ التأمين)، بالإضافة إلى الأرباح المستحقة حتى تاريخ الوفاة.
+                    </div>
+                  </div>
+                )}
+                {result.additionalCoverages.permanentTotalDisability && (
+                  <div className="pq-coverage-benefit">
+                    <div className="pq-coverage-benefit-title">العجز الكلي الدائم</div>
+                    <div className="pq-coverage-benefit-text">
+                      عند تحقق العجز الكلي الدائم أثناء مدة التأمين، يُصرف مبلغ التأمين بالكامل
+                      بالإضافة إلى الأرباح المستحقة حتى تاريخ تحقق العجز.
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </>
