@@ -6,6 +6,42 @@ import { computeCommissionRows, computeSummary } from '../src/pages/Commissions/
 import { isEligibleForCancellationRate, computeTotalCollected } from '../src/pages/Cancellations/business/cancellationCalculator';
 import type { RawYear1Payment, RawYear2Payment } from '../src/pages/Commissions/services/commissionsService';
 
+describe('additional optional coverage pricing', () => {
+  it('adds 2 per thousand to annual premium for accident coverage only', () => {
+    const result = calculatePrice({ age: 30, variantKey: 'protection_investment_15y', sumInsured: 100000,
+      additionalCoverages: { accident: true, permanentTotalDisability: false } });
+    expect(result.baseAnnualPremium).toBe(6342);
+    expect(result.accidentPremium).toBe(200);
+    expect(result.permanentTotalDisabilityPremium).toBe(0);
+    expect(result.additionalCoveragesPremium).toBe(200);
+    expect(result.annualPremium).toBe(6542);
+    expect(result.semiAnnualPremium).toBeCloseTo(3401.84);
+    expect(result.quarterlyPremium).toBeCloseTo(1700.92);
+    expect(result.monthlyPremium).toBeCloseTo(566.9733333333);
+  });
+
+  it('adds 2 per thousand for each selected coverage, before installment loading', () => {
+    const result = calculatePrice({ age: 30, variantKey: 'protection_investment_15y', sumInsured: 100000,
+      additionalCoverages: { accident: true, permanentTotalDisability: true } });
+    expect(result.additionalCoveragesPremium).toBe(400);
+    expect(result.annualPremium).toBe(6742);
+    expect(result.semiAnnualPremium).toBeCloseTo(3505.84);
+    expect(result.quarterlyPremium).toBeCloseTo(1752.92);
+    expect(result.monthlyPremium).toBeCloseTo(584.3066666667);
+  });
+
+  it('preserves existing premium when optional coverages are omitted or not selected', () => {
+    const legacy = calculatePrice({ age: 30, variantKey: 'protection_investment_15y', sumInsured: 100000 });
+    const explicitNone = calculatePrice({ age: 30, variantKey: 'protection_investment_15y', sumInsured: 100000,
+      additionalCoverages: { accident: false, permanentTotalDisability: false } });
+    expect(legacy.annualPremium).toBe(6342);
+    expect(explicitNone.annualPremium).toBe(legacy.annualPremium);
+    expect(explicitNone.semiAnnualPremium).toBe(legacy.semiAnnualPremium);
+    expect(explicitNone.quarterlyPremium).toBe(legacy.quarterlyPremium);
+    expect(explicitNone.monthlyPremium).toBe(legacy.monthlyPremium);
+  });
+});
+
 describe('existing insurance business rules (unchanged)', () => {
   it('locks a known protection/investment quote', () => {
     const result = calculatePrice({ age: 30, variantKey: 'protection_investment_15y', sumInsured: 100000 });
