@@ -106,6 +106,8 @@ export function PriceCalculator() {
   const [age, setAge] = useState('');
   const [variantKey, setVariantKey] = useState('');
   const [sumInsured, setSumInsured] = useState('');
+  const [accidentCoverage, setAccidentCoverage] = useState(false);
+  const [permanentTotalDisabilityCoverage, setPermanentTotalDisabilityCoverage] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [customerName, setCustomerName] = useState('');
@@ -157,6 +159,10 @@ export function PriceCalculator() {
         age: Number(age),
         variantKey,
         sumInsured: Number(sumInsured),
+        additionalCoverages: {
+          accident: accidentCoverage,
+          permanentTotalDisability: permanentTotalDisabilityCoverage,
+        },
       });
       setResult(calculated);
       setCalculatedPensionCashPercent(
@@ -291,6 +297,25 @@ export function PriceCalculator() {
           </div>
         </div>
 
+        <div className="relative rounded-xl border border-secondary-200 bg-secondary-50/60 p-4 space-y-3">
+          <div>
+            <p className="text-sm font-bold text-secondary-900">التغطيات الإضافية (اختياري)</p>
+            <p className="text-xs text-secondary-500 mt-1">تُضاف تكلفة كل تغطية إلى القسط السنوي قبل احتساب دورية السداد، بواقع 2 في الألف من مبلغ التأمين.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="flex items-center gap-3 rounded-lg border border-secondary-200 bg-white p-3 cursor-pointer">
+              <input type="checkbox" className="w-4 h-4 accent-primary-600" checked={accidentCoverage} onChange={(event) => setAccidentCoverage(event.target.checked)} />
+              <span className="flex-1 text-sm font-semibold text-secondary-800">تغطية الحادث</span>
+              <span className="text-xs text-secondary-500">2‰ من مبلغ التأمين</span>
+            </label>
+            <label className="flex items-center gap-3 rounded-lg border border-secondary-200 bg-white p-3 cursor-pointer">
+              <input type="checkbox" className="w-4 h-4 accent-primary-600" checked={permanentTotalDisabilityCoverage} onChange={(event) => setPermanentTotalDisabilityCoverage(event.target.checked)} />
+              <span className="flex-1 text-sm font-semibold text-secondary-800">العجز الكلي الدائم</span>
+              <span className="text-xs text-secondary-500">2‰ من مبلغ التأمين</span>
+            </label>
+          </div>
+        </div>
+
         {isPensionVariant && (
           <div className="relative rounded-xl border border-primary-100 bg-primary-50/40 p-4 space-y-3">
             <div>
@@ -390,6 +415,15 @@ export function PriceCalculator() {
               </span>
             </div>
           </div>
+
+          {(result.additionalCoveragesPremium > 0) && (
+            <div className="rounded-xl border border-primary-100 bg-primary-50/40 p-3 space-y-2">
+              <div className="flex items-center justify-between text-xs text-secondary-600"><span>القسط الأساسي السنوي</span><strong>{formatCurrency(result.baseAnnualPremium)}</strong></div>
+              {result.additionalCoverages.accident && <div className="flex items-center justify-between text-xs text-secondary-600"><span>إضافة تغطية الحادث (2‰)</span><strong>{formatCurrency(result.accidentPremium)}</strong></div>}
+              {result.additionalCoverages.permanentTotalDisability && <div className="flex items-center justify-between text-xs text-secondary-600"><span>إضافة العجز الكلي الدائم (2‰)</span><strong>{formatCurrency(result.permanentTotalDisabilityPremium)}</strong></div>}
+              <div className="flex items-center justify-between border-t border-primary-100 pt-2 text-sm font-bold text-primary-700"><span>إجمالي الإضافات</span><span>{formatCurrency(result.additionalCoveragesPremium)}</span></div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="kpi-card !p-4 ring-1 ring-primary-100 bg-primary-50/40">
